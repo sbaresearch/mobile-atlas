@@ -1,0 +1,53 @@
+{
+  "Header":
+  {
+    "GenerationSoftware":
+    {
+      "Vendor":      "KiCad",
+      "Application": "Pcbnew",
+      "Version":     "5.1.8"
+    },
+    "CreationDate":  "2020-12-15T14:23:05+01:00"
+  },
+  "GeneralSpecs":
+  {
+    "ProjectId":
+    {
+      "Name": "simcardsniffer",
+      "GUID": "73696d63-6172-4647-936e-69666665722e",
+      "Revision": "rev?"
+    },
+    "Size":
+    {
+      "X": 12.050,
+      "Y": 22.050
+    },
+    "LayerNumber": 2,
+    "BoardThickness":  1.600
+  },
+  "DesignRules":
+  [
+    {
+      "Layers": "Outer",
+      "PadToPad":  0.400,
+      "PadToTrack":  0.400,
+      "TrackToTrack":  0.400,
+      "MinLineWidth":  0.700
+    }
+  ],
+  "FilesAttributes":
+  [
+    {
+      "Path":  "simcardsniffer-F_Mask.gbr",
+      "FileFunction":  "SolderMask,Top",
+      "FilePolarity":  "Negative"
+    }
+  ],
+  "MaterialStackup":
+  [
+    {
+      "Type":  "SolderMask",
+      "Notes":  "Layer F.Mask"
+    }
+  ]
+}

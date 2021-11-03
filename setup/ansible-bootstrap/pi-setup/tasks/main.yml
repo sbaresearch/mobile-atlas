@@ -1,0 +1,226 @@
+---
+# tasks file for pi-setup
+  - name: Deploy ssh keys
+    authorized_key:
+      user: pi
+      state: present
+      comment: '{{ item.name }}'
+      key: '{{ item.pubkey }}'
+    with_items: '{{ ssh_keys }}'
+
+  - name: Add unstable repository and pin it with lower priority
+    copy:
+      src: '{{ item.src }}'
+      dest: '{{ item.dest }}'
+      owner: root
+      group: root
+      mode: '0644'
+    with_items: '{{ files_debian_unstable }}'
+    become: yes
+
+  - name: Add an apt key by id from a keyserver
+    apt_key:
+      keyserver: '{{ item.server }}'
+      id: '{{ item.id }}'
+    with_items: '{{ apt_keys }}'
+    become: yes
+
+  - name: Update and upgrade apt packages
+    apt:
+      upgrade: safe
+      update_cache: yes
+      cache_valid_time: 86400 #One day
+    become: yes
+
+  - name: Ensure a list of packages installed
+    apt:
+      name: '{{ packages }}'
+      state: present
+    become: yes
+
+  - name: Add mobileatlas as loopback hostname in hostsfile
+    lineinfile:
+      path: /etc/hosts
+      line: 127.0.1.1 mobileatlas
+      owner: root
+      group: root
+      mode: '0644'
+    become: yes
+
+  - name: Update hostname
+    hostname:
+      name: mobileatlas
+    become: yes
+
+  - name: Update bluetooth-name
+    copy:
+      content: 'PRETTY_HOSTNAME=MobileAtlas' 
+      dest: /etc/machine-info
+      owner: root
+      group: root
+      mode: '0644'
+    become: yes
+
+  - name: Remove console from UART in cmdline
+    replace:
+      destfile: /boot/cmdline.txt
+      regexp: 'console=serial0,115200 '
+      replace: ''
+    ignore_errors: yes
+    become: yes
+
+  - name: Adapt config
+    blockinfile:
+      path: /boot/config.txt
+      block: |
+        #disable wifi
+        dtoverlay=disable-wifi
+
+        # mini-uart used for backup AT commandos at modem adapter
+        enable_uart=1
+
+        # used for sim eumlation 
+        dtoverlay=uart2
+
+        #set pin 26 to high (disables modem module)
+        gpio=26=op,dh 
+    become: yes
+
+  - name: Install modemmanager from testing repository
+    apt:
+      name: modemmanager
+      default_release: unstable
+      state: latest
+    become: yes
+
+  - name: Stop and disable modemmanager service
+    service:
+      name: ModemManager
+      enabled: no
+      state: stopped
+    become: yes
+
+  - name: Block QMI kernel module
+    lineinfile:
+      path: /etc/modprobe.d/blacklist-mobileatlas.conf
+      line: blacklist qmi_wwan
+      owner: root
+      group: root
+      mode: '0644'
+      create: yes
+    become: yes
+
+  - name: set git user
+    git_config:
+      name: user.name
+      scope: system
+      value: 'MobileAtlas Probe ({{ hostvars[inventory_hostname].ansible_default_ipv4.macaddress }})'
+    become: yes
+
+  - name: set git mail
+    git_config:
+      name: user.email
+      scope: system
+      value: 'mobileatlas@sba-research.org'
+    become: yes
+
+  - name: Clone mobileatlas git repository
+    git:
+      repo: https://measurement-probe:MBGTnHVeqaR4U73qjfis@gitlab.sba-research.org/Willi/mobile-atlas.git
+      dest: /home/pi/mobile-atlas
+    become_user: pi
+
+  - name: Install virtualenv for all users
+    pip:
+      executable: pip3
+      name: virtualenv
+      umask: '0022'
+    become: yes
+
+  - name: Setup virtualenv for mobile-atlas
+    pip:
+      requirements: /home/pi/mobile-atlas/mobileatlas/probe/requirements.txt
+      virtualenv: /home/pi/mobile-atlas/mobileatlas/probe/venv
+    become_user: pi
+
+  - name: Create directory for systemd scripts (wireguard-registration and mobile-atlas)
+    file:
+      path: '{{ item }}' 
+      state: directory
+    with_items:
+      - '/usr/local/lib/wireguard-register/'
+      - '/usr/local/lib/mobile-atlas/'
+    become: yes
+
+  - name: Create symlink for mobile-atlas service
+    file:
+      src: /home/pi/mobile-atlas/setup/systemd/mobile-atlas/mobile-atlas-daemon.py
+      dest: /usr/local/lib/mobile-atlas/mobile-atlas-daemon.py
+      state: link
+      owner: root
+      group: root
+      mode: '0644'
+    become: yes
+
+  - name: Copy files for systemd scripts (wireguard-registration and mobile-atlas)
+    copy:
+      src: '{{ item.src }}'
+      dest: '{{ item.dest }}'
+      remote_src: yes
+      owner: root
+      group: root
+      mode: '0644'
+    with_items:
+    - { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.py', dest: '/usr/local/lib/wireguard-register/' }
+    - { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.service', dest: '/lib/systemd/system/' }
+    - { src: '/home/pi/mobile-atlas/setup/systemd/mobile-atlas/mobile-atlas.service', dest: '/lib/systemd/system/' }
+    become: yes
+
+  - name: Add wireguard ping-watchdog
+    blockinfile:
+      path: /etc/watchdog.conf
+      owner: root
+      group: root
+      mode: '0644'
+      block: |
+        # mobile-atlas wireguard watchdog
+        interface = wg0
+        ping = 172.29.183.1
+        ping-count = 10
+        interval = 50
+    become: yes
+
+  - name: Enable wireguard-register, mobile-atlas, wg-quick and watchdog services
+    service:
+      name: '{{ item }}'
+      enabled: yes
+    with_items:
+    - wireguard-register
+    - mobile-atlas
+    - wg-quick@wg0
+    - watchdog
+    become: yes
+
+  - name: Reboot the raspi
+    reboot:
+      reboot_timeout: 120
+    become: yes
+
+  - name: Generate a new random pw
+    set_fact:
+      new_pw: "{{ lookup('password', '/dev/null length=64') }}"
+    when: new_pw is undefined  #only generate hwen new_pw is unset, since it can also be provided by commandline
+
+  - name: Change password
+    user:
+      name: pi
+      update_password: always
+      password: "{{ new_pw | password_hash('sha512') }}"
+    become: yes
+
+  - name: Get the MAC address
+    debug: msg='MAC-Address is {{ hostvars[inventory_hostname].ansible_default_ipv4.macaddress }}'    
+
+  - name: All done!
+    debug:
+      msg: 'New password is {{ new_pw }}'

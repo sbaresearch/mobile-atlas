@@ -1,0 +1,16 @@
+---
+- name: Update git and reinstall virtualenv dependencies
+  hosts: all
+  remote_user: pi
+  tasks:
+    - name: Clone mobileatlas git repository
+      git:
+        repo: https://github.com/sbaresearch/mobile-atlas.git
+        dest: /home/pi/mobile-atlas
+      become_user: pi
+
+    - name: Setup virtualenv for mobile-atlas
+      pip:
+        requirements: /home/pi/mobile-atlas/mobileatlas/probe/requirements.txt
+        virtualenv: /home/pi/mobile-atlas/mobileatlas/probe/venv
+      become_user: pi

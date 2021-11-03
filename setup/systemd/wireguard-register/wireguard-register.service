@@ -1,0 +1,17 @@
+[Unit]
+Description=Wireguard Register Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# Command to execute when the service is started
+ExecStart=/usr/bin/python3 /usr/local/lib/wireguard-register/wireguard-register.py
+
+# Disable Python's buffering of STDOUT and STDERR, so that output from the
+# service shows up immediately in systemd's logs
+Environment=PYTHONUNBUFFERED=1
+Type=simple
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

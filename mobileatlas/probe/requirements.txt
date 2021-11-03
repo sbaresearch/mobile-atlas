@@ -1,0 +1,28 @@
+# Forked PySim:
+-e git+https://github.com/GGegenhuber/pysim.git@faf4dabfa71e2a49e92ff4728ee3c763570598dd#egg=pysim
+# python3 port of kmod
+-e git+https://github.com/mahatma1/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
+
+
+pexpect
+RPi.GPIO
+psutil
+PyGObject
+python-benedict
+jsonschema
+python-json-logger
+requests
+urllib3
+httpcore
+httpx
+beautifulsoup4
+pycrypto
+aioquic==0.9.14
+wsproto
+debugpy==1.3.0
+jsonpickle
+jsons
+phonenumbers
+pytz
+gitpython
+boto3

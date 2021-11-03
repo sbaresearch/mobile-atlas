@@ -1,0 +1,11 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP ACT4088
+F https://active-semi.com/wp-content/uploads/ACT4088_Datasheet.pdf
+$ENDCMP
+#
+$CMP AO3407
+F http://aosmd.com/pdfs/datasheet/AO3407.pdf
+$ENDCMP
+#
+#End Doc Library

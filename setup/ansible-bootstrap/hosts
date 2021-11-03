@@ -1,0 +1,8 @@
+[probes]
+192.168.1.123
+
+[probes:vars]
+ansible_conection = ssh
+ansible_user = pi
+ansible_ssh_pass = raspberry
+

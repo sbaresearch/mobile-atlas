@@ -1,0 +1,21 @@
+---
+- name: Prepare everything for namespace magic (portforwarding and wireguard gateway during measurements)
+  hosts: all
+  remote_user: pi
+  tasks:
+    - name: Manipulate network-manager config file
+      ini_file:
+        path: /etc/NetworkManager/NetworkManager.conf
+        section: keyfile
+        option: unmanaged-devices
+        value: interface-name:veth0;interface-name:veth1
+      become: yes
+    - name: Ensure socat is installed (used for port forwarding)
+      apt:
+        name: socat
+        state: present
+      become: yes
+    - name: Set timezone to UTC
+      timezone:
+        name: UTC
+      become: yes

@@ -1,0 +1,13 @@
+---
+- name: Add 30sec delay to wg startup
+  hosts: all
+  remote_user: pi
+  tasks:
+    - name: Manipulate wg service file 
+      ini_file:
+        path: /lib/systemd/system/wg-quick@.service
+        section: Service
+        option: ExecStartPre
+        value: /bin/sleep 30
+      become: yes
+

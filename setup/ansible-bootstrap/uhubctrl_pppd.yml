@@ -1,0 +1,15 @@
+---
+- name: Install uhubctl and make pppd more verbose
+  hosts: all
+  remote_user: pi
+  tasks:
+    - name: Install uhubctl
+      apt:
+        name: uhubctl
+        state: present
+      become: yes
+    - name: Add debugging option to pppd
+      lineinfile:
+        path: /etc/ppp/options
+        line: debug
+      become: yes

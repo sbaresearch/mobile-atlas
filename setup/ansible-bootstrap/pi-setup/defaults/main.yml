@@ -1,0 +1,39 @@
+---
+# defaults file for pi-setup
+ssh_keys:
+  - name: Gabriel Gegenhuber
+    pubkey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCVi1QMKsItI1kAqbjF9stA9nrxRxh6Sq/vKzubiSchLNV6vaI8EWCUhQ6E7RQ3Gh6ivqswqEtmtyO8D3Mjb1MXmjGIU82P+K1NtsQaEaTiAFUXmozfvgQtWGiHFhfl38Wf7rN8VG1lcZ2wHPxmPkcDAQCtas9NhLpCSM3LYrsdxWMLdGGfiYcaVM3rdFIvukAX/IXH0uq7nY5QkLIgZaffEPHFW6hAcSKPkLI5uYjCrDGYNjMhju/qihqraMjcwXik4qTw+NQzIngJrll3R8dZu8a8PlfejyN3Z7l+ONSOdQEOSrg+NRxe8J7WiJOWqQVIgrWtXGaRDAZ/gmhNPfmmzXsDgEKmFmtVJFmmQxbJvMxuLZxlKcd2nRb1pGV0fuGfrGJ9GLyQBgnhCFVobzLu0h/urKNu9VSi66BRj4YuMv4WbULqo3FJX3Vj2U1r/9RU4bXyYSoeM6jg88cT+9M0t5ENNZ+LgdwU69Vw55zCkxxgV/kVZ3bW+55ZBLDS+t8= mahatma@XPS-15-9570
+  - name: Wilfried Mayer
+    pubkey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKBhtvyAkzeKFthZ0zG0KonR2v9ZkoNmeyv192R7uNZl willi@ma-probes[2021]
+    
+files_debian_unstable:
+  - src: etc/apt/sources.list.d/unstable.list.j2
+    dest: /etc/apt/sources.list.d/unstable.list
+
+  - src: etc/apt/preferences.d/unstable.pref.j2
+    dest: /etc/apt/preferences.d/unstable.pref
+
+apt_keys:
+  - server: keyserver.ubuntu.com
+    id: 04EE7237B7D453EC
+  - server: keyserver.ubuntu.com
+    id: 648ACFD622F3D138
+
+packages:
+  - raspberrypi-kernel-headers
+  - python3-pip
+  - git
+  - speedtest-cli
+  - tcpdump
+  - network-manager
+  - wireguard
+  - watchdog
+  - gir1.2-nm-1.0
+  - libmm-glib-dev
+  - libglib2.0-dev          #PyGObject
+  - libgirepository1.0-dev  #PyGObject
+  - libcairo2-dev           #PyGObject
+  - libkmod-dev #to remove kernel modules
+  - swig            #pyscard
+  - libpcsclite-dev #pyscard
+  - libbluetooth-dev #pybluez
