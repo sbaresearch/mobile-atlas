@@ -11,7 +11,7 @@ import argparse
 from mobileatlas.simprovider.sim_provider import SimProvider
 from mobileatlas.simprovider.tunnel.sim_tunnel import SimTunnel
 from pySim.commands import SimCardCommands
-from pySim.cards import card_detect, Card, UsimCard, IsimCard
+from pySim.cards import card_detect, SimCard, UsimCard, IsimCard
 from pySim.transport.serial import SerialSimLink
 from pySim.transport.pcsc import PcscSimLink
 from pySim.transport.bluetooth_rsap import BluetoothSapSimLink

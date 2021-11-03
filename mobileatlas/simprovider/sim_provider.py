@@ -14,7 +14,7 @@ from smartcard.System import readers
 from pySim.transport.serial import SerialSimLink
 from pySim.transport.pcsc import PcscSimLink
 from pySim.commands import SimCardCommands
-from pySim.cards import Card
+from pySim.cards import SimCard
 
 
 
@@ -101,7 +101,7 @@ class SimProvider():
         scc = SimCardCommands(transport=sl)
 
         # TODO: add check that it is an actual sim card?
-        sim_card = Card(scc) #SimCard(scc)
+        sim_card = SimCard(scc) #Card(scc)
 
         # query iccid
         iccid, sw = sim_card.read_iccid()
