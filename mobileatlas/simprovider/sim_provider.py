@@ -4,11 +4,6 @@ SIM Provider Main
 """
 import os
 import logging
-import re
-import argparse
-import json
-import serial
-import requests
 from serial.tools import list_ports
 from smartcard.System import readers
 from pySim.transport.serial import SerialSimLink

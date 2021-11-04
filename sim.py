@@ -3,20 +3,12 @@
 SIM Server Script
 """
 
-import os
 import logging
 import socket
 import struct
 import argparse
 from mobileatlas.simprovider.sim_provider import SimProvider
 from mobileatlas.simprovider.tunnel.sim_tunnel import SimTunnel
-from pySim.commands import SimCardCommands
-from pySim.cards import card_detect, SimCard, UsimCard, IsimCard
-from pySim.transport.serial import SerialSimLink
-from pySim.transport.pcsc import PcscSimLink
-from pySim.transport.bluetooth_rsap import BluetoothSapSimLink
-from pySim.transport.modem_atcmd import ModemATCommandLink
-from pySim.utils import b2h
 
 
 HOST_DEFAULT = "0.0.0.0"
