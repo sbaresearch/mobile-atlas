@@ -23,7 +23,10 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [setup](/setup): setup scripts that are used to install the MobileAtlas framework on a dedicated Raspberry Pi device
 
 ### Geographical Decoupling of SIM Card and Modem
-MobileAtlas implements the promising approach to geographically decouple SIM card and modem, which boosts the scalability and flexibility of the measurement platform. More specific details regarding the technical implementation of the SIM tunneling technique can be found in the [README file](/hardware#sim-tunneling) of the hardware directory.
+Physically moving devices and SIM cards between countries to enable measurements in a roaming environment is costly and does not scale well.
+Therefore, we introduce an approach to geographically detach the SIM card from the modem by tunneling the SIM card's protocol over the Internet and emulating its signal on the LTE modem.
+This allows us to test roaming effects on a large number of operators without physically moving any hardware between different countries.
+More specific details regarding the technical implementation of the SIM tunneling technique can be found in the [README file](/hardware#sim-tunneling) of the hardware directory.
 
 ### Framework Architecture
 The framework can be structured into three main components: SIM providers that allow sharing SIM card access, measurement probes that act as a local breakout to the cellular network, and a management server that connects the prior two components and acts as command and control unit for the measurement probes.
