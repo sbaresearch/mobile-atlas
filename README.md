@@ -22,6 +22,10 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [hardware](/hardware): hardware specification and SIM tunneling technique
 * [setup](/setup): setup scripts that are used to install the MobileAtlas framework on a dedicated Raspberry Pi device
 
+### Related Repositories
+* [pySIM](https://github.com/GGegenhuber/pysim): forked version of pySIM that is used by SIM provider and measurement probe
+* [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating practices
+
 ### Geographical Decoupling of SIM Card and Modem
 Physically moving devices and SIM cards between countries to enable measurements in a roaming environment is costly and does not scale well.
 Therefore, we introduce an approach to geographically detach the SIM card from the modem by tunneling the SIM card's protocol over the Internet and emulating its signal on the LTE modem.
