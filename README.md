@@ -41,7 +41,6 @@ The framework can be structured into three main components: SIM providers that a
 #### SIM Provider
 The SIM provider is used to remotely make one or more SIM cards available to the measurement platform.
 For communication between the computer and the SIM card, we rely on a [modified version of pySim](https://github.com/GGegenhuber/pysim).
-TODO sim_provider.py verlinken.
 The python file that implements the SIM provider is [sim.py](/sim.py) and uses the [simprovider](/mobileatlas/simprovider) python module (virtualenv required).
 More specific details regarding the hardware requirements can be found in the [README file](/hardware#sim-provider) of the hardware directory.
 
