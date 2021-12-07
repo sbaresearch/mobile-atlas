@@ -1,0 +1,43 @@
+---
+- name: Update git and reinstall virtualenv dependencies
+  hosts: all
+  remote_user: pi
+  tasks:
+
+    # wipe old repo
+    - name: Delete old mobileatlas repo
+      file:
+        state: absent
+        path: /home/pi/mobile-atlas
+      become: yes
+
+    # use public git instead of private one (see https://github.com/sbaresearch/mobile-atlas/blob/main$
+    - name: Clone mobileatlas git repository
+      git:
+        repo: https://github.com/sbaresearch/mobile-atlas.git
+        dest: /home/pi/mobile-atlas
+        force: yes
+      become_user: pi
+
+   # overwrite symlink (created at https://github.com/sbaresearch/mobile-atlas/blob/main/setup/ansi>
+    - name: Create symlink for mobile-atlas service
+      file:
+        src: /home/pi/mobile-atlas/setup/systemd/mobile-atlas/mobile-atlas-daemon.py
+        dest: /usr/local/lib/mobile-atlas/mobile-atlas-daemon.py
+        state: link
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+
+    - name: Clone mobileatlas config (private) git repository
+      git:
+        repo: https://measurement-probe:fillinaccesskey@gitlab.sba-research.org/ggegenhuber/mobile-atlas-config.git
+        dest: /home/pi/mobile-atlas-config
+      become_user: pi
+
+    - name: Setup virtualenv for mobile-atlas
+      pip:
+        requirements: /home/pi/mobile-atlas/mobileatlas/probe/requirements.txt
+        virtualenv: /home/pi/mobile-atlas/mobileatlas/probe/venv
+      become_user: pi
