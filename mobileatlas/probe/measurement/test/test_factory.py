@@ -2,7 +2,7 @@
 
 from mobileatlas.probe.measurement.test.test_network_billing import TestNetworkBilling
 from mobileatlas.probe.measurement.test.test_network_base import TestNetworkBase
-from mobileatlas.probe.measurement.test.test_network_zero import TestNetworkZero, TestNetworkZeroCheckIp, TestNetworkZeroCheckSni
+from mobileatlas.probe.measurement.test.test_network_zero_web import TestNetworkZeroWeb, TestNetworkZeroWebCheckIp, TestNetworkZeroWebCheckSni
 from mobileatlas.probe.measurement.test.test_sms import TestSms
 from mobileatlas.probe.measurement.test.test_ussd import TestUssd
 from .test_base import TestBase
@@ -33,9 +33,9 @@ test_factory.register_test('TestNetworkBase', TestNetworkBase)
 test_factory.register_test('TestNetworkInfo', TestNetworkInfo)
 test_factory.register_test('TestNetworkReconnect', TestNetworkReconnect)
 test_factory.register_test('TestNetworkBilling', TestNetworkBilling)
-test_factory.register_test('TestNetworkZero', TestNetworkZero)
-test_factory.register_test('TestNetworkZeroCheckIp', TestNetworkZeroCheckIp)
-test_factory.register_test('TestNetworkZeroCheckSni', TestNetworkZeroCheckSni)
+test_factory.register_test('TestNetworkZeroWeb', TestNetworkZeroWeb)
+test_factory.register_test('TestNetworkZeroWebCheckIp', TestNetworkZeroWebCheckIp)
+test_factory.register_test('TestNetworkZeroWebCheckSni', TestNetworkZeroWebCheckSni)
 test_factory.register_test('TestUssd', TestUssd)
 test_factory.register_test('TestSms', TestSms)
 test_factory.register_test('TestInteractive', TestInteractive)
