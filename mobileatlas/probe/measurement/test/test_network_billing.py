@@ -2,6 +2,7 @@
 
 import logging
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
+from mobileatlas.probe.measurement.payload.payload_network_dns import PayloadNetworkDns
 from mobileatlas.probe.measurement.payload.payload_public_ip import PayloadPublicIp
 from mobileatlas.probe.measurement.test.test_args import TestParser
 from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWeb, PayloadNetworkWebControlTraffic
@@ -37,12 +38,12 @@ class TestNetworkBillingBase(TestNetworkBase):
         print(f"start execute_test_network_core start")
         for payload_entry in self.payload_list:
             payload = payload_entry.payload
-            logger.info(f"starting payload {payload.name} (size: {payload.payload_size})")
+            logger.info(f"starting payload {payload_entry.name} (size: {payload.payload_size})")
             ret = payload.execute()
-            logger.info(f"payload {payload.name} finished (success: {ret.success}), rx {ret.consumed_bytes_rx}, tx {ret.consumed_bytes_tx} bytes")
+            logger.info(f"payload {payload_entry.name} finished (success: {ret.success}), rx {ret.consumed_bytes_rx}, tx {ret.consumed_bytes_tx} bytes")
             if payload_entry.add_to_consumed_units:
                 bytes_consumed = payload.get_consumed_bytes()
-                bytes_web_total = self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X
+                self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X
         print(f"execute_test_network_core finished")
         
 
@@ -93,3 +94,17 @@ class TestNetworkBilling(TestNetworkBillingBase):
             else:
                 size = CreditChecker.DEFAULT_BYTES # usually 1megabyte
         return size
+    
+    
+
+class TestNetworkBillingDns(TestNetworkBillingBase):
+    
+    def __init__(self, parser: TestParser):
+        super().__init__(parser)
+        self.next_paload_size = convert_size_to_bytes(f'300 KB')
+        
+        payload_dns = PayloadNetworkDns(self.mobile_atlas_mediator, self.get_next_payload_size())
+        self.add_network_payload("payload_dns", payload_dns, False)
+        
+        payload_web = PayloadNetworkWebControlTraffic(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
+        self.add_network_payload("payload_web_control", payload_web, True)
