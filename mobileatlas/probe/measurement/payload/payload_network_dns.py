@@ -11,14 +11,21 @@ logger = logging.getLogger(__name__)
 class PayloadNetworkDns(PayloadNetworkBase):
     LOGGER_TAG = "payload_network_dns"
 
-    def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, payload_size):
+    def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, payload_size, nameservers="default"): #nameservers can also be list object
         super().__init__(mobile_atlas_mediator, payload_size=payload_size)
+        self.nameservers = nameservers
 
     def send_payload(self) -> PayloadNetworkResult:
         cnt = 0
         my_resolver = dns.resolver.Resolver()
-        my_resolver._nameservers = my_resolver._nameservers[:1] # just use the very first dns server (that was propagated via dhcp from the provider)
-        #my_resolver._nameservers = my_resolver._nameservers = ['8.8.8.8']
+        if self.nameservers == "default" or self.nameservers is None:
+            # do nothing and use it as it is
+            pass
+        if self.nameservers == "primary":
+            # use only the very first dns server (that was propagated via dhcp from the provider)
+            my_resolver._nameservers = my_resolver._nameservers[:1]
+        elif isinstance(self.nameservers, list):
+            my_resolver._nameservers = self.nameservers
         logger.info(f"use nameservers {my_resolver._nameservers} for dns payload")
         with open("mobileatlas/probe/measurement/payload/res/tranco_V78N.txt") as file:
             for line in file:

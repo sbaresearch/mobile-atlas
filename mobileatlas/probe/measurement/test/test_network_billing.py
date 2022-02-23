@@ -18,22 +18,49 @@ class PayloadEntry:
         self.add_to_consumed_units = add_to_consumed_units
 
 class TestNetworkBillingBase(TestNetworkBase):
+    CONFIG_SCHEMA_NETWORK_BILLING_BASE = {
+        "type" : "object",
+        "properties" : {
+            "test_params" : {
+                "type" : "object", 
+                "properties" : {
+                    "size" : { "type": "integer"}
+                }
+            }
+        }
+    }
+        
     def __init__(self, parser: TestParser):
         super().__init__(parser, use_credit_checker=True)
         self.payload_list = []
         self.next_paload_size = CreditChecker.DEFAULT_BYTES  # usually 1megabyte
         if self.credit_checker:
-            self.next_paload_size = self.credit_checker.get_minimum_billing_unit()
-        
+            self.next_paload_size = self.get_size()
+
+    def validate_test_config(self):
+        super().validate_test_config()
+        self.parser.validate_test_config_schema(TestNetworkBilling.CONFIG_SCHEMA_NETWORK_BILLING_BASE)
+
+    def get_size(self):
+        size = self.parser.test_config.get("test_params.size", None)
+        if size:
+            size = convert_size_to_bytes(f'{size} MB')
+        else:
+            if self.credit_checker:
+                size = self.credit_checker.get_minimum_billing_unit()
+            else:
+                size = CreditChecker.DEFAULT_BYTES # usually 1megabyte
+        return size
+
     def add_network_payload(self, name, payload, add_to_consumed_units, double_next_payload_size=True):
         payload = PayloadEntry(name, payload, add_to_consumed_units)
         self.payload_list.append(payload)
         if double_next_payload_size:
             self.next_paload_size *= 2
-        
+
     def get_next_payload_size(self):
         return self.next_paload_size
-    
+
     def execute_test_network_core(self):
         print(f"start execute_test_network_core start")
         for payload_entry in self.payload_list:
@@ -42,10 +69,11 @@ class TestNetworkBillingBase(TestNetworkBase):
             ret = payload.execute()
             logger.info(f"payload {payload_entry.name} finished (success: {ret.success}), rx {ret.consumed_bytes_rx}, tx {ret.consumed_bytes_tx} bytes")
             if payload_entry.add_to_consumed_units:
-                bytes_consumed = payload.get_consumed_bytes()
-                self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X
+                #bytes_consumed = payload.get_consumed_bytes()
+                #self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X
+                self.add_consumed_bytes(payload.payload_size)
         print(f"execute_test_network_core finished")
-        
+
 
 class TestNetworkBilling(TestNetworkBillingBase):
     CONFIG_SCHEMA_NETWORK_BILLING = {
@@ -55,8 +83,7 @@ class TestNetworkBilling(TestNetworkBillingBase):
                 "type" : "object", 
                 "properties" : {
                     "include_ip_check" : { "type": "boolean", "default": True},
-                    "url_control_traffic" : { "type" : "string"},
-                    "size" : { "type": "integer"}
+                    "url_control_traffic" : { "type" : "string"}
                 }
             }
         }
@@ -83,27 +110,15 @@ class TestNetworkBilling(TestNetworkBillingBase):
 
     def get_url_control_traffic(self):
         return self.parser.test_config.get("test_params.url_control_traffic")
-    
-    def get_size(self):
-        size = self.parser.test_config.get("test_params.size", None)
-        if size:
-            size = convert_size_to_bytes(f'{size} MB')
-        else:
-            if self.credit_checker:
-                size = self.credit_checker.get_minimum_billing_unit()
-            else:
-                size = CreditChecker.DEFAULT_BYTES # usually 1megabyte
-        return size
-    
-    
+
 
 class TestNetworkBillingDns(TestNetworkBillingBase):
     
     def __init__(self, parser: TestParser):
         super().__init__(parser)
-        self.next_paload_size = convert_size_to_bytes(f'300 KB')
+        self.next_paload_size = self.get_size() #convert_size_to_bytes(f'300 KB')
         
-        payload_dns = PayloadNetworkDns(self.mobile_atlas_mediator, self.get_next_payload_size())
+        payload_dns = PayloadNetworkDns(self.mobile_atlas_mediator, self.get_next_payload_size(), nameservers="primary")
         self.add_network_payload("payload_dns", payload_dns, False)
         
         payload_web = PayloadNetworkWebControlTraffic(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
