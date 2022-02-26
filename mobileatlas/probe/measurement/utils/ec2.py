@@ -3,6 +3,7 @@ import time
 import logging
 from urllib.parse import urlparse
 
+import json
 import socket
 from contextlib import closing
 
@@ -23,7 +24,12 @@ class Ec2Instance():
     yum -y install socat;
     '''
 
-    def __init__(self, id, key, region='eu-central-1'):
+    def __init__(self, id=None, key=None, region='eu-central-1'):
+        if key is None:
+            with open("/home/pi/mobile-atlas-config/test_config/ec2.json", "r") as jsonfile:
+                #os.environ.get('EC2_ID') # does not work because env is isolated in namespace; maybe fix it by linking env file to ns?
+                id = json.load(jsonfile).get('id')  
+                key = json.load(jsonfile).get('key')
         self.ec2 = boto3.resource(
             'ec2',
             aws_access_key_id=id,
@@ -57,15 +63,20 @@ class Ec2Instance():
         ip = self.get_ip()
         while(not is_port_open(ip, port)):
             time.sleep(1)
-
-    def start_instance_web_forward(self, url):
-        domain = urlparse(url).hostname #netloc
-        port_forwards = [
-            {'src_port':80, 'target_host':domain},
-            {'src_port':443, 'target_host':domain}
-        ]
+            
+    def start_instance_forward(self, target_host, ports=[80, 443]):
+        port_forwards = []
+        for p in ports:
+            port_forwards.append( {'src_port': p, 'target_host':target_host})
         self.start_instance_port_forward(port_forwards)
-        self.wait_for_portforward(port=80)
+        self.wait_for_portforward(ports[0])
+
+    def start_instance_forward_web(self, url):
+        domain = urlparse(url).hostname #netloc
+        self.start_instance_forward(domain, [80,443])
+         
+    def start_instance_forward_dns(self, dns_server):
+        self.start_instance_forward(dns_server, [53])
 
     def stop_instance(self):
         logger.info("stopping ec2 instance")

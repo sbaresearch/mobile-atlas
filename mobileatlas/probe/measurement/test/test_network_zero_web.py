@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+import os
 from mobileatlas.probe.measurement.utils.ec2 import Ec2Instance
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
 from mobileatlas.probe.measurement.test.test_args import TestParser
@@ -68,8 +69,8 @@ class TestNetworkZeroWebCheckSni(TestNetworkZeroWeb):
         #first do ec2 shit
         self.mobile_atlas_mediator.enable_veth_gateway()
         # TODO: load ec2 id and key from environment variable or config
-        self.ec2 = Ec2Instance(id='xxx', key='xxx')
-        self.ec2.start_instance_web_forward(self.get_url_zero_rated())
+        self.ec2 = Ec2Instance()
+        self.ec2.start_instance_forward_web(self.get_url_zero_rated())
         self.ec2_ip = self.ec2.get_ip()
         self.mobile_atlas_mediator.disable_veth_gateway()
 

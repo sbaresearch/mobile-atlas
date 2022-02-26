@@ -2,7 +2,6 @@
 
 import logging
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
-from mobileatlas.probe.measurement.payload.payload_network_dns import PayloadNetworkDns
 from mobileatlas.probe.measurement.payload.payload_public_ip import PayloadPublicIp
 from mobileatlas.probe.measurement.test.test_args import TestParser
 from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWeb, PayloadNetworkWebControlTraffic
@@ -112,14 +111,3 @@ class TestNetworkBilling(TestNetworkBillingBase):
         return self.parser.test_config.get("test_params.url_control_traffic")
 
 
-class TestNetworkBillingDns(TestNetworkBillingBase):
-    
-    def __init__(self, parser: TestParser):
-        super().__init__(parser)
-        self.next_paload_size = self.get_size() #convert_size_to_bytes(f'300 KB')
-        
-        payload_dns = PayloadNetworkDns(self.mobile_atlas_mediator, self.get_next_payload_size(), nameservers="primary")
-        self.add_network_payload("payload_dns", payload_dns, False)
-        
-        payload_web = PayloadNetworkWebControlTraffic(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
-        self.add_network_payload("payload_web_control", payload_web, True)

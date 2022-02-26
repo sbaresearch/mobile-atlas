@@ -20,22 +20,25 @@ class PayloadNetworkDns(PayloadNetworkBase):
         my_resolver = dns.resolver.Resolver()
         if self.nameservers == "default" or self.nameservers is None:
             # do nothing and use it as it is
-            pass
+            logger.info(f"using default nameservers")
         if self.nameservers == "primary":
             # use only the very first dns server (that was propagated via dhcp from the provider)
+            logger.info(f"using primary nameserver only")
             my_resolver._nameservers = my_resolver._nameservers[:1]
         elif isinstance(self.nameservers, list):
+            logger.info(f"using specific nameservers {my_resolver._nameservers}")
             my_resolver._nameservers = self.nameservers
         logger.info(f"use nameservers {my_resolver._nameservers} for dns payload")
-        with open("mobileatlas/probe/measurement/payload/res/tranco_V78N.txt") as file:
-            for line in file:
-                domain = line.strip()
-                cnt += 1
-                try:
-                    results = my_resolver.resolve(domain, 'A', raise_on_no_answer=False)
-                except (dns.resolver.LifetimeTimeout, dns.resolver.NXDOMAIN, dns.resolver.YXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers) as e:
-                    pass
-                if self.is_payload_consumed():
-                    break
+        while not self.is_payload_consumed(): # start over when file is fully consumed
+            with open("mobileatlas/probe/measurement/payload/res/tranco_V78N.txt") as file:
+                for line in file:
+                    domain = line.strip()
+                    cnt += 1
+                    try:
+                        results = my_resolver.resolve(domain, 'A', raise_on_no_answer=False)
+                    except (dns.resolver.LifetimeTimeout, dns.resolver.NXDOMAIN, dns.resolver.YXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers) as e:
+                        pass
+                    if self.is_payload_consumed():
+                        break
         return PayloadNetworkResult(True, None, *self.get_consumed_bytes(), cnt)
 
