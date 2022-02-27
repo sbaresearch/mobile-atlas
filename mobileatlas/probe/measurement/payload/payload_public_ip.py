@@ -1,5 +1,6 @@
 
 import logging
+from mobileatlas.probe.measurement.mediator.mobile_atlas_mediator import MobileAtlasMediator
 from mobileatlas.probe.measurement.utils.format_logging import format_extra
 import requests
 from mobileatlas.probe.measurement.test.test_network_base import TestNetworkBase
@@ -13,9 +14,8 @@ class PayloadPublicIp(PayloadNetworkBase):
     # use http cause it might be faster and use less traffic?
     GET_IP_URL = "http://wtfismyip.com/json"
 
-    def __init__(self, parent: TestNetworkBase, url = None):
-        super().__init__(parent)
-        self.parent = parent
+    def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, url = None):
+        super().__init__(mobile_atlas_mediator)
         # url for requesting json can be specified in constructor
         self.url = url or PayloadPublicIp.GET_IP_URL
         self.tag = PayloadPublicIp.LOGGER_TAG
@@ -30,7 +30,7 @@ class PayloadPublicIp(PayloadNetworkBase):
             'json_response' : self.json,
             'status_code': self.status_code
         }
-        return PayloadNetworkResult(True, ret, *self.get_consumed_bytes())
+        return PayloadNetworkResult(True, ret, *self.get_consumed_bytes(), 1)
 
     def make_request(self, url):
         # https://stackoverflow.com/questions/22492484/how-do-i-get-the-ip-address-from-a-http-request-using-the-requests-library
