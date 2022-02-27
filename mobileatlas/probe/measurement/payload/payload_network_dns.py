@@ -3,6 +3,7 @@ import logging
 
 import dns.resolver
 from mobileatlas.probe.measurement.mediator.mobile_atlas_mediator import MobileAtlasMediator
+from mobileatlas.probe.measurement.payload.payload_base import PayloadBase
 from .payload_network_base import PayloadNetworkBase, PayloadNetworkResult
 
 logger = logging.getLogger(__name__)
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class PayloadNetworkDns(PayloadNetworkBase):
     LOGGER_TAG = "payload_network_dns"
+    DOMAIN_LIST = PayloadBase.PAYLOAD_DIR + "res/domains/tranco_V78N.txt"
 
     def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, payload_size, nameservers="default"): #nameservers can also be list object
         super().__init__(mobile_atlas_mediator, payload_size=payload_size)
@@ -30,7 +32,7 @@ class PayloadNetworkDns(PayloadNetworkBase):
             logger.info(f"using specific nameservers {my_resolver._nameservers}")
         logger.info(f"use nameservers {my_resolver._nameservers} for dns payload")
         while not self.is_payload_consumed(): # start over when file is fully consumed
-            with open("mobileatlas/probe/measurement/payload/res/tranco_V78N.txt") as file:
+            with open(PayloadNetworkDns.DOMAIN_LIST) as file:
                 for line in file:
                     domain = line.strip()
                     cnt += 1

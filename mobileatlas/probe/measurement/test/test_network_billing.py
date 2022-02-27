@@ -62,11 +62,15 @@ class TestNetworkBillingBase(TestNetworkBase):
 
     def execute_test_network_core(self):
         print(f"start execute_test_network_core start")
+        last_payload_size = self.get_size() # initialize with default size
         for payload_entry in self.payload_list:
             payload = payload_entry.payload
+            if payload.payload_size == 0:
+                payload.payload_size =  last_payload_size*2
             logger.info(f"starting payload {payload_entry.name} (size: {payload.payload_size})")
             ret = payload.execute()
             logger.info(f"payload {payload_entry.name} finished (success: {ret.success}), rx {ret.consumed_bytes_rx}, tx {ret.consumed_bytes_tx} bytes")
+            last_payload_size = sum(payload.get_consumed_bytes())
             if payload_entry.add_to_consumed_units:
                 #bytes_consumed = payload.get_consumed_bytes()
                 #self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X

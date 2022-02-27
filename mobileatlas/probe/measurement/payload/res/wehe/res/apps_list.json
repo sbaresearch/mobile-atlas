@@ -1,0 +1,174 @@
+{
+  "apps": [
+    {
+      "name": "snapchat_spotlight_1",
+      "time": 89,
+      "image": "snapchat_spotlight_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "snapchat_spotlight_1.pcap_client_all.json"
+    },
+    {
+      "name": "snapchat_snap_video_1",
+      "time": 59,
+      "image": "snapchat_snap_video_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "snapchat_snap_video_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_flow_1",
+      "time": 33,
+      "image": "fm4_flow_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_flow_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_radio_1",
+      "time": 63,
+      "image": "fm4_radio_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_radio_1.pcap_client_all.json"
+    },
+    {
+      "name": "iphone_idle",
+      "time": 1745,
+      "image": "iphone_idle",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "iphone_idle.pcap_client_all.json"
+    },
+    {
+      "name": "snapchat_map_1",
+      "time": 100,
+      "image": "snapchat_map_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "snapchat_map_1.pcap_client_all.json"
+    },
+    {
+      "name": "whatsapp_outgoing_call_1",
+      "time": 283,
+      "image": "whatsapp_outgoing_call_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "whatsapp_outgoing_call_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_misc_2",
+      "time": 133,
+      "image": "fm4_misc_2",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_misc_2.pcap_client_all.json"
+    },
+    {
+      "name": "snapchat_misc",
+      "time": 166,
+      "image": "snapchat_misc",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "snapchat_misc.pcap_client_all.json"
+    },
+    {
+      "name": "whatsapp_incoming_video_1",
+      "time": 86,
+      "image": "whatsapp_incoming_video_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "whatsapp_incoming_video_1.pcap_client_all.json"
+    },
+    {
+      "name": "whatsapp_misc",
+      "time": 137,
+      "image": "whatsapp_misc",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "whatsapp_misc.pcap_client_all.json"
+    },
+    {
+      "name": "whatsapp_outgoing_video_1",
+      "time": 78,
+      "image": "whatsapp_outgoing_video_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "whatsapp_outgoing_video_1.pcap_client_all.json"
+    },
+    {
+      "name": "whatsapp_incoming_call_1",
+      "time": 296,
+      "image": "whatsapp_incoming_call_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "whatsapp_incoming_call_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_programme_1",
+      "time": 45,
+      "image": "fm4_programme_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_programme_1.pcap_client_all.json"
+    },
+    {
+      "name": "snapchat_shutdown",
+      "time": 535,
+      "image": "snapchat_shutdown",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "snapchat_shutdown.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_stories_scroll_1",
+      "time": 87,
+      "image": "fm4_stories_scroll_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_stories_scroll_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4web_misc_1",
+      "time": 80,
+      "image": "fm4web_misc_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4web_misc_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_misc_1",
+      "time": 117,
+      "image": "fm4_misc_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_misc_1.pcap_client_all.json"
+    },
+    {
+      "name": "fm4web_misc_2",
+      "time": 70,
+      "image": "fm4web_misc_2",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4web_misc_2.pcap_client_all.json"
+    },
+    {
+      "name": "fm4_favorite_1",
+      "time": 44,
+      "image": "fm4_favorite_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "fm4_favorite_1.pcap_client_all.json"
+    },
+    {
+      "name": "snapchat_chat_1",
+      "time": 243,
+      "image": "snapchat_chat_1",
+      "category": "",
+      "randomdatafile": "",
+      "datafile": "snapchat_chat_1.pcap_client_all.json"
+    }
+  ],
+  "port443small": "port_443.pcap_client_all.json",
+  "port443large": "port_443_large.pcap_client_all.json"
+}

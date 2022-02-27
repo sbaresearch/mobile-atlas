@@ -3,6 +3,7 @@
 from mobileatlas.probe.measurement.test.test_network_billing import TestNetworkBilling
 from mobileatlas.probe.measurement.test.test_network_base import TestNetworkBase
 from mobileatlas.probe.measurement.test.test_network_billing_dns import TestNetworkBillingDns, TestNetworkBillingDnsEc2Relay
+from mobileatlas.probe.measurement.test.test_network_billing_wehe import TestNetworkBillingWehe
 from mobileatlas.probe.measurement.test.test_network_zero_web import TestNetworkZeroWeb, TestNetworkZeroWebCheckIp, TestNetworkZeroWebCheckSni
 from mobileatlas.probe.measurement.test.test_sms import TestSms
 from mobileatlas.probe.measurement.test.test_ussd import TestUssd
@@ -36,6 +37,7 @@ test_factory.register_test('TestNetworkReconnect', TestNetworkReconnect)
 test_factory.register_test('TestNetworkBilling', TestNetworkBilling)
 test_factory.register_test('TestNetworkBillingDns', TestNetworkBillingDns)
 test_factory.register_test('TestNetworkBillingDnsEc2Relay', TestNetworkBillingDnsEc2Relay)
+test_factory.register_test('TestNetworkBillingWehe', TestNetworkBillingWehe)
 test_factory.register_test('TestNetworkZeroWeb', TestNetworkZeroWeb)
 test_factory.register_test('TestNetworkZeroWebCheckIp', TestNetworkZeroWebCheckIp)
 test_factory.register_test('TestNetworkZeroWebCheckSni', TestNetworkZeroWebCheckSni)
