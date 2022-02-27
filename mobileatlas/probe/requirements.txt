@@ -26,3 +26,4 @@ phonenumbers
 pytz
 gitpython
 boto3
+dnspython

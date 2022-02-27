@@ -10,11 +10,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class PayloadNetworkResult(PayloadResult):
-    def __init__(self, success, result, consumed_bytes_rx, consumed_bytes_tx):
+    def __init__(self, success, result, consumed_bytes_rx, consumed_bytes_tx, request_cnt):
         self.success = success
         self.result = result
         self.consumed_bytes_rx = consumed_bytes_rx
         self.consumed_bytes_tx = consumed_bytes_tx
+        self.request_cnt = request_cnt
 
 
 class PayloadNetworkBase(PayloadBase):
