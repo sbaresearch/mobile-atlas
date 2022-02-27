@@ -4,7 +4,6 @@ from mobileatlas.probe.measurement.payload.payload_network_dns import PayloadNet
 from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWebControlTraffic
 from mobileatlas.probe.measurement.test.test_args import TestParser
 from mobileatlas.probe.measurement.test.test_network_billing import TestNetworkBillingBase
-from mobileatlas.probe.measurement.utils.convertsizes import convert_size_to_bytes
 from mobileatlas.probe.measurement.utils.ec2 import Ec2Instance
 
 
@@ -43,7 +42,6 @@ class TestNetworkBillingDns(TestNetworkBillingBase):
 
     def get_relay_dns(self):
         return self.parser.test_config.get("test_params.relay_dns")
-
 
 class TestNetworkBillingDnsEc2Relay(TestNetworkBillingDns):
     def __init__(self, parser: TestParser):
