@@ -44,7 +44,7 @@ class CreditChecker_RO_Orange(CreditCheckerWeb):
 
     def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, parser: TestParser):
         super().__init__(mobile_atlas_mediator, parser)
-        self.minimum_billing_unit = 2 * CreditChecker.MEGABYTE
+        self.minimum_billing_unit = 1 * CreditChecker.MEGABYTE
         self.get_phone_number = parser.get_phone_number
         self.s = None
     
@@ -102,19 +102,19 @@ class CreditChecker_RO_Orange(CreditCheckerWeb):
 
 
                 timestamp = resp_json.get('lastRefreshDate')    #"2021-07-27T22:06:47+03",
-                
+                timestamp = CreditChecker.iso8601_to_utc(timestamp+':00')
 
                 units = resp_json.get('resources', [])
                 units_data = [x for x in units if x.get('marketingCategory') == "Date"]
 
-                consumed_bytes = 0
+                remaining_bytes = 0
                 for x in units_data:
-                    val = x.get('consumed', 0)
-                    #val = x.get('remaining', 0)
+                    #val = x.get('consumed', 0) # consumed is always 0.0 but remaining gets reduced
+                    val = x.get('remaining', 0)
                     unit = x.get('resourceUnit', '')
-                    consumed_bytes += convert_size_to_bytes(f'{val} {unit}')
+                    remaining_bytes += convert_size_to_bytes(f'{val} {unit}')
 
-                ret.traffic_bytes_total = consumed_bytes
+                ret.traffic_bytes_total = remaining_bytes * -1
                 ret.timestamp_effective_date = timestamp
                 
                 if ret.traffic_bytes_total is None:
@@ -127,6 +127,12 @@ class CreditChecker_RO_Orange(CreditCheckerWeb):
                 else:
                     raise 
         if new_base:
+            # when the SIM connects to a base station the available data is reduced by 10 MB
+            # when the SIM connects to a network the 10 MB are added again
+            # after cutting the connection the data is instantly credited
+            # hotfix to ignore the 10 MB reserve
+            ret.traffic_bytes_total -= 10*CreditChecker.MEGABYTE
+            
             self.base_bill = copy.deepcopy(ret)
         ret.subtract_base_bill(self.base_bill)
         self.current_bill = ret

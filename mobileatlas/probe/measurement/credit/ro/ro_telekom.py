@@ -19,7 +19,7 @@ from mobileatlas.probe.measurement.utils.encrypt_utils import encrypt_telekom
 
 logger = logging.getLogger(__name__)
 
-class CreditChecker_RO_Telekom(CreditChecker): #CreditChecker_RO_Telekom_Ussd
+class CreditChecker_RO_Telekom_Ussd(CreditChecker): #CreditChecker_RO_Telekom_Ussd
     def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, parser: TestParser):
         super().__init__(mobile_atlas_mediator, parser, use_ussd = True)
         self.unit_queue = Queue()
@@ -66,7 +66,7 @@ class CreditChecker_RO_Telekom(CreditChecker): #CreditChecker_RO_Telekom_Ussd
         self.current_bill = ret
         return ret
 
-class CreditChecker_RO_Telekom_Web(CreditCheckerWeb):
+class CreditChecker_RO_Telekom(CreditCheckerWeb):
     CONFIG_SCHEMA_CREDIT = {
         "type" : "object",
         "properties" : {
@@ -82,15 +82,14 @@ class CreditChecker_RO_Telekom_Web(CreditCheckerWeb):
         "required": ["phone_number", "credit_checker_params"]
     }
 
-    URL_APP_LOGIN = "https://oneapp-bff-prd.telekom.ro/login/"
-    APP_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAteX2pJO9oFQDy5ez3zd7tFG08kIuRU39c4CcNwLrbz6V0Iyf3HxJftwA1Le9itdvjQx4KBVBKcsu9tRRxrQcHV13NlDmZJ3PJFbMFsLTxSKSO3XosC0KpSN+QY3KvDWjCHsnZOAnBRrvDNhNzsQ3aut5qJnnudLC216Qg0T9UwXbDw9fCTiNJj2dNs9lgz0S1/XE1ni3Mvwi9wiNQI5huIcbXchZABfdoelPVK7KfIbLkomblVM+sUlCOsG3so9nkFXAf6uuLCjXaT5mqEyxexTBhH6ifp4io3BlJpmE4juaLCRDLaxRfKQA3oQnPpxmj/iliDN6Cifvhr3t71DsNQIDAQAB"
+    URL_APP_LOGIN = "https://oneapp-bff-prd.mobile.telekom.ro/login/"
+    APP_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqBOkGTrVU1LSkNDBJgl8r1HIKD+LQVxbMGu4WNIVHCSL00MQeQD4DwWXShopj80GQAuJVAyWlWNUVqEn2LIkRQsdmP84EKUe2kYVzsR2dtoAuLLG4T3ek9vKYcqJw6WQRpkSj9MYX1cUeNFs1o6ZVXh/XJPIZX4P9ht5uP60TNK+2dFvTqS1dZphwKrKdm0iXTdvWCv7haDKSjDYwT/Z5ycQl5ubuIgMtciItTkxlZJ5calpP1rtoQRnuinmGMlGPoxPCWeFLnwx/TW9khcJWAn60jil2YaU7ic1ymFDnnuUPcguCsj7GaWwRzTA0YT5PJRlUc9TAgS4qytfN4ZJ6QIDAQAB"
 
-
-    URL_APP_DASHBOARD = "https://oneapp-bff-prd.telekom.ro/dashboard/product/{}/?enableFreeUnit=true&showUnlimited=true&priority=primary" #less precise because it summarizes all services
-    URL_APP_BILL = "https://oneapp-bff-prd.telekom.ro/manageServices/product/{}/details/?enableFreeUnit=true&transferUnitsEnabled=false&prepaidBalanceDetails=true"
-    #URL_APP_BILL_SUMMARY_ = "https://oneapp-bff-prd.telekom.ro/customers/"
-    #URL_APP_BILL_SUMMARY_ = "https://oneapp-bff-prd.telekom.ro/manageServices/product/0765927543/usages/" 
-    #URL_APP_BILL_SUMMARY_ = "https://oneapp-bff-prd.telekom.ro/customerBills/unpaid/summary/"
+    URL_APP_DASHBOARD = "https://oneapp-bff-prd.mobile.telekom.ro/dashboard/product/{}/?enableFreeUnit=true&showUnlimited=true&priority=primary" #less precise because it summarizes all services
+    URL_APP_BILL = "https://oneapp-bff-prd.mobile.telekom.ro/manageServices/product/{}/details/?enableFreeUnit=true&transferUnitsEnabled=false&prepaidBalanceDetails=true"
+    #URL_APP_BILL_SUMMARY_ = "https://oneapp-bff-prd.mobile.telekom.ro/customers/"
+    #URL_APP_BILL_SUMMARY_ = "https://oneapp-bff-prd.mobile.telekom.ro/manageServices/product/0765927543/usages/" 
+    #URL_APP_BILL_SUMMARY_ = "https://oneapp-bff-prd.mobile.telekom.ro/customerBills/unpaid/summary/"
 
 
     def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, parser: TestParser):

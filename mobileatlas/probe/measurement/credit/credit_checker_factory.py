@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
+
+from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
+
+#RO
 from mobileatlas.probe.measurement.credit.ro.ro_telekom import CreditChecker_RO_Telekom
 from mobileatlas.probe.measurement.credit.ro.ro_vodafone import CreditChecker_RO_Vodafone
-from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
+from mobileatlas.probe.measurement.credit.ro.ro_orange import CreditChecker_RO_Orange
+
 #AT
 from mobileatlas.probe.measurement.credit.at.at_a1 import CreditChecker_AT_A1
 from mobileatlas.probe.measurement.credit.at.at_magenta import CreditChecker_AT_Magenta
@@ -50,4 +55,4 @@ credit_checker_factory.register_credit_checker('CreditChecker_HR_Telekom', Credi
 #RO
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Vodafone', CreditChecker_RO_Vodafone)
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Telekom', CreditChecker_RO_Telekom)
-
+credit_checker_factory.register_credit_checker('CreditChecker_RO_Orange', CreditChecker_RO_Orange)
