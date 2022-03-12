@@ -157,20 +157,25 @@ class CreditChecker_RO_Telekom(CreditCheckerWeb):
                 converted_entries = []
                 for x in units_data:
                     x = benedict(x)
-                    val = x.get('used.value', 0)
-                    unit = x.get('used.unit', '')
-                    used_bytes = convert_size_to_bytes(f'{val} {unit}')
-                    if val and unit == 'MB':
-                        used_bytes = self.fix_mb_rounding(used_bytes)
+                    #val = x.get('used.value', 0)
+                    #unit = x.get('used.unit', '')
+                    #used_bytes = convert_size_to_bytes(f'{val} {unit}')
+                    val = x.get('remaining.value', 0)
+                    unit = x.get('remaining.unit', '')
+                    available_bytes = convert_size_to_bytes(f'{val} {unit}')
+
+                    #i think this was fixed by telekom :)
+                    #if val and unit == 'MB':
+                    #    available_bytes = self.fix_mb_rounding(available_bytes)
                     
                     timestamp = x.get('updatedTime', None)
                     timestamp = CreditChecker.iso8601_to_utc(timestamp, msecs=True)
-                    converted_entries.append({'bytes': used_bytes, 'time' : timestamp})
+                    converted_entries.append({'bytes': available_bytes, 'time' : timestamp})
 
                 if converted_entries:
                     total_bytes = sum(e['bytes'] for e in converted_entries)
                     timestamp = min(e['time'] for e in converted_entries)
-                    ret.traffic_bytes_total = total_bytes
+                    ret.traffic_bytes_total = total_bytes * -1
                     ret.timestamp_effective_date = timestamp
                 
                 if ret.traffic_bytes_total is None:
