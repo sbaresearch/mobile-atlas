@@ -39,7 +39,7 @@ class CreditChecker_HR_Telemach(CreditCheckerWeb):
     HTTP_AUTH_USER = "webscuser"
     HTTP_AUTH_PASS = "k4md93!k334f3"
 
-    URL_WEB_BILL = "https://telemach.hr/gateway/scAPI/1.0/selfcareapi/THR/number/{}}/resource/{}"
+    URL_WEB_BILL = "https://telemach.hr/gateway/scAPI/1.0/selfcareapi/THR/number/{}/resource/{}"
     #https://telemach.hr/gateway/scAPI/1.0/selfcareapi/THR/customer/1bbf4ba3ea9b3f26/customer
     #https://telemach.hr/gateway/scAPI/1.0/selfcareapi/THR/user/1bbf4ba3ea9b3f26/profile
     #https://telemach.hr/gateway/scAPI/1.0/selfcareapi/THR/number/2793be248ee4e853/resource/00385957129292
@@ -69,7 +69,7 @@ class CreditChecker_HR_Telemach(CreditCheckerWeb):
         number = self.get_phone_number()
         x = phonenumbers.parse(number, None)
         number = phonenumbers.format_number(x, phonenumbers.PhoneNumberFormat.E164)
-        number = number.replace('+','')
+        number = number.replace('+','00')
         return number
 
     def login_websession(self):
@@ -106,7 +106,7 @@ class CreditChecker_HR_Telemach(CreditCheckerWeb):
 
                 units = resp_json.get('Resources.MobileResourceUnit', [])
                 units_data = [x for x in units if x.get('type') == "DATA"]  #get data elem
-                units_data = units_data[0].get('consumptions', [])
+                #units_data = units_data[0].get('consumptions', [])
 
                 total_bytes_remaining = 0
                 for x in units_data:
@@ -115,7 +115,8 @@ class CreditChecker_HR_Telemach(CreditCheckerWeb):
                     unit = x.get('unit', '')
                     total_bytes_remaining += convert_size_to_bytes(f'{val} {unit}')
                 
-                ret.traffic_bytes_total = total_bytes_remaining * -1
+                if total_bytes_remaining:
+                    ret.traffic_bytes_total = total_bytes_remaining * -1
 
                 if ret.traffic_bytes_total is None:
                     raise ValueError("Failed to retrieve current bill")
