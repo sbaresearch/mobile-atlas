@@ -22,6 +22,10 @@ from mobileatlas.probe.measurement.credit.hr.hr_a1 import CreditChecker_HR_A1
 from mobileatlas.probe.measurement.credit.hr.hr_telekom import CreditChecker_HR_Telekom
 from mobileatlas.probe.measurement.credit.hr.hr_telemach import CreditChecker_HR_Telemach
 
+#SK
+from mobileatlas.probe.measurement.credit.sk.sk_o2 import CreditChecker_SK_O2
+from mobileatlas.probe.measurement.credit.sk.sk_orange import CreditChecker_SK_Orange
+
 class CreditCheckerFactory:
     def __init__(self):
         self._creators = {}
@@ -58,3 +62,7 @@ credit_checker_factory.register_credit_checker('CreditChecker_HR_Telemach', Cred
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Vodafone', CreditChecker_RO_Vodafone)
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Telekom', CreditChecker_RO_Telekom)
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Orange', CreditChecker_RO_Orange)
+
+#SK
+credit_checker_factory.register_credit_checker('CreditChecker_SK_O2', CreditChecker_SK_O2)
+credit_checker_factory.register_credit_checker('CreditChecker_SK_Orange', CreditChecker_SK_Orange)
