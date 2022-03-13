@@ -4,7 +4,7 @@
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
 
 #RO
-from mobileatlas.probe.measurement.credit.ro.ro_telekom import CreditChecker_RO_Telekom
+from mobileatlas.probe.measurement.credit.ro.ro_telekom import CreditChecker_RO_Telekom_Ussd
 from mobileatlas.probe.measurement.credit.ro.ro_vodafone import CreditChecker_RO_Vodafone
 from mobileatlas.probe.measurement.credit.ro.ro_orange import CreditChecker_RO_Orange
 
@@ -60,7 +60,7 @@ credit_checker_factory.register_credit_checker('CreditChecker_HR_Telemach', Cred
 
 #RO
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Vodafone', CreditChecker_RO_Vodafone)
-credit_checker_factory.register_credit_checker('CreditChecker_RO_Telekom', CreditChecker_RO_Telekom)
+credit_checker_factory.register_credit_checker('CreditChecker_RO_Telekom', CreditChecker_RO_Telekom_Ussd)
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Orange', CreditChecker_RO_Orange)
 
 #SK

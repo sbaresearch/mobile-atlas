@@ -27,7 +27,8 @@ class CreditChecker_RO_Telekom_Ussd(CreditChecker): #CreditChecker_RO_Telekom_Us
     def ussd_notification_received(self, message):
         try:
             #Optiunea N5 este activa pana 12Sep2021 . Pana atunci mai ai 4228 MB trafic de date la viteza 4G.
-            result = re.search('Optiunea N5 este activa pana 12Sep2021 \. Pana atunci mai ai (.+?) (.+?) trafic de date la viteza 4G\.', message)
+            #Optiunea R12 cu roaming este activa pana la 10Apr2022. Pana atunci mai ai 15164 MB trafic de date la viteza 4G NAT /Roaming Grupa0.'
+            result = re.search('Pana atunci mai ai (.+?) (.+?) trafic de date la viteza 4G', message)
             if result:
                 used = result.group(1)
                 unit = result.group(2)
