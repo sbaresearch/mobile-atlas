@@ -89,12 +89,12 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
                 ret.bill_dump = resp_json
 
                 info = resp_json.get('list', [])
+                info = CreditChecker_SK_Orange.convert_list(info) #convert timestamps
                 info_data = [x for x in info if x.get('consumptionType') == "DATA"]  #get data elem
-                info_data = CreditChecker_SK_Orange.convert_list(info) #convert timestamps
                 if new_base:
-                    self.base_bill = info_data
+                    self.base_bill_list = info
                     
-                new_entries = CreditCheckerWeb.subtract_list_of_dict(info_data, self.base_bill)
+                new_entries = CreditCheckerWeb.subtract_list_of_dict(info_data, self.base_bill_list)
                 date_old_entries = self.parser.startup_time - relativedelta(minutes=5)   # discard entries that are from old sessions
                 new_entries = [x for x in new_entries if x.get('date') > date_old_entries]
                 if len(info):
