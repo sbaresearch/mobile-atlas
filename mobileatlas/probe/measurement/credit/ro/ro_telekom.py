@@ -27,7 +27,8 @@ class CreditChecker_RO_Telekom_Ussd(CreditChecker): #CreditChecker_RO_Telekom_Us
     def ussd_notification_received(self, message):
         try:
             #Optiunea N5 este activa pana 12Sep2021 . Pana atunci mai ai 4228 MB trafic de date la viteza 4G.
-            result = re.search('Optiunea N5 este activa pana 12Sep2021 \. Pana atunci mai ai (.+?) (.+?) trafic de date la viteza 4G\.', message)
+            #Optiunea R12 cu roaming este activa pana la 10Apr2022. Pana atunci mai ai 15164 MB trafic de date la viteza 4G NAT /Roaming Grupa0.'
+            result = re.search('Pana atunci mai ai (.+?) (.+?) trafic de date la viteza 4G', message)
             if result:
                 used = result.group(1)
                 unit = result.group(2)
@@ -157,12 +158,12 @@ class CreditChecker_RO_Telekom(CreditCheckerWeb):
                 converted_entries = []
                 for x in units_data:
                     x = benedict(x)
-                    #val = x.get('used.value', 0)
-                    #unit = x.get('used.unit', '')
-                    #used_bytes = convert_size_to_bytes(f'{val} {unit}')
-                    val = x.get('remaining.value', 0)
-                    unit = x.get('remaining.unit', '')
-                    available_bytes = convert_size_to_bytes(f'{val} {unit}')
+                    val = x.get('used.value', 0)
+                    unit = x.get('used.unit', '')
+                    used_bytes = convert_size_to_bytes(f'{val} {unit}')
+                    #val = x.get('remaining.value', 0)
+                    #unit = x.get('remaining.unit', '')
+                    #available_bytes = convert_size_to_bytes(f'{val} {unit}')
 
                     #i think this was fixed by telekom :)
                     #if val and unit == 'MB':
@@ -170,12 +171,12 @@ class CreditChecker_RO_Telekom(CreditCheckerWeb):
                     
                     timestamp = x.get('updatedTime', None)
                     timestamp = CreditChecker.iso8601_to_utc(timestamp, msecs=True)
-                    converted_entries.append({'bytes': available_bytes, 'time' : timestamp})
+                    converted_entries.append({'bytes': used_bytes, 'time' : timestamp})
 
                 if converted_entries:
                     total_bytes = sum(e['bytes'] for e in converted_entries)
                     timestamp = min(e['time'] for e in converted_entries)
-                    ret.traffic_bytes_total = total_bytes * -1
+                    ret.traffic_bytes_total = total_bytes
                     ret.timestamp_effective_date = timestamp
                 
                 if ret.traffic_bytes_total is None:
