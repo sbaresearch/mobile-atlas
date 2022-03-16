@@ -119,7 +119,7 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
                     cols = row.find_all('td')
                     if 'MB' in cols[1].text:
                         remaining_data = cols[1].text
-                        remaining_bytes += convert_size_to_bytes(remaining_data)
+                        remaining_bytes -= convert_size_to_bytes(remaining_data)
                 if remaining_bytes:
                     ret.traffic_bytes_total = remaining_bytes
                     ret.bill_dump = r.content
