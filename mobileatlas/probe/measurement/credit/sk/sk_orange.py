@@ -106,7 +106,7 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
                 #    "new_entries": new_entries,
                 #    "full_dump" : info
                 #}
-                r = self.s.get(CreditChecker_SK_Orange.URL_BILL_LIST)
+                r = self.s.get(CreditChecker_SK_Orange.URL_BILL_PORTAL_OLD)
                 soup = BeautifulSoup(r.content, "html.parser")
                 credit_portlet = soup.find(id="_PrepaidActualCreditPortlet_WAR_ecareportlet__id1") 
                 # > table > tbody > tr:nth-child(1) > td:nth-child(2)
