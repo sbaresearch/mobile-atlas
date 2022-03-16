@@ -111,7 +111,7 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
                 credit_portlet = soup.find(id="_PrepaidActualCreditPortlet_WAR_ecareportlet__id1") 
                 # > table > tbody > tr:nth-child(1) > td:nth-child(2)
                 credit_table = credit_portlet.find('table', attrs={'class' : 'consumption-box'})
-                print(credit_table)
+                #print(credit_table)
                 #table_body = credit_table.find('tbody')
                 rows = credit_table.find_all('tr')
                 remaining_bytes = 0
