@@ -259,9 +259,9 @@ class CreditChecker_SK_O2_Web(CreditCheckerWeb):
                 info_data = [x for x in info if "Prenos dát" in x.get('eventTypeDescription')]  #get data elem
                 info_data = CreditChecker_SK_O2.convert_list(info) #convert timestamps and data bytes
                 if new_base:
-                    self.base_bill = info_data
+                    self.base_bill_list = info_data
                     
-                new_entries = CreditCheckerWeb.subtract_list_of_dict(info_data, self.base_bill)
+                new_entries = CreditCheckerWeb.subtract_list_of_dict(info_data, self.base_bill_list)
                 date_old_entries = self.parser.startup_time - relativedelta(minutes=5)   # discard entries that are from old sessions
                 new_entries = [x for x in new_entries if x.get('eventTime') > date_old_entries]
                 if len(info):
