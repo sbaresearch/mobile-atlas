@@ -37,7 +37,7 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
     URL_LOGIN = "https://www.orange.sk/prihlasenie/oauth/authorize"
     URL_LOGIN_GET_ACCESS_TOKEN = "https://ec2.ocp.orange.sk/ec2-api-monica/userData?code={}"
     URL_BILL_LIST = "https://ec2.ocp.orange.sk/ec2-api-elizabeth/consumption/detail/list"
-
+    URL_BILL_PORTAL_OLD = "https://www.orange.sk/portal/ecare/spotreba/aktualny-kredit"
 
     def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, parser: TestParser):
         super().__init__(mobile_atlas_mediator, parser)
@@ -84,29 +84,47 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
             try:
                 if self.s is None:
                     self.login_websession()
-                r = self.s.get(CreditChecker_SK_Orange.URL_BILL_LIST)
-                resp_json = benedict(r.json())
-                ret.bill_dump = resp_json
+                # bill list doesn't work for roaming data <.<
+                #r = self.s.get(CreditChecker_SK_Orange.URL_BILL_LIST)
+                #resp_json = benedict(r.json())
+                #ret.bill_dump = resp_json
 
-                info = resp_json.get('list', [])
-                info_data = [x for x in info if x.get('consumptionType') == "DATA"]  #get data elem
-                info_data = CreditChecker_SK_Orange.convert_list(info) #convert timestamps
-                if new_base:
-                    self.base_bill = info_data
+                #info = resp_json.get('list', [])
+                #info_data = [x for x in info if x.get('consumptionType') == "DATA"]  #get data elem
+                #info_data = CreditChecker_SK_Orange.convert_list(info) #convert timestamps
+                #if new_base:
+                #    self.base_bill = info_data
                     
-                new_entries = CreditCheckerWeb.subtract_list_of_dict(info_data, self.base_bill)
-                date_old_entries = self.parser.startup_time - relativedelta(minutes=5)   # discard entries that are from old sessions
-                new_entries = [x for x in new_entries if x.get('date') > date_old_entries]
-                if len(info):
-                    latest_entry = max(info, key=lambda e: e['date'])
-                    ret.timestamp_effective_date = latest_entry.get("date", None)
-                #ret.credit_consumed_credit = sum(map(lambda x: int(x["price"]), new_entries))
-                ret.traffic_bytes_total = sum(map(lambda x: int(x['value']), new_entries))
-                ret.traffic_cnt_connections = len(new_entries)
-                ret.bill_dump = {
-                    "new_entries": new_entries,
-                    "full_dump" : info
-                }
+                #new_entries = CreditCheckerWeb.subtract_list_of_dict(info_data, self.base_bill)
+                #date_old_entries = self.parser.startup_time - relativedelta(minutes=5)   # discard entries that are from old sessions
+                #new_entries = [x for x in new_entries if x.get('date') > date_old_entries]
+                #if len(info):
+                #    latest_entry = max(info, key=lambda e: e['date'])
+                #    ret.timestamp_effective_date = latest_entry.get("date", None)
+                ##ret.credit_consumed_credit = sum(map(lambda x: int(x["price"]), new_entries))
+                #ret.traffic_bytes_total = sum(map(lambda x: int(x['value']), new_entries))
+                #ret.traffic_cnt_connections = len(new_entries)
+                #ret.bill_dump = {
+                #    "new_entries": new_entries,
+                #    "full_dump" : info
+                #}
+                r = self.s.get(CreditChecker_SK_Orange.URL_BILL_LIST)
+                soup = BeautifulSoup(r.content, "html.parser")
+                credit_portlet = soup.find(id="_PrepaidActualCreditPortlet_WAR_ecareportlet__id1") 
+                # > table > tbody > tr:nth-child(1) > td:nth-child(2)
+                credit_table = credit_portlet.find('table', attrs={'class' : 'consumption-box'})
+                print(credit_table)
+                #table_body = credit_table.find('tbody')
+                rows = credit_table.find_all('tr')
+                remaining_bytes = 0
+                for row in rows:
+                    cols = row.find_all('td')
+                    if 'MB' in cols[1].text:
+                        remaining_data = cols[1].text
+                        remaining_bytes += convert_size_to_bytes(remaining_data)
+                if remaining_bytes:
+                    ret.traffic_bytes_total = remaining_bytes
+                    ret.bill_dump = r.content
                 if ret.traffic_bytes_total is None:
                     raise ValueError("Failed to retrieve current bill")
                 else:
