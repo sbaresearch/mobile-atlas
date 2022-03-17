@@ -106,12 +106,12 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
                 #    "new_entries": new_entries,
                 #    "full_dump" : info
                 #}
-                r = self.s.get(CreditChecker_SK_Orange.URL_BILL_LIST)
+                r = self.s.get(CreditChecker_SK_Orange.URL_BILL_PORTAL_OLD)
                 soup = BeautifulSoup(r.content, "html.parser")
                 credit_portlet = soup.find(id="_PrepaidActualCreditPortlet_WAR_ecareportlet__id1") 
                 # > table > tbody > tr:nth-child(1) > td:nth-child(2)
                 credit_table = credit_portlet.find('table', attrs={'class' : 'consumption-box'})
-                print(credit_table)
+                #print(credit_table)
                 #table_body = credit_table.find('tbody')
                 rows = credit_table.find_all('tr')
                 remaining_bytes = 0
@@ -119,7 +119,7 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
                     cols = row.find_all('td')
                     if 'MB' in cols[1].text:
                         remaining_data = cols[1].text
-                        remaining_bytes += convert_size_to_bytes(remaining_data)
+                        remaining_bytes -= convert_size_to_bytes(remaining_data)
                 if remaining_bytes:
                     ret.traffic_bytes_total = remaining_bytes
                     ret.bill_dump = r.content
