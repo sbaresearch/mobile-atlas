@@ -53,11 +53,12 @@ class MMCallbackClass:
 
 
 class ModemInfo:
-    def __init__(self, obj, modem_state_changed_id, sms_added_id, call_added_id):
+    def __init__(self, obj, modem_state_changed_id=None, sms_added_id=None, call_added_id=None, ussd_notification_added=None):
         self.obj = obj
         self.modem_state_changed_id = modem_state_changed_id
         self.sms_added_id = sms_added_id
         self.call_added_id = call_added_id
+        self.ussd_notification_added = ussd_notification_added
 
 
 """
@@ -171,6 +172,9 @@ class ModemWatcher:
 
     def on_state_notify(self, modem, old_state, new_state, reason, modem_obj):
         reason_str = ModemManager.ModemStateChangeReason.get_string(reason)
+        modem_info = self.objects.get(modem_obj)
+        if modem_info:
+            self.connect_modem_signals(modem_info) #sometimes modem arrive in unavailable state and signals can not instantly be subscribed when modem is added
         #print('[ModemWatcher] modem state changed: %s' % new_state_str)
         if self.callback_obj != None:
             self.callback_obj.mm_modem_state_changed(
@@ -240,16 +244,23 @@ class ModemWatcher:
         notification = ussd.get_network_notification()
         if self.callback_obj != None:
             self.callback_obj.mm_modem_ussd_notification_changed(modem_obj.get_object_path(), state, notification)
+            
+    def connect_modem_signals(self, modem_info):
+        obj = modem_info.obj
+        if obj.get_modem() and not modem_info.modem_state_changed_id:
+            modem_info.modem_state_changed_id = obj.get_modem().connect('state_changed', self.on_state_notify, obj)
+        if obj.get_modem_messaging() and  not modem_info.sms_added_id:
+            modem_info.sms_added_id = obj.get_modem_messaging().connect('added', self.on_sms_added, obj)
+        if obj.get_modem_voice() and not modem_info.call_added_id:
+            modem_info.call_added_id = obj.get_modem_voice().connect(
+            'call_added', self.on_call_added, obj)
+        if obj.get_modem_3gpp_ussd() and not modem_info.ussd_notification_added:
+            modem_info.ussd_notification_added = obj.get_modem_3gpp_ussd().connect("notify::network-notification", self.on_ussd_notification_changed, obj) 
 
     def add_modem_to_list(self, obj):
-        state_id = obj.get_modem().connect('state_changed', self.on_state_notify, obj)
-        sms_added_id = obj.get_modem_messaging().connect('added', self.on_sms_added, obj)
-        call_added_id = obj.get_modem_voice().connect(
-            'call_added', self.on_call_added, obj)
-        ussd_notification_added = obj.get_modem_3gpp_ussd().connect("notify::network-notification", self.on_ussd_notification_changed, obj) 
-
-        self.objects[obj] = ModemInfo(
-            obj, state_id, sms_added_id, call_added_id)
+        modem_info = ModemInfo(obj)
+        self.connect_modem_signals(modem_info)
+        self.objects[obj] = modem_info
         if self.callback_obj != None:
             self.callback_obj.mm_modem_added(obj.get_object_path())
 

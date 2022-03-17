@@ -14,6 +14,8 @@ from pathlib import Path
 import pytz
 
 class TestParser():
+    # Since quectel are our default modems
+    DEFAULT_MODEM_TYPE = "quectel"
     DEFAULT_LOG_DIRECTORY = "/tmp/mobileatlas/"
     DEFAULT_LOGGING_FORMAT = '%(asctime)s, %(levelname)-8s [%(filename)s:%(funcName)s:%(lineno)d] %(message)s\r'
     DEFAULT_NETNS_DEBUGGING_PORT = 5678
@@ -49,6 +51,8 @@ class TestParser():
         self.add_arguments()
 
     def add_arguments(self):
+        self.parser.add_argument('--modem', choices=['quectel', 'huawei', 'telit', 'simcom'],
+                        default=TestParser.DEFAULT_MODEM_TYPE, help='Modem model that is used within the test environment (default: %(default)s)')
         self.parser.add_argument('--testname', default=None, help='Name of the test will be executed (default: %(default)s)')
         self.parser.add_argument('--configfile', type=argparse.FileType('r', encoding='UTF-8'), required=True)
         self.parser.add_argument('--imsi', type=int, default=None, help="Override imsi from configfile")
@@ -105,6 +109,9 @@ class TestParser():
     def get_config(self):
         return self.test_config
 
+    def get_modem_type(self):
+        return self.test_args.modem
+    
     def get_imsi(self):
         # cmdline imsi overrides test config imsi
         return self.test_args.imsi or self.test_config.get('imsi', None)

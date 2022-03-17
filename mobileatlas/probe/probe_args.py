@@ -4,8 +4,6 @@ from .measurement.test.test_args import TestParser
 
 
 class ProbeParser(TestParser):
-    # Since quectel are our default modems
-    DEFAULT_MODEM_TYPE = "quectel"
     # Since our only SIM Server is currently running on 10.0.0.3:8888
     DEFAULT_SIM_SERVER_IP = "10.0.0.3"
     DEFAULT_SIM_SERVER_PORT = 8888
@@ -20,8 +18,6 @@ class ProbeParser(TestParser):
     
     def add_arguments(self):
         super().add_arguments()
-        self.parser.add_argument('--modem', choices=['quectel', 'huawei', 'telit', 'simcom'],
-                        default=ProbeParser.DEFAULT_MODEM_TYPE, help='Modem model that is used within the test environment (default: %(default)s)')
         self.parser.add_argument('--host', default=ProbeParser.DEFAULT_SIM_SERVER_IP,
                             help='SIM server address (default: %(default)s)')
         self.parser.add_argument('--port', type=int, default=ProbeParser.DEFAULT_SIM_SERVER_PORT,
@@ -36,9 +32,6 @@ class ProbeParser(TestParser):
         super().parse()
         if not self.is_measurement_namespace_enabled and self.is_debug_bridge_enabled():
             raise ValueError("If measurement namespace is disabled (--no-namespace), it is not possible to start a port forwarding (--debug-bridge).")
-
-    def get_modem_type(self):
-        return self.test_args.modem
 
     def get_host(self):
         return self.test_args.host

@@ -37,7 +37,8 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
     LOGGER_TAG = "mobile_atlas_mediator"
     MODEM_NETWORK_INTERFACE_NAME = 'ppp0'
 
-    def __init__(self):
+    def __init__(self, modem_type):
+        self.modem_type = modem_type
         self.main_loop = GLibRunner()
 
         path = Path(MobileAtlasMediator.DIR_LOG)
@@ -260,11 +261,12 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         self.mm.clear_pdp_context_list()
 
     def apply_hotfixes(self):
-        # TODO: check for modem type to apply modem-specific hotixes?
-        # hotfix: clear pdp list since modemmanager/pppd doesn't work correctly when there are >10 pdp contexts >.<
-        self.clear_pdp_context_list()
-        # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
-        self.change_charset(charset="UCS2")
+        # TODO: find better way to handle specific modem types (maybe factory-wise approach like creditchecker)
+        if self.modem_type == "quectel":    
+            # hotfix: clear pdp list since modemmanager/pppd doesn't work correctly when there are >10 pdp contexts >.<
+            self.clear_pdp_context_list()
+            # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
+            self.change_charset(charset="UCS2")
 
     def connect_modem(self, apn=None, username=None, password=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
         if self.modem_connected.is_set():
