@@ -20,7 +20,7 @@ from mobileatlas.probe.measurement.mediator.mm_definitions import ModemManagerSm
 logger = logging.getLogger(__name__)
 
 #sms_state_changed /org/freedesktop/ModemManager1/SMS/0: 448 (2022-03-18T12:34:44+01:00): Stanje na racunu je: 5.00 EUR. Racun velja do: 16.06.2022. Iz zakupa A1 Simpl mali je na voljo se 498 enot. Enote so veljavne do 17.04.2022. V EU/EEA gostovanju je na voljo se 500.00 MB. A
-class CreditChecker_SI_A1_SMS(CreditChecker):
+class CreditChecker_SI_A1(CreditChecker):
     def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, parser: TestParser):
             super().__init__(mobile_atlas_mediator, parser, use_sms = True)#, use_ussd=True)
             self.sleep = 60*5 # check credit every 5mins
