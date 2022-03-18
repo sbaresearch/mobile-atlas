@@ -194,7 +194,7 @@ class NetworkWatcher:
             for addr in ip6_addresses:
                 elem = {}
                 elem['address'] = addr.get_address()
-                elem['gateway'] = addr.get_gateway()
+                elem['family'] = addr.get_family()
                 elem['prefix'] = addr.get_prefix()
                 config.append(elem)
             return config
@@ -249,9 +249,10 @@ class NetworkWatcher:
             config['addresses'] = NetworkWatcher.parse_ip6_addresses_config(ip6.get_addresses())
             config['domains'] = ip6.get_domains()
             config['gateway'] = ip6.get_gateway()
-            config['nameserver'] = []
-            for i in range(ip6.get_num_nameservers()):
-                config['nameserver'].append(ip6.get_nameserver(i))
+            config['nameserver'] = ip6.get_nameservers()
+            #config['nameserver'] = []
+            #for i in range(ip6.get_num_nameservers()):
+            #    config['nameserver'].append(ip6.get_nameserver(i))
             config['routes'] = NetworkWatcher.parse_routes_config(ip6.get_routes())
             config['searches'] = ip6.get_searches()
             return config
