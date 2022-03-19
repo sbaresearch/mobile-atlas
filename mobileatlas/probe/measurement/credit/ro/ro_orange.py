@@ -134,7 +134,10 @@ class CreditChecker_RO_Orange(CreditCheckerWeb):
             # when the SIM connects to a network the 10 MB are added again
             # after cutting the connection the data is instantly credited
             # hotfix to ignore the 10 MB reserve
-            # ret.traffic_bytes_total -= 10*CreditChecker.MEGABYTE
+            # in roaming case (at least in AT) the operator only reserves 2,5mb
+            # we should probably find a way to disable rf at startup...
+            #ret.traffic_bytes_total -= 10*CreditChecker.MEGABYTE
+            ret.traffic_bytes_total -= 2.5*CreditChecker.MEGABYTE
             
             self.base_bill = copy.deepcopy(ret)
         ret.subtract_base_bill(self.base_bill)
