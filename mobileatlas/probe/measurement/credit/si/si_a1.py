@@ -25,6 +25,7 @@ class CreditChecker_SI_A1(CreditChecker):
             super().__init__(mobile_atlas_mediator, parser, use_sms = True)#, use_ussd=True)
             self.sleep = 60*5 # check credit every 5mins
             self.free_units = Queue()
+            self.minimum_billing_unit = 1 * CreditChecker.MEGABYTE
 
     def sms_received(self, sms: ModemManagerSms):
         try:

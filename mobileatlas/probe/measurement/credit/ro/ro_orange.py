@@ -106,6 +106,9 @@ class CreditChecker_RO_Orange(CreditCheckerWeb):
 
                 units = resp_json.get('resources', [])
                 units_data = [x for x in units if x.get('marketingCategory') == "Date"]
+                
+                # national data is decreased in roaming as well, if we keep both roaming and national data in the list the used data will get counted twice
+                units_data = [x for x in units_data if x.get('name') == "internet national"]
 
                 remaining_bytes = 0
                 for x in units_data:
@@ -131,7 +134,7 @@ class CreditChecker_RO_Orange(CreditCheckerWeb):
             # when the SIM connects to a network the 10 MB are added again
             # after cutting the connection the data is instantly credited
             # hotfix to ignore the 10 MB reserve
-            ret.traffic_bytes_total -= 10*CreditChecker.MEGABYTE
+            # ret.traffic_bytes_total -= 10*CreditChecker.MEGABYTE
             
             self.base_bill = copy.deepcopy(ret)
         ret.subtract_base_bill(self.base_bill)
