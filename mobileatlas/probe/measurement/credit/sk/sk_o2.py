@@ -257,7 +257,7 @@ class CreditChecker_SK_O2_Web(CreditCheckerWeb):
 
                 info = resp_json.get('list', [])
                 info_data = [x for x in info if "Prenos dát" in x.get('eventTypeDescription')]  #get data elem
-                info_data = CreditChecker_SK_O2.convert_list(info) #convert timestamps and data bytes
+                info_data = CreditChecker_SK_O2.convert_list(info_data) #convert timestamps and data bytes
                 if new_base:
                     self.base_bill_list = info_data
                     
