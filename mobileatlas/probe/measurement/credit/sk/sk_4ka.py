@@ -120,8 +120,9 @@ class CreditChecker_SK_4ka(CreditCheckerWeb):
                 else:
                     raise 
         if new_base:
-            # similar to ro_orange 4ka reserve 32mb
-            ret.traffic_bytes_total -= 32*CreditChecker.MEGABYTE
+            # similar to ro_orange 4ka reserve 32mb (8mb in roaming but only reserved when conenction established)
+            #ret.traffic_bytes_total -= 32*CreditChecker.MEGABYTE
+            ret.traffic_bytes_total -= 8*CreditChecker.MEGABYTE
             self.base_bill = copy.deepcopy(ret)
         ret.subtract_base_bill(self.base_bill)
         self.current_bill = ret
