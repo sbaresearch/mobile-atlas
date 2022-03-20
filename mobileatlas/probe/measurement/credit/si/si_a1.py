@@ -163,7 +163,7 @@ class CreditChecker_SI_A1(CreditCheckerWeb):
     @staticmethod
     def convert_list(dict_list):
         for e in dict_list:
-            e["Date"] =  CreditChecker_SI_A1.TIMEZONE.localize(CreditChecker.iso8601_to_utce.get("Date")).astimezone(pytz.utc) #CreditChecker.iso8601_to_utc(e.get("Date")) # "2022-03-18T23:37:46"
+            e["Date"] =  CreditChecker_SI_A1.TIMEZONE.localize(datetime.strptime(e.get("Date"), '%Y-%m-%dT%H:%M:%S')).astimezone(pytz.utc) #CreditChecker.iso8601_to_utc(e.get("Date")) # "2022-03-18T23:37:46"
         return dict_list
 
 
