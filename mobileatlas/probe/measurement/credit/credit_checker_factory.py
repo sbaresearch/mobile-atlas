@@ -26,8 +26,9 @@ from mobileatlas.probe.measurement.credit.hr.hr_telemach import CreditChecker_HR
 from mobileatlas.probe.measurement.credit.sk.sk_o2 import CreditChecker_SK_O2
 from mobileatlas.probe.measurement.credit.sk.sk_orange import CreditChecker_SK_Orange
 
-#
+#SI
 from mobileatlas.probe.measurement.credit.si.si_a1 import CreditChecker_SI_A1
+from mobileatlas.probe.measurement.credit.si.si_telekom import CreditChecker_SI_Telekom
 
 class CreditCheckerFactory:
     def __init__(self):
