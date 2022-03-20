@@ -54,8 +54,8 @@ class CreditChecker_SK_4ka(CreditCheckerWeb):
     def get_phone_number_api(self):
         number = self.get_phone_number()
         x = phonenumbers.parse(number, None)
-        number = phonenumbers.format_number(x, phonenumbers.PhoneNumberFormat.NATIONAL)
-        number = number.replace(' ','')
+        number = phonenumbers.format_number(x, phonenumbers.PhoneNumberFormat.E164)
+        number = number.replace('+','')
         return number
     
     def get_username(self):
@@ -102,11 +102,11 @@ class CreditChecker_SK_4ka(CreditCheckerWeb):
                 
                 #resp_json("totalResiduals")
                 remaining_bytes = 0
-                amount = resp_json("totalResiduals.DATA.amount")
-                unit = resp_json("totalResiduals.DATA.unitType")
+                amount = resp_json.get("totalResiduals.DATA.amount")
+                unit = resp_json.get("totalResiduals.DATA.unitType")
                 if amount and unit:
                     merged = f"{amount} {unit}"
-                    remaining_bytes = convert_size_to_bytes(merged)
+                    remaining_bytes = -convert_size_to_bytes(merged)
                 if remaining_bytes:
                     ret.traffic_bytes_total = remaining_bytes
                     ret.bill_dump = r.text
@@ -120,6 +120,8 @@ class CreditChecker_SK_4ka(CreditCheckerWeb):
                 else:
                     raise 
         if new_base:
+            # similar to ro_orange 4ka reserve 32mb
+            ret.traffic_bytes_total -= 32*CreditChecker.MEGABYTE
             self.base_bill = copy.deepcopy(ret)
         ret.subtract_base_bill(self.base_bill)
         self.current_bill = ret
