@@ -72,3 +72,4 @@ credit_checker_factory.register_credit_checker('CreditChecker_SK_Orange', Credit
 
 #SI
 credit_checker_factory.register_credit_checker('CreditChecker_SI_A1', CreditChecker_SI_A1)
+credit_checker_factory.register_credit_checker('CreditChecker_SI_Telekom', CreditChecker_SI_Telekom)
