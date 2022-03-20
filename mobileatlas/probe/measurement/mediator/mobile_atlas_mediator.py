@@ -270,7 +270,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         #TODO: if driver != option
         #os.system("ip netns exec default ip link set wwan0 netns ns_mobileatlas")
 
-    def connect_modem(self, apn=None, username=None, password=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
+    def connect_modem(self, apn=None, username=None, password=None, pdp_type=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
         if self.modem_connected.is_set():
             raise ValueError("Modem is already connected...")
 

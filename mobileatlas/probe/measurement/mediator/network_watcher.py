@@ -90,7 +90,7 @@ class NetworkWatcher:
                 return con
         raise ValueError("Connection not found")
 
-    def create_connection(self, name, apn=None, username=None, password=None, network_id=None, udi=None):
+    def create_connection(self, name, apn=None, username=None, password=None, pdp_type=None, network_id=None, udi=None):
         con = NM.SimpleConnection.new()
         s_con = NM.SettingConnection.new()
         s_con.props.id = name
@@ -107,12 +107,17 @@ class NetworkWatcher:
 
         s_ser = NM.SettingSerial.new()
         s_ser.props.baud = 115200
-
+        
         s_ip4 = NM.SettingIP4Config.new()
         s_ip4.props.method = "auto"
-
+        
         s_ip6 = NM.SettingIP6Config.new()
-        s_ip6.props.method = "auto" #"ignore"
+        s_ip6.props.method = "auto"
+        
+        if pdp_type == "ipv6":
+            s_ip4.props.method = "disabled"
+        elif pdp_type == "ipv4":
+            s_ip6.props.method = "ignore"
 
         # print(s_con.to_string())
 
