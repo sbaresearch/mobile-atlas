@@ -30,9 +30,12 @@ class PayloadNetworkWeb(PayloadNetworkBase):
         self.fix_target_ip = fix_target_ip
         self.override_sni_host = override_sni_host
         self.tag = PayloadNetworkWeb.LOGGER_TAG
-        self.fail_cnt = 0
         self.url = urlparse(url)
         self.url = self.url._replace(scheme=self.get_scheme())    #only replace if forced, otherwise just use whats provided (or https on default)
+        self.fail_cnt = 0
+        self.request_cnt = 0
+        self.last_response = None
+        self.ret = {}
 
     def get_scheme(self):
         protocol = self.get_protocol()
@@ -76,23 +79,22 @@ class PayloadNetworkWeb(PayloadNetworkBase):
         success = True
         self.manage_ip_binding("start")
         logger.info(f"send_payload, sending {self.payload_size} bytes to {self.url.geturl()}, use protocol {self.get_protocol()}")
-        i = 0
         while not self.is_payload_consumed():
-            i += 1
+            self.request_cnt += 1
             self.make_request()
             if self.fail_cnt > 3:
                 success = False
                 break
         self.manage_ip_binding("stop")
-        return PayloadNetworkResult(success, None, *self.get_consumed_bytes(), i)
+        return PayloadNetworkResult(success, self.ret, *self.get_consumed_bytes(), self.request_cnt)
 
     def make_request(self):
         url = self.get_request_url().geturl()
         try:
             if self.get_protocol() == 'quic':
-                resp = QuicWrapper().request(url)
+                self.last_response = QuicWrapper().request(url)
             else:
-                resp = requests.get(url, allow_redirects=self.allow_redirects, verify=self.get_verify_ssl(), timeout=15)
+                self.last_response = requests.get(url, allow_redirects=self.allow_redirects, verify=self.get_verify_ssl(), timeout=15)
             self.fail_cnt = 0
             return True
         except Exception as error:
@@ -104,6 +106,8 @@ class PayloadNetworkWeb(PayloadNetworkBase):
 class PayloadNetworkWebControlTraffic(PayloadNetworkWeb):
         BYTES_MAX = 10 * CreditChecker.MEGABYTE
         BYTES_MIN = 10 * CreditChecker.KILOBYTE
+        
+        #httpbin.org/ip 
 
         BASE_URLS = {
             "http" : "http://httpbin.org/bytes/",
