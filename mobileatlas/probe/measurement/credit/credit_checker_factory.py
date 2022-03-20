@@ -25,6 +25,7 @@ from mobileatlas.probe.measurement.credit.hr.hr_telemach import CreditChecker_HR
 #SK
 from mobileatlas.probe.measurement.credit.sk.sk_o2 import CreditChecker_SK_O2
 from mobileatlas.probe.measurement.credit.sk.sk_orange import CreditChecker_SK_Orange
+from mobileatlas.probe.measurement.credit.sk.sk_4ka import CreditChecker_SK_4ka
 
 #SI
 from mobileatlas.probe.measurement.credit.si.si_a1 import CreditChecker_SI_A1
@@ -70,6 +71,7 @@ credit_checker_factory.register_credit_checker('CreditChecker_RO_Orange', Credit
 #SK
 credit_checker_factory.register_credit_checker('CreditChecker_SK_O2', CreditChecker_SK_O2)
 credit_checker_factory.register_credit_checker('CreditChecker_SK_Orange', CreditChecker_SK_Orange)
+credit_checker_factory.register_credit_checker('CreditChecker_SK_4ka', CreditChecker_SK_4ka)
 
 #SI
 credit_checker_factory.register_credit_checker('CreditChecker_SI_A1', CreditChecker_SI_A1)
