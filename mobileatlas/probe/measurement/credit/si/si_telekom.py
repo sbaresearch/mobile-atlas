@@ -85,19 +85,19 @@ class CreditChecker_SI_Telekom(CreditCheckerWeb):
                 if self.s is None:
                     self.login_websession()
                 
-                r = self.s.get(CreditChecker_SI_Telekom.URL_WEB_PREPAID_BALANCE)
+                r = self.s.get(CreditChecker_SI_Telekom.URL_WEB_PREPAID_USAGE.format(self.get_phone_number_api()))
                 remaining_bytes = 0
                 soup = BeautifulSoup(r.content, "html.parser")
                 div = soup.find_all('div', {'class' : 'price-big'})
                 for d in div:
-                    amount = soup.find('span', {'class' : 'ts-m-26'}) 
-                    unit = soup.find('span', {'class' : 'grey'}) 
+                    amount = d.find('span', {'class' : 'ts-m-26'}) 
+                    unit = d.find('span', {'class' : 'grey'}) 
                     merged = f"{amount.text.strip()} {unit.text.strip()}"
                     if 'MB' in merged:
                         remaining_bytes -= convert_size_to_bytes(merged)
                 if remaining_bytes:
                     ret.traffic_bytes_total = remaining_bytes
-                    ret.bill_dump = r.content
+                    ret.bill_dump = r.text
                 if ret.traffic_bytes_total is None:
                     raise ValueError("Failed to retrieve current bill")
                 else:
