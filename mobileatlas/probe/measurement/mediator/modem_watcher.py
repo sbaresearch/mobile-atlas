@@ -267,9 +267,18 @@ class ModemWatcher:
     def remove_modem_from_list(self, obj=None):  # when none => remove all modems
         for key, value in list(self.objects.items()):
             if (key == obj or obj == None):
-                key.get_modem().disconnect(value.modem_state_changed_id)
-                key.get_modem_messaging().disconnect(value.sms_added_id)
-                key.get_modem_voice().disconnect(value.call_added_id)
+                try:
+                    key.get_modem().disconnect(value.modem_state_changed_id)
+                except:
+                    pass
+                try:
+                    key.get_modem_messaging().disconnect(value.sms_added_id)
+                except:
+                    pass
+                try:
+                    key.get_modem_voice().disconnect(value.call_added_id)
+                except:
+                    pass
                 del self.objects[key]
                 if self.callback_obj != None:
                     self.callback_obj.mm_modem_removed(key.get_object_path())
@@ -278,7 +287,8 @@ class ModemWatcher:
         if not self.objects:
             raise ValueError("Device list empty")
         if not path:
-            return next(iter(self.objects))
+            #return next(iter(self.objects))
+            return list(self.objects.keys())[-1] # get last object, if modem is in failed state and/or added twice we usually wanna grab the latter one
         for key in self.objects.keys():
             if key.get_object_path() == path:
                 return key

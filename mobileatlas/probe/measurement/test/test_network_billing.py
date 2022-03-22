@@ -74,7 +74,7 @@ class TestNetworkBillingBase(TestNetworkBase):
             if payload_entry.add_to_consumed_units:
                 #bytes_consumed = payload.get_consumed_bytes()
                 #self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X
-                self.credit_checker.add_consumed_units({"traffic_bytes_total" : payload.payload_size})
+                self.add_consumed_units({"traffic_bytes_total" : payload.payload_size})
         print(f"execute_test_network_core finished")
 
 

@@ -268,7 +268,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
             self.change_charset(charset="UCS2")
         #TODO: if driver != option
-        #os.system("ip netns exec default ip link set wwan0 netns ns_mobileatlas")
+        os.system("ip netns exec default ip link set wwan0 netns ns_mobileatlas")
 
     def connect_modem(self, apn=None, username=None, password=None, pdp_type=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
         if self.modem_connected.is_set():
@@ -282,7 +282,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             #add temporary connection if neccessary
             if self.connection is None:
                 self.connection = self.nm.create_connection(
-                    "temp", apn, username, password, network_id)
+                    "temp", apn, username, password, pdp_type, network_id)
                 self.nm.connect_device(self.connection)
             else:
                 self.nm.send_connect_device("temp")
