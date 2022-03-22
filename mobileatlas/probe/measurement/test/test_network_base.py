@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class TestNetworkBase(TestBase):
     DEFAULT_URL_BILLED_TRAFFIC_100KB = "http://speedtest.tele2.net/100KB.zip"
     DEFAULT_URL_BILLED_TRAFFIC = DEFAULT_URL_BILLED_TRAFFIC_100KB
+    
+    DEFAULT_PDP_TYPE = "ipv4v6"
 
     CONFIG_SCHEMA_NETWORK_BASE = {
         "type" : "object",
@@ -25,6 +27,7 @@ class TestNetworkBase(TestBase):
                     "apn" : { "type" : "string"},
                     "username" : { "type" : "string"},
                     "password" : { "type" : "string"},
+                    "pdp_type" : { "type" : "string", "enum": ["ipv4", "ipv6", "ipv4v6"], "default" : DEFAULT_PDP_TYPE},
                     "network_id" : { "type" : "string"}
                 }
             }
@@ -47,6 +50,12 @@ class TestNetworkBase(TestBase):
 
     def get_password(self):
         return self.parser.test_config.get("test_params.password", None)
+    
+    def get_pdp_type(self):
+        return self.parser.test_config.get("test_params.pdp_type", None)
+    
+    def get_network_id(self):
+        return self.parser.test_config.get("test_params.network_id", None)
 
     def get_network_id(self):
         return self.parser.test_config.get("test_params.network_id", None)
@@ -89,7 +98,7 @@ class TestNetworkBase(TestBase):
         self.mobile_atlas_mediator.wait_modem_registered(timeout = 1200, preserve_state_timeout = 5)
 
         logger.info("modem is registered, ready to connect")
-        self.mobile_atlas_mediator.connect_modem(self.get_apn(), self.get_username(), self.get_password(), self.get_network_id())
+        self.mobile_atlas_mediator.connect_modem(self.get_apn(), self.get_username(), self.get_password(), self.get_pdp_type(), self.get_network_id())
         logger.info("modem is connected")
 
     def disconnect_network(self):

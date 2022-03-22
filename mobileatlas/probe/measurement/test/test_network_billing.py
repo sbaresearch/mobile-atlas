@@ -4,7 +4,7 @@ import logging
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
 from mobileatlas.probe.measurement.payload.payload_public_ip import PayloadPublicIp
 from mobileatlas.probe.measurement.test.test_args import TestParser
-from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWeb, PayloadNetworkWebControlTraffic
+from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWeb, PayloadNetworkWebControlTrafficWithIpCheck
 from mobileatlas.probe.measurement.utils.convertsizes import convert_size_to_bytes
 from .test_network_base import TestNetworkBase
 
@@ -74,7 +74,7 @@ class TestNetworkBillingBase(TestNetworkBase):
             if payload_entry.add_to_consumed_units:
                 #bytes_consumed = payload.get_consumed_bytes()
                 #self.add_consumed_bytes(*bytes_consumed) #a1 did not recognize this, prolly better to use size instead of consumed bytes? alternatively make it somehow tolerant and multiply with factor 0,9? :X
-                self.credit_checker.add_consumed_units({"traffic_bytes_total" : payload.payload_size})
+                self.add_consumed_units({"traffic_bytes_total" : payload.payload_size})
         print(f"execute_test_network_core finished")
 
 
@@ -101,7 +101,7 @@ class TestNetworkBilling(TestNetworkBillingBase):
             payload_web = PayloadNetworkWeb(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), url=self.get_url_control_traffic())
             self.add_network_payload("payload_web_control", payload_web, True)
         else:
-            payload_web = PayloadNetworkWebControlTraffic(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
+            payload_web = PayloadNetworkWebControlTrafficWithIpCheck(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
             self.add_network_payload("payload_web_control", payload_web, True)
 
     def validate_test_config(self):

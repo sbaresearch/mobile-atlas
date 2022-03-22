@@ -58,7 +58,6 @@ class CreditChecker_SK_Orange(CreditCheckerWeb):
     def login_websession(self):
         logger.info("setup homepage session...")
         self.s = CreditCheckerWeb.get_requests_retry_session()
-        self.s = requests.Session()
         r = self.s.get(CreditChecker_SK_Orange.URL_START)
         auth = re.search('<input type="hidden" name="auth" value=\'(.+?)\'/>', r.text).group(1)
         param = {
