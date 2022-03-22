@@ -1,7 +1,7 @@
 
 
 from mobileatlas.probe.measurement.payload.payload_network_dns import PayloadNetworkDns
-from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWebControlTraffic
+from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWebControlTrafficWithIpCheck
 from mobileatlas.probe.measurement.test.test_args import TestParser
 from mobileatlas.probe.measurement.test.test_network_billing import TestNetworkBillingBase
 from mobileatlas.probe.measurement.utils.ec2 import Ec2Instance
@@ -30,7 +30,7 @@ class TestNetworkBillingDns(TestNetworkBillingBase):
         self.payload_dns = PayloadNetworkDns(self.mobile_atlas_mediator, self.get_next_payload_size(), nameservers=dns_server)
         self.add_network_payload("payload_dns", self.payload_dns, False)
         
-        payload_web = PayloadNetworkWebControlTraffic(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
+        payload_web = PayloadNetworkWebControlTrafficWithIpCheck(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
         self.add_network_payload("payload_web_control", payload_web, True)
         
     def validate_test_config(self):

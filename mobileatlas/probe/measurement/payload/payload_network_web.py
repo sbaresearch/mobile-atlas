@@ -137,3 +137,21 @@ class PayloadNetworkWebControlTraffic(PayloadNetworkWeb):
             # get missing bytes and set url
             self.url = urlparse(f"{self.base_url}{self.get_request_size()}")
             super().make_request()
+            
+
+# same class as above but includes simple ip check via httpbin
+class PayloadNetworkWebControlTrafficWithIpCheck(PayloadNetworkWebControlTraffic):
+    def make_request(self):
+        if not hasattr(self, 'ip_response'):
+            # get ip instead of bytes payload
+            self.url = urlparse(self.base_url.replace("bytes/", "ip"))
+            logger.info(f"get ip address at first request via {self.url.geturl()}")
+            PayloadNetworkWeb.make_request(self)
+            try:
+                self.ip_response = self.last_response.json()
+                self.ret["ip_response"] = self.ip_response
+                logger.info(f"ip address is {self.ip_response}")
+            except:
+                pass
+        else:
+            super().make_request()
