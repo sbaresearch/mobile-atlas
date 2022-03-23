@@ -239,7 +239,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             self.notify_connection_subscriber(new_state)
 
     def send_ussd_code(self, code="*101#"):
-        self.mmsend_ussd_cancel()
+        self.mm.send_ussd_cancel()
         return self.mm.send_ussd_code(code)
 
     def change_charset(self, charset="UCS2"):
