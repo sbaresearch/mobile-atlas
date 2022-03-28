@@ -63,7 +63,7 @@ class CreditChecker_HR_A1(CreditCheckerWeb):
 
     def login_websession(self):
         logger.info("setup homepage session...")
-        self.s = CreditCheckerWeb.get_requests_retry_session()
+        self.s = CreditCheckerWeb.get_requests_retry_session(timeout=120)
         # login via web
         r = self.s.get(CreditChecker_HR_A1.URL_INIT)
         param = {
