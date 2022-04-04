@@ -28,8 +28,9 @@ class Ec2Instance():
         if key is None:
             with open("/home/pi/mobile-atlas-config/test_config/ec2.json", "r") as jsonfile:
                 #os.environ.get('EC2_ID') # does not work because env is isolated in namespace; maybe fix it by linking env file to ns?
-                id = json.load(jsonfile).get('id')  
-                key = json.load(jsonfile).get('key')
+                json_dict = json.load(jsonfile)
+                id = json_dict.get('id')  
+                key = json_dict.get('key')
         self.ec2 = boto3.resource(
             'ec2',
             aws_access_key_id=id,

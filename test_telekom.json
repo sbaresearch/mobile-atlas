@@ -1,0 +1,16 @@
+{
+    "imsi" : 226031407218823,
+    "phone_number": "+40765927543",
+    "provider_name": "RO_Telekom",
+    "module_blacklist" : ["qmi_wwan", "cdc_mbim", "cdc_wdm", "cdc_ncm", "cdc_acm", "cdc_ether"],
+    "test_params": {
+        "apn" : "broadband",
+	"url_zero_rated" : "https://web.whatsapp.com/vendor1~bootstrap_qr.2964a84e720ddeb3b0e5.js",
+        "dns_server": "54.93.58.196"
+    },
+    "credit_checker_params" : {
+        "username":"mobileatlas@sba-research.org",
+        "password":"MobileAtlas21#"
+    }
+}
+
