@@ -105,8 +105,8 @@ class NetworkWatcher:
         s_gsm.props.password = password
         s_gsm.props.network_id = network_id
 
-        s_ser = NM.SettingSerial.new()
-        s_ser.props.baud = 115200
+        #s_ser = NM.SettingSerial.new()
+        #s_ser.props.baud = 115200
         
         s_ip4 = NM.SettingIP4Config.new()
         s_ip4.props.method = "auto"
@@ -119,13 +119,17 @@ class NetworkWatcher:
         elif pdp_type == "ipv4":
             s_ip6.props.method = "ignore"
 
+        #s_ppp = NM.SettingPpp.new()
+        #s_ppp.props.refuse_chap = True
+
         # print(s_con.to_string())
 
         con.add_setting(s_con)
         con.add_setting(s_gsm)
-        con.add_setting(s_ser)
+        #con.add_setting(s_ser)
         con.add_setting(s_ip4)
         con.add_setting(s_ip6)
+        #con.add_setting(s_ppp)
 
         # print(con.dump())
 

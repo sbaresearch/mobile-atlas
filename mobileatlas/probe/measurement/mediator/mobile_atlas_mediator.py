@@ -265,7 +265,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         # TODO: find better way to handle specific modem types (maybe factory-wise approach like creditchecker)
         if self.modem_type == "quectel":    
             # hotfix: clear pdp list since modemmanager/pppd doesn't work correctly when there are >10 pdp contexts >.<
-            self.clear_pdp_context_list()
+            #self.clear_pdp_context_list()
             # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
             self.change_charset(charset="UCS2")
         #TODO: if driver != option
@@ -398,6 +398,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
 
     # delete all calls and sms that are saved
     def cleanup(self):
+        self.mm.clear_pdp_context_list()
         self.mm.wipe_messages()
         self.mm.wipe_calls()
 
