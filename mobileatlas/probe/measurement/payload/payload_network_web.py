@@ -1,6 +1,7 @@
 
 import logging
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
+from mobileatlas.probe.measurement.mediator.mobile_atlas_mediator import MobileAtlasMediator
 from mobileatlas.probe.measurement.utils.format_logging import format_extra
 import requests
 from urllib.parse import urlparse
@@ -14,21 +15,13 @@ from .payload_network_base import PayloadNetworkBase, PayloadNetworkResult
 
 logger = logging.getLogger(__name__)
 
-class PayloadNetworkWebResult(PayloadNetworkResult):
-    def __init__(self, success, result, consumed_bytes_rx, consumed_bytes_tx, request_cnt):
-        self.success = success
-        self.result = result
-        self.consumed_bytes_rx = consumed_bytes_rx
-        self.consumed_bytes_tx = consumed_bytes_tx
-        self.request_cnt = request_cnt
 
 class PayloadNetworkWeb(PayloadNetworkBase):
     LOGGER_TAG = "payload_network_web"
     ALLOWED_PROTOCOLS = ["https", "http", "quic"]
 
-    def __init__(self, parent: TestNetworkBase, payload_size, url, force_protocol=None, repetitive_dns = False, allow_redirects=False, fix_target_ip = None, override_sni_host=None):
-        super().__init__(parent, payload_size=payload_size)
-        self.parent = parent
+    def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, payload_size, url, force_protocol=None, repetitive_dns = False, allow_redirects=False, fix_target_ip = None, override_sni_host=None):
+        super().__init__(mobile_atlas_mediator, payload_size=payload_size)
         if force_protocol and force_protocol not in PayloadNetworkWeb.ALLOWED_PROTOCOLS:
             raise ValueError()
         self.force_protocol = force_protocol
@@ -91,7 +84,7 @@ class PayloadNetworkWeb(PayloadNetworkBase):
                 success = False
                 break
         self.manage_ip_binding("stop")
-        return PayloadNetworkWebResult(success, None, *self.get_consumed_bytes(), i)
+        return PayloadNetworkResult(success, None, *self.get_consumed_bytes(), i)
 
     def make_request(self):
         url = self.get_request_url().geturl()
@@ -106,7 +99,6 @@ class PayloadNetworkWeb(PayloadNetworkBase):
             logging.exception(error)
             self.fail_cnt += 1
             return False
-
 
 
 class PayloadNetworkWebControlTraffic(PayloadNetworkWeb):
