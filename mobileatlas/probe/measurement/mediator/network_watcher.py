@@ -90,7 +90,7 @@ class NetworkWatcher:
                 return con
         raise ValueError("Connection not found")
 
-    def create_connection(self, name, apn=None, username=None, password=None, network_id=None, udi=None):
+    def create_connection(self, name, apn=None, username=None, password=None, pdp_type=None, network_id=None, udi=None):
         con = NM.SimpleConnection.new()
         s_con = NM.SettingConnection.new()
         s_con.props.id = name
@@ -105,22 +105,31 @@ class NetworkWatcher:
         s_gsm.props.password = password
         s_gsm.props.network_id = network_id
 
-        s_ser = NM.SettingSerial.new()
-        s_ser.props.baud = 115200
-
+        #s_ser = NM.SettingSerial.new()
+        #s_ser.props.baud = 115200
+        
         s_ip4 = NM.SettingIP4Config.new()
         s_ip4.props.method = "auto"
-
+        
         s_ip6 = NM.SettingIP6Config.new()
-        s_ip6.props.method = "auto" #"ignore"
+        s_ip6.props.method = "auto"
+        
+        if pdp_type == "ipv6":
+            s_ip4.props.method = "disabled"
+        elif pdp_type == "ipv4":
+            s_ip6.props.method = "ignore"
+
+        #s_ppp = NM.SettingPpp.new()
+        #s_ppp.props.refuse_chap = True
 
         # print(s_con.to_string())
 
         con.add_setting(s_con)
         con.add_setting(s_gsm)
-        con.add_setting(s_ser)
+        #con.add_setting(s_ser)
         con.add_setting(s_ip4)
         con.add_setting(s_ip6)
+        #con.add_setting(s_ppp)
 
         # print(con.dump())
 
@@ -194,7 +203,7 @@ class NetworkWatcher:
             for addr in ip6_addresses:
                 elem = {}
                 elem['address'] = addr.get_address()
-                elem['gateway'] = addr.get_gateway()
+                elem['family'] = addr.get_family()
                 elem['prefix'] = addr.get_prefix()
                 config.append(elem)
             return config
@@ -249,9 +258,10 @@ class NetworkWatcher:
             config['addresses'] = NetworkWatcher.parse_ip6_addresses_config(ip6.get_addresses())
             config['domains'] = ip6.get_domains()
             config['gateway'] = ip6.get_gateway()
-            config['nameserver'] = []
-            for i in range(ip6.get_num_nameservers()):
-                config['nameserver'].append(ip6.get_nameserver(i))
+            config['nameserver'] = ip6.get_nameservers()
+            #config['nameserver'] = []
+            #for i in range(ip6.get_num_nameservers()):
+            #    config['nameserver'].append(ip6.get_nameserver(i))
             config['routes'] = NetworkWatcher.parse_routes_config(ip6.get_routes())
             config['searches'] = ip6.get_searches()
             return config

@@ -37,7 +37,8 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
     LOGGER_TAG = "mobile_atlas_mediator"
     MODEM_NETWORK_INTERFACE_NAME = 'ppp0'
 
-    def __init__(self):
+    def __init__(self, modem_type):
+        self.modem_type = modem_type
         self.main_loop = GLibRunner()
 
         path = Path(MobileAtlasMediator.DIR_LOG)
@@ -238,6 +239,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             self.notify_connection_subscriber(new_state)
 
     def send_ussd_code(self, code="*101#"):
+        self.mm.send_ussd_cancel()
         return self.mm.send_ussd_code(code)
 
     def change_charset(self, charset="UCS2"):
@@ -260,13 +262,16 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         self.mm.clear_pdp_context_list()
 
     def apply_hotfixes(self):
-        # TODO: check for modem type to apply modem-specific hotixes?
-        # hotfix: clear pdp list since modemmanager/pppd doesn't work correctly when there are >10 pdp contexts >.<
-        self.clear_pdp_context_list()
-        # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
-        self.change_charset(charset="UCS2")
+        # TODO: find better way to handle specific modem types (maybe factory-wise approach like creditchecker)
+        if self.modem_type == "quectel":    
+            # hotfix: clear pdp list since modemmanager/pppd doesn't work correctly when there are >10 pdp contexts >.<
+            #self.clear_pdp_context_list()
+            # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
+            self.change_charset(charset="UCS2")
+        #TODO: if driver != option
+        os.system("ip netns exec default ip link set wwan0 netns ns_mobileatlas")
 
-    def connect_modem(self, apn=None, username=None, password=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
+    def connect_modem(self, apn=None, username=None, password=None, pdp_type=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
         if self.modem_connected.is_set():
             raise ValueError("Modem is already connected...")
 
@@ -278,7 +283,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             #add temporary connection if neccessary
             if self.connection is None:
                 self.connection = self.nm.create_connection(
-                    "temp", apn, username, password, network_id)
+                    "temp", apn, username, password, pdp_type, network_id)
                 self.nm.connect_device(self.connection)
             else:
                 self.nm.send_connect_device("temp")
@@ -393,6 +398,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
 
     # delete all calls and sms that are saved
     def cleanup(self):
+        self.mm.clear_pdp_context_list()
         self.mm.wipe_messages()
         self.mm.wipe_calls()
 

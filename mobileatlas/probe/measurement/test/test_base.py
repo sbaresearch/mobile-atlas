@@ -35,7 +35,7 @@ class TestBase(MobileAtlasPlugin):
         logger.info("creating test class...")
         self.parser = parser
         self.validate_test_config()
-        super().__init__(MobileAtlasMediator()) #create new mediator
+        super().__init__(MobileAtlasMediator(parser.get_modem_type())) #create new mediator
         self.result_logger = logging.getLogger("RESULTS")
         self.test_needs_billing_info = use_credit_checker
         self.credit_checker: CreditChecker = None

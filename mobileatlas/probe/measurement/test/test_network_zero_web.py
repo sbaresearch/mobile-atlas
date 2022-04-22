@@ -34,13 +34,14 @@ class TestNetworkZeroWeb(TestNetworkBillingBase):
         }
     }
 
-    def __init__(self, parser: TestParser):
-        super().__init__(parser)
+    def execute_test_network_pre(self):
         for protocol in self.get_protocols():
             payload_zero = PayloadNetworkWeb(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), url=self.get_url_zero_rated(), force_protocol=protocol, fix_target_ip=self.get_fixed_ip(), override_sni_host=self.get_sni_host())
-            self.add_network_payload(f'zero_{protocol}', payload_zero, False)
+        self.add_network_payload(f'zero_{protocol}', payload_zero, False)
         payload_control = PayloadNetworkWebControlTraffic(self.mobile_atlas_mediator, payload_size=self.get_next_payload_size(), protocol='https')
         self.add_network_payload('control_traffic', payload_control, True)
+        # then call super method
+        super().execute_test_network_pre()
         
     def validate_test_config(self):
         super().validate_test_config()

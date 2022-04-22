@@ -42,7 +42,7 @@ class CreditChecker_HR_A1(CreditCheckerWeb):
     #https://secure.a1.hr/mcrm_oauth/api/v5.91/convertUnits
     #https://secure.a1.hr/mcrm_oauth/api/v5.91/profile
 
-    URL_APP_BILL = "https://secure.a1.hr/mcrm_oauth/api/v5.91/dashboard"
+    URL_APP_BILL = "https://secure.a1.hr/mcrm_oauth/api/dashboard?apiVersion=v6.2" #"https://secure.a1.hr/mcrm_oauth/api/v5.91/dashboard"
     URL_WEB_BILL = "https://moj.a1.hr/prepaid/home"
  
 
@@ -63,7 +63,7 @@ class CreditChecker_HR_A1(CreditCheckerWeb):
 
     def login_websession(self):
         logger.info("setup homepage session...")
-        self.s = CreditCheckerWeb.get_requests_retry_session()
+        self.s = CreditCheckerWeb.get_requests_retry_session(timeout=120)
         # login via web
         r = self.s.get(CreditChecker_HR_A1.URL_INIT)
         param = {

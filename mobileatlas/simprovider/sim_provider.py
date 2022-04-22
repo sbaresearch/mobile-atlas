@@ -85,3 +85,46 @@ class SimProvider(DeviceEvent):
         return sim_info
 
 
+
+def main():
+    logging.basicConfig(level=logging.ERROR)
+
+    # sim_mapping[ imsi:string ] = serial_port:string
+    sim_provider = SimProvider()
+    available_sims = sim_provider.get_sims()
+
+    device = next((x for x in available_sims), None)
+    if not device:
+        exit("no device found...")
+    print(f"device {device.device_name} has atr {device.atr.hex()}, imsi {device.imsi}, iccid {device.iccid}")
+
+    import time
+    start_time = time.time()
+    # reset card and query stuff
+    for x in range(10):
+        SimProvider.query_sim_info(device.device_name, device.sl, False)
+    
+    stop_time = time.time()
+    elapsed_1 = stop_time - start_time
+
+
+    start_time = time.time()
+
+    device.sl.connect()
+    for x in range(10):
+        SimProvider.query_sim_info(device.device_name, device.sl, True)
+
+    stop_time = time.time()
+    elapsed_2 = stop_time - start_time
+
+    # just for fun, lets generate some traffic to ensure verything is working well
+    # if no error was thrown we assume that everythin is fine
+    for x in range(100):
+        SimProvider.query_sim_info(device.device_name, device.sl, True)
+    device.sl.disconnect()
+
+
+    print(f"benchmark finished, timings (with/without reset): {elapsed_1:.2f}/{elapsed_2:.2f}")
+
+if __name__ == "__main__":
+    main()

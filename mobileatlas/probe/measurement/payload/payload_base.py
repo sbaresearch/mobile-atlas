@@ -10,6 +10,7 @@ class PayloadResult:
 
 class PayloadBase(MobileAtlasPlugin):
     LOGGER_TAG = "payload_base"
+    PAYLOAD_DIR = "mobileatlas/probe/measurement/payload/"
 
     #def __init__(self, mobile_atlas_mediator: MobileAtlasMediator, use_sms = False, use_call = False, use_connection = False, use_internet_gw = False):
     #    super().__init__(mobile_atlas_mediator, use_sms , use_call, use_connection, use_internet_gw)

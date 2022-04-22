@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
-from mobileatlas.probe.measurement.credit.ro.ro_telekom import CreditChecker_RO_Telekom
-from mobileatlas.probe.measurement.credit.ro.ro_vodafone import CreditChecker_RO_Vodafone
+
 from mobileatlas.probe.measurement.credit.credit_checker import CreditChecker
+
+#RO
+from mobileatlas.probe.measurement.credit.ro.ro_telekom import CreditChecker_RO_Telekom_Ussd
+from mobileatlas.probe.measurement.credit.ro.ro_vodafone import CreditChecker_RO_Vodafone
+from mobileatlas.probe.measurement.credit.ro.ro_orange import CreditChecker_RO_Orange
+
 #AT
-from mobileatlas.probe.measurement.credit.at.at_a1 import CreditChecker_AT_A1
+from mobileatlas.probe.measurement.credit.at.at_a1 import CreditChecker_AT_A1_SMS
 from mobileatlas.probe.measurement.credit.at.at_magenta import CreditChecker_AT_Magenta
 from mobileatlas.probe.measurement.credit.at.at_eety import CreditChecker_AT_eety
 from mobileatlas.probe.measurement.credit.at.at_hot import CreditChecker_AT_HoT
@@ -15,6 +20,16 @@ from mobileatlas.probe.measurement.credit.at.at_drei import CreditChecker_AT_Dre
 #HR
 from mobileatlas.probe.measurement.credit.hr.hr_a1 import CreditChecker_HR_A1
 from mobileatlas.probe.measurement.credit.hr.hr_telekom import CreditChecker_HR_Telekom
+from mobileatlas.probe.measurement.credit.hr.hr_telemach import CreditChecker_HR_Telemach
+
+#SK
+from mobileatlas.probe.measurement.credit.sk.sk_o2 import CreditChecker_SK_O2
+from mobileatlas.probe.measurement.credit.sk.sk_orange import CreditChecker_SK_Orange
+from mobileatlas.probe.measurement.credit.sk.sk_4ka import CreditChecker_SK_4ka
+
+#SI
+from mobileatlas.probe.measurement.credit.si.si_a1 import CreditChecker_SI_A1
+from mobileatlas.probe.measurement.credit.si.si_telekom import CreditChecker_SI_Telekom
 
 class CreditCheckerFactory:
     def __init__(self):
@@ -35,7 +50,7 @@ class CreditCheckerFactory:
 
 credit_checker_factory = CreditCheckerFactory()
 #AT
-credit_checker_factory.register_credit_checker('CreditChecker_AT_A1', CreditChecker_AT_A1)
+credit_checker_factory.register_credit_checker('CreditChecker_AT_A1', CreditChecker_AT_A1_SMS)
 credit_checker_factory.register_credit_checker('CreditChecker_AT_Magenta', CreditChecker_AT_Magenta)
 credit_checker_factory.register_credit_checker('CreditChecker_AT_Drei', CreditChecker_AT_Drei)
 credit_checker_factory.register_credit_checker('CreditChecker_AT_spusu', CreditChecker_AT_spusu)
@@ -46,8 +61,18 @@ credit_checker_factory.register_credit_checker('CreditChecker_AT_eety', CreditCh
 #HR
 credit_checker_factory.register_credit_checker('CreditChecker_HR_A1', CreditChecker_HR_A1)
 credit_checker_factory.register_credit_checker('CreditChecker_HR_Telekom', CreditChecker_HR_Telekom)
+credit_checker_factory.register_credit_checker('CreditChecker_HR_Telemach', CreditChecker_HR_Telemach)
 
 #RO
 credit_checker_factory.register_credit_checker('CreditChecker_RO_Vodafone', CreditChecker_RO_Vodafone)
-credit_checker_factory.register_credit_checker('CreditChecker_RO_Telekom', CreditChecker_RO_Telekom)
+credit_checker_factory.register_credit_checker('CreditChecker_RO_Telekom', CreditChecker_RO_Telekom_Ussd)
+credit_checker_factory.register_credit_checker('CreditChecker_RO_Orange', CreditChecker_RO_Orange)
 
+#SK
+credit_checker_factory.register_credit_checker('CreditChecker_SK_O2', CreditChecker_SK_O2)
+credit_checker_factory.register_credit_checker('CreditChecker_SK_Orange', CreditChecker_SK_Orange)
+credit_checker_factory.register_credit_checker('CreditChecker_SK_4ka', CreditChecker_SK_4ka)
+
+#SI
+credit_checker_factory.register_credit_checker('CreditChecker_SI_A1', CreditChecker_SI_A1)
+credit_checker_factory.register_credit_checker('CreditChecker_SI_Telekom', CreditChecker_SI_Telekom)

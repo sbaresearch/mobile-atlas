@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 SLEEP_MODEM_INIT = 15
 
 # set of modules allowed to be blacklisted
-MODULES_BLACKLIST_ALLOWED = {"option", "cdc_ether", "qmi_wwan", "cdc_mbim", "usb_wwan",
-                             "cdc_wdm", "usbnet", "usbserial"} 
+MODULES_BLACKLIST_ALLOWED = {"option", "qmi_wwan", "cdc_mbim", "cdc_wdm", "cdc_ncm", "cdc_acm", "cdc_ether", "usb_wwan",
+                             "usbnet", "usbserial", "usbcore"}
 
 def blacklist_kernel_modules(module_list):
     # filter modules, only allow certain modules to be blacklisted
@@ -67,6 +67,7 @@ def main():
     blacklist_kernel_modules(parser.get_blacklisted_modules())
 
     # Create modem tunnel
+    logger.info("setup modem tunnel...")
     tunnel = ModemTunnel(parser.get_modem_type(), parser.get_host(), parser.get_port(), parser.get_imsi())
     tunnel.setup()  # resets modem
 
@@ -75,6 +76,7 @@ def main():
 
     if parser.is_measurement_namespace_enabled():
         # Start ModemManager and NetworkManager and generate namespace  with Magic Script
+        logger.info("create measurement namespace...")
         ps_ns = pexpect.spawn("./mobileatlas/probe/setup_measure_ns.sh")
         # give setup script some time to startup modemmanager
         ps_ns.expect('root@mobileatlas')

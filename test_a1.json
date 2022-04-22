@@ -1,0 +1,18 @@
+{
+    "imsi" : 232011330456684,
+    "phone_number": "+4366499103535",
+    "provider_name": "AT_A1",
+    "module_blacklist" : ["qmi_wwan", "cdc_mbim", "cdc_wdm", "cdc_ncm", "cdc_acm", "cdc_ether"],
+    "test_params": {
+        "apn" : "A1.net",
+        "username" : "ppp@a1plus.at",
+        "password" : "ppp",
+        "url_zero_rated" : "https://app.snapchat.com/web/deeplink/snapcode?username=michelleobama&type=SVG&size=240",
+        "protocols": ["https", "http", "quic"],
+        "dns_server": "54.93.58.196"
+    },
+    "credit_checker_params" : {
+        "username" : "mobileatlas@sba-research.org",
+        "password" : "MobileAtlas21#"
+    }
+}

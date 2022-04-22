@@ -7,7 +7,11 @@
 # Finally, start NetworkManager, ModemManager and tcpdump
 
 #namespace name
-NSNAME=ns_mobileatlas
+NSNAME_DEFAULT=ns_mobileatlas
+
+NSNAME="${1:-$NSNAME_DEFAULT}"
+
+ns_mobileatlas
 
 #create mobileatlas tmp directory
 mkdir -p /tmp/mobileatlas;
@@ -35,6 +39,9 @@ sysctl -w net.ipv4.ip_forward=1
 #create iptable rules for traffic forwarding
 iptables -A INPUT \! -i veth1 -s 10.29.183.0/24 -j DROP;
 iptables -t nat -A POSTROUTING -s 10.29.183.0/24 -o wg+ -j MASQUERADE;
+
+#fix wwan0 interface
+sudo ifconfig wwan0 down; sudo echo 'Y' | sudo tee /sys/class/net/wwan0/qmi/raw_ip
 
 # use unshare to start a new network (+ mnt and pid) namespace and
 # - start separate instance of dbus since modemmanager and networkmanager use it to communicate
@@ -65,7 +72,6 @@ unshare --net=/run/netns/${NSNAME} -mp --fork bash -c '
 #nmcli dev set veth0 managed no
 #nmcli connection delete "Wired connection 1"
 #ip link set veth0 down
-
 #ip link set veth0 up
 #ip addr add 10.29.183.1/24 dev veth0
 #route add default gw 10.29.183.2
