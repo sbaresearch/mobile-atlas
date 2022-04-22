@@ -2,14 +2,12 @@
 """
 SIM Provider Main
 """
-import os
 import logging
 from mobileatlas.simprovider.device_observer import DeviceEvent, DeviceObserver
 from pySim.transport.serial import SerialSimLink
 from pySim.transport.pcsc import PcscSimLink
 from pySim.commands import SimCardCommands
 from pySim.cards import SimCard
-
 
 
 class SimInfo:
@@ -20,10 +18,7 @@ class SimInfo:
         self.atr = atr
         self.sl = sl
 
-
 class SimProvider(DeviceEvent):
-    TTY_SERIAL_PREFIX = "ttyUSB"
-
     def __init__(self):
         self.sims = []
         observer = DeviceObserver()
@@ -48,7 +43,6 @@ class SimProvider(DeviceEvent):
             self.sims.append(sim)
         except:
             pass
-
 
     def get_sims(self):
         return self.sims
