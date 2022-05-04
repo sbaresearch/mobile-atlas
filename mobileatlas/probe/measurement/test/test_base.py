@@ -79,7 +79,7 @@ class TestBase(MobileAtlasPlugin):
                 if not self.credit_checker.use_modem():
                     self.mobile_atlas_mediator.disable_rf()
                 self.credit_checker.wait_for_bill()
-        self.mobile_atlas_mediator.cleanup()
+        self.mobile_atlas_mediator.cleanup(clean_pdp_context=True)
         self.mobile_atlas_mediator.shutdown() # stop glib loop
 
     def execute_test_core(self):

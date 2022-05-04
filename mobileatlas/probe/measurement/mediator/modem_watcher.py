@@ -457,6 +457,14 @@ class ModemWatcher:
             return reg_state
         except ValueError as e: # cannot get modem
             return Modem3gppRegistrationState.UNKNOWN
+        
+    def get_modem_primary_port(self, modem_path=None):
+        try:
+            modem_obj = self.get_modem_from_list(modem_path)
+            port = modem_obj.get_modem().dup_primary_port()
+            return port
+        except ValueError as e: # cannot get modem
+            return "UNKNOWN"
 
     def find_obj_via_path(self, path, list):
         for o in list:

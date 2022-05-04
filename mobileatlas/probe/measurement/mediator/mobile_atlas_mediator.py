@@ -35,7 +35,7 @@ class GLibRunner(Thread):
 class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
     DIR_LOG = "/tmp/mobileatlas"
     LOGGER_TAG = "mobile_atlas_mediator"
-    MODEM_NETWORK_INTERFACE_NAME = 'ppp0'
+    MODEM_NETWORK_INTERFACE_NAME = 'ppp0' # or 'wwan0'
 
     def __init__(self, modem_type):
         self.modem_type = modem_type
@@ -357,7 +357,8 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
                 
     def get_current_bytes(self, interface=None):
         if interface is None:
-            interface = MobileAtlasMediator.MODEM_NETWORK_INTERFACE_NAME
+            port = self.mm.get_modem_primary_port()
+            interface = 'ppp0' if 'tty' in port else 'wwan0'
         if self.modem_connected.is_set():
             traffic = psutil.net_io_counters(pernic=True, nowrap=False).get(interface)   #might threw exception if interface is not up...
             return traffic.bytes_recv, traffic.bytes_sent
@@ -397,8 +398,9 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             raise TimeoutError(f"Modem did not disconnect within {timeout} seconds...")
 
     # delete all calls and sms that are saved
-    def cleanup(self):
-        self.mm.clear_pdp_context_list()
+    def cleanup(self, clean_pdp_context=False):
+        if clean_pdp_context:
+            self.mm.clear_pdp_context_list()
         self.mm.wipe_messages()
         self.mm.wipe_calls()
 
