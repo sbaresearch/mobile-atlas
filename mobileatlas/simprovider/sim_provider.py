@@ -2,15 +2,12 @@
 """
 SIM Provider Main
 """
-import os
 import logging
-from serial.tools import list_ports
-from smartcard.System import readers
+from mobileatlas.simprovider.device_observer import DeviceEvent, DeviceObserver
 from pySim.transport.serial import SerialSimLink
 from pySim.transport.pcsc import PcscSimLink
 from pySim.commands import SimCardCommands
 from pySim.cards import SimCard
-
 
 
 class SimInfo:
@@ -21,67 +18,34 @@ class SimInfo:
         self.atr = atr
         self.sl = sl
 
-
-class SimProvider():
-    TTY_SERIAL_PREFIX = "ttyUSB"
-
+class SimProvider(DeviceEvent):
     def __init__(self):
-        pass
-        
-    def get_tty_devices(self, prefix):
-        """
-        Return a list of all ttyUSB devices, our potential SIM Readers with pyserial
-        """
-        simports = []
-        for elem in list_ports.grep(prefix):
-            simports.append(elem.device)
-        simports.sort()
-        return simports
+        self.sims = []
+        observer = DeviceObserver()
+        observer.add_observer(self)
+        observer.start()
 
-    def get_serial_sims(self):
-        serial_sims = []
-        tty_devices = self.get_tty_devices(SimProvider.TTY_SERIAL_PREFIX)
+    def device_added(self, device_type, device):
+        device_name = f"{device_type}[{device}]"
+        self.prepare_sim_interface(device_name, device_type, device)
 
-        for tty in tty_devices:
-            if not SimProvider.check_permissions(tty):
-                logging.warning(f"Device {tty} has unsufficient permissions")
-                continue
-
-            sl = SerialSimLink(device=tty)
-            device_name = f"Serial: {tty}"
-            sim = SimProvider.query_sim_info(device_name, sl)
-            if sim:
-                serial_sims.append(sim)
-        return serial_sims
-
+    def device_removed(self, device_type, device):
+        device_name = f"{device_type}[{device}]"
+        self.sims = [e for e in self.sims if e.device_name != device_name]
     
-    def get_pcsc_sims(self):
-        pcsc_sims = []
-        for index, reader in enumerate(readers()):
-            try:
-                sl = PcscSimLink(index)
-                device_name = f"PC/SC[{index}]: {reader}"
-                sim = SimProvider.query_sim_info(device_name, sl)
-                if sim:
-                    pcsc_sims.append(sim)
-            except:
-                logging.warning(f"exception reading pcsc device[{index}]: {reader}")
-                pass
-        return pcsc_sims
+    def prepare_sim_interface(self, device_name, device_type, device):
+        try:
+            if device_type == DeviceEvent.DEVICE_TYPE_SERIAL:
+                sl = SerialSimLink(device=device)
+            elif device_type == DeviceEvent.DEVICE_TYPE_SCARD:
+                sl = PcscSimLink(device.index)
+            sim = SimProvider.query_sim_info(device_name, sl)
+            self.sims.append(sim)
+        except:
+            pass
 
     def get_sims(self):
-        serial_sims = self.get_serial_sims()
-        pcsc_sims = self.get_pcsc_sims()
-        # TODO: add other sim provider types (e.g. bluetooth, modem_at, etc.)
-        sims = serial_sims + pcsc_sims
-        return sims
-
-    @staticmethod
-    def check_permissions(tty_device):
-        """
-        Check if we have Read and Write Permission on file
-        """
-        return os.access(tty_device, os.R_OK) and os.access(tty_device, os.W_OK)
+        return self.sims
 
     @staticmethod
     def query_sim_info(device_name, sl, is_connected=False):

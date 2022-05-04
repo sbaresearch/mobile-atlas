@@ -8,9 +8,11 @@ class SimTunnel(threading.Thread):
     """
     Connect a SimLink with a TCP Connection
     """
-    def __init__(self, connection, sl, do_pbs=True):
+    def __init__(self, connection, sl, iccid, do_pbs=True):
         self.connection = connection
         self.sl = sl
+        self.iccid = iccid
+        self.probe_endpoint = connection.getpeername()[0]
         self.do_pbs = do_pbs
         self.connected = False
         threading.Thread.__init__(self)

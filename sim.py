@@ -3,6 +3,8 @@
 SIM Server Script
 """
 
+import os
+import sys
 import logging
 import socket
 import struct
@@ -42,7 +44,6 @@ def accept_connection(s):
     logging.info('accept connection ' + str(client_address))
     return connection
 
-
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(conflict_handler="resolve")
@@ -52,9 +53,6 @@ def main():
 
     # sim_mapping[ imsi:string ] = serial_port:string
     sim_provider = SimProvider()
-    available_sims = sim_provider.get_sims()
-
-
     srv = init_server(args.host, args.port)
 
     while True:
@@ -63,19 +61,27 @@ def main():
         # First 8 Byte is the IMSI
         requested_imsi = struct.unpack('!Q', connection.recv(8))[0]
 
-        device = next((x for x in available_sims if x.imsi == str(requested_imsi)), None)
+        device = next((x for x in sim_provider.get_sims() if x.imsi == str(requested_imsi)), None)
         if device:
             logging.info(f"requested imsi {requested_imsi} is on device {device.device_name}")
             # Start SimTunnel for connection to serial device
             #tunnel = SimTunnel(connection, SerialSimLink(device))
             #tunnel = SimTunnel(connection, BluetoothSapSimLink("80:5A:04:0E:90:F6"))
             #tunnel = SimTunnel(connection, ModemATCommandLink("/dev/ttyACM0"))
-            tunnel = SimTunnel(connection, device.sl)
+            tunnel = SimTunnel(connection, device.sl, device.iccid)
             tunnel.start()
             # tunnel.join()
         else:
             logging.info(f"requested imsi {requested_imsi} is currently not connected to the system")
             connection.close()
 
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt as keyboard_interrupt:
+        print('Interrupted')
+        try:
+            sys.exit(1)
+        except SystemExit as system_exit:
+            os._exit(system_exit.code)
