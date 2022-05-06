@@ -42,7 +42,6 @@ class H3Transport(QuicConnectionProtocol, httpcore.AsyncHTTPTransport):
         stream_id = self._quic.get_next_available_stream_id()
         self._read_queue[stream_id] = deque()
         self._read_ready[stream_id] = asyncio.Event()
-
         # prepare request
         self._http.send_headers(
             stream_id=stream_id,
@@ -97,6 +96,7 @@ class H3Transport(QuicConnectionProtocol, httpcore.AsyncHTTPTransport):
         """
         Read the response status and headers.
         """
+        
         stream_ended = False
         while True:
             event = await self._wait_for_http_event(stream_id)
@@ -211,7 +211,7 @@ async def run(
 
 class QuicWrapper():
     def __init__(self):
-        # logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         # prepare configuration
         self.configuration = QuicConfiguration(is_client=True, alpn_protocols=H3_ALPN)
 
