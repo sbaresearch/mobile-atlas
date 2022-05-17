@@ -3,16 +3,22 @@
 # lock it in multithreading or use multiprocessing if an endpoint is bound to multiple IPs frequently
 import socket
 import ipaddress
+import netifaces
 
 etc_hosts = {}
 # decorate python built-in resolver
 def custom_resolver(builtin_resolver):
-    def wrapper(*args, **kwargs):
+    def wrapper(host, port, family=0, type=0, proto=0, flags=0): #(*args, **kwargs):
         try:
-            return etc_hosts[args[:2]]
+            entries = etc_hosts[(host, port)]
+            entries = filter(lambda x: not family or x[0] == family, entries)
+            entries = filter(lambda x: not type or x[1] == type, entries)
+            entries = filter(lambda x: not proto or x[2] == proto, entries)
+            #entries = filter(lambda x: not flags or x[3] == flags, entries)
+            return list(entries)
         except KeyError:
             # fall back to builtin_resolver for endpoints not in etc_hosts
-            return builtin_resolver(*args, **kwargs)
+            return builtin_resolver(host, port, family, type, proto, flags) #(*args, **kwargs)
 
     return wrapper
 
@@ -40,11 +46,20 @@ def _get_ips(domain_name, port=None, ip='ipv4v6'):
             return list(set([a[0] for a in [e[4] for e in alladdr]]))
     except Exception:
         return []
+    
 
-def _bind_ips(domain_name, port, ips):
+def iface_supports_ipv6():
+    ipv6_support = False
+    for i in netifaces.interfaces():
+        if i != 'lo' and i != 'veth0': # ignore loopback and network bridge
+            ipv6_support |= bool(netifaces.ifaddresses(i).get(netifaces.AF_INET6))
+    return ipv6_support    
+
+def _bind_ips(domain_name, port, ips, prefer_ipv6 = True): # order is defined in https://www.ietf.org/rfc/rfc3484.txt
     '''
     resolve (domain_name,port) to a given ip
     '''
+    prefer_ipv6 = iface_supports_ipv6()
     key = (domain_name, port)
     value_v4 = []
     value_v6 = []
@@ -59,7 +74,10 @@ def _bind_ips(domain_name, port, ips):
             value_v6.append((socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_STREAM, 6, '', (ip, port, 0, 0)))
             value_v6.append((socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_DGRAM, 17, '', (ip, port, 0, 0)))
             value_v6.append((socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_RAW, 0, '', (ip, port, 0, 0)))
-    value = [*value_v6, *value_v4] #prefer ipv6 over ipv4
+    if prefer_ipv6:
+        value = [*value_v6, *value_v4] #prefer ipv6 over ipv4
+    else:
+        value = [*value_v4, *value_v6] #prefer ipv6 over ipv4
     if value:
         etc_hosts[key] = value
 

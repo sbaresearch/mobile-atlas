@@ -28,3 +28,4 @@ gitpython
 boto3
 dnspython
 pyudev
+netifaces
