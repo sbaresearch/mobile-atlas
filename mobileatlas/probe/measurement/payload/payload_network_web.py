@@ -7,7 +7,7 @@ import requests
 from urllib.parse import urlparse
 from urllib3.exceptions import InsecureRequestWarning
 
-from mobileatlas.probe.measurement.utils.resolv_utils import _get_ip, _bind_ip, _fix_ip, _remove_binding
+from mobileatlas.probe.measurement.utils.resolv_utils import _get_ips, _bind_ips, _fix_ip, _remove_binding
 from mobileatlas.probe.measurement.utils.quic import QuicWrapper
 
 from mobileatlas.probe.measurement.test.test_network_base import TestNetworkBase
@@ -51,7 +51,7 @@ class PayloadNetworkWeb(PayloadNetworkBase):
         return request_url
     
     def get_target_ip(self):
-        return self.fix_target_ip or _get_ip(self.url.hostname)
+        return self.fix_target_ip or _get_ips(self.url.hostname)
 
     def get_protocol(self):
         return self.force_protocol or self.url.scheme or 'https' #use replacement protocol, otherwise protocol from link, otherwise just default to https (to get a link that is accepted by requests)
@@ -67,7 +67,7 @@ class PayloadNetworkWeb(PayloadNetworkBase):
             # Suppress only the single warning from urllib3 needed.
             requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
             logger.debug(f"fix hostname {self.url.hostname} to ip {self.fix_target_ip} on port {self.get_port()}")
-            _bind_ip(self.get_request_url().hostname, self.get_port(), self.get_target_ip()) 
+            _bind_ips(self.get_request_url().hostname, self.get_port(), self.get_target_ip()) 
         elif self.evade_dns and status == "start":
             logger.debug(f"add resolve-bingung for {self.url.hostname} on port {self.get_port()}")
             _fix_ip(self.url.hostname, self.get_port())

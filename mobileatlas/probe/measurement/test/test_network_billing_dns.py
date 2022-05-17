@@ -55,7 +55,7 @@ class TestNetworkBillingDnsEc2Relay(TestNetworkBillingDns):
         # TODO: load ec2 id and key from environment variable or config
         self.ec2 = Ec2Instance()
         self.ec2.start_instance_forward_dns("8.8.8.8")
-        self.ec2_ip = self.ec2.get_ip()
+        self.ec2_ip = self.ec2.get_ip()[0]
         self.mobile_atlas_mediator.disable_veth_gateway()
         
         #adjust nameserver of dns payload

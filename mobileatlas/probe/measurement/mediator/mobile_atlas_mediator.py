@@ -254,6 +254,12 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
 
     def disable_rf(self):
         return self.mm.disable_rf()
+    
+    def toggle_rf(self):
+        self.mm.disable_rf()
+        time.sleep(30)
+        self.mm.enable_rf()
+        time.sleep(10)
 
     def send_sms(self, number, text):
         return self.mm.send_sms(number=number, text=text)

@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 def is_port_open(host, port):
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        sock.settimeout(10)
         if sock.connect_ex((host, port)) == 0:
             #print("port open")
             return True
@@ -44,7 +45,7 @@ class Ec2Instance():
             ImageId='ami-0453cb7b5f2b7fca2',
             MinCount=1,
             MaxCount=1,
-            InstanceType='t2.micro',
+            InstanceType='t2.nano',
             SecurityGroups=['MobileAtlasAllPorts'],
             UserData=startup_script,
         )
@@ -52,7 +53,7 @@ class Ec2Instance():
         logger.info(f"wait until instance {self.instance.id} is up and running")
         self.instance.wait_until_running()
         self.instance.reload() #refresh info, to get public ip addr
-        logger.info(f"instance running, ip address is {self.instance.public_ip_address}")
+        logger.info(f"instance running, ip addresses are {*self.get_ip(),}")
 
     def start_instance_port_forward(self, port_forwards):
         startup_script = Ec2Instance.SCRIPT_HEADER
@@ -61,7 +62,7 @@ class Ec2Instance():
         self.start_instance_startup_script(startup_script)
 
     def wait_for_portforward(self, port):
-        ip = self.get_ip()
+        ip = self.get_ip()[0]
         while(not is_port_open(ip, port)):
             time.sleep(1)
             
@@ -86,7 +87,7 @@ class Ec2Instance():
 
     def get_ip(self):
         if self.instance:
-            return self.instance.public_ip_address
+            return list(filter(lambda v: v is not None, [self.instance.public_ip_address, self.instance.ipv6_address]))
         return None
 
     @staticmethod
@@ -94,8 +95,11 @@ class Ec2Instance():
         if not target_port:
             target_port = src_port
         script_portforward = f'''
-        socat tcp-listen:{src_port},reuseaddr,fork tcp-connect:{target_host}:{target_port} &
-        socat udp-listen:{src_port},reuseaddr,fork udp:{target_host}:{target_port} &
+        sysctl -w net.ipv6.bindv6only=1;
+        socat tcp4-listen:{src_port},reuseaddr,fork tcp4-connect:{target_host}:{target_port} &
+        socat udp4-listen:{src_port},reuseaddr,fork udp4:{target_host}:{target_port} &
+        socat tcp6-listen:{src_port},reuseaddr,fork tcp6-connect:{target_host}:{target_port} &
+        socat udp6-listen:{src_port},reuseaddr,fork udp6:{target_host}:{target_port} &
         '''
         return script_portforward
 

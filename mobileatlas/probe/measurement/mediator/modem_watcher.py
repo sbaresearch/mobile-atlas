@@ -302,12 +302,20 @@ class ModemWatcher:
         modem_obj = self.get_modem_from_list(modem_path)
         return modem_obj.get_modem().command_sync(command, timeout, None)
 
+    def change_function_mode(self, function_mode=1, timeout=30, modem_path=None):
+        # disalbe modem via modemmanager before setting cfun?
+        # bug: when enabling modem with cfun=1 voice does not work afterwards...
+        command = f'AT+CFUN={function_mode}'
+        modem_obj = self.get_modem_from_list(modem_path)
+        return modem_obj.get_modem().command_sync(command, timeout, None)
+    
     def disable_rf(self, timeout=30, modem_path=None):
         # disalbe modem via modemmanager before setting cfun?
         # bug: when enabling modem with cfun=1 voice does not work afterwards...
-        command = f'AT+CFUN=4'
-        modem_obj = self.get_modem_from_list(modem_path)
-        return modem_obj.get_modem().command_sync(command, timeout, None)
+        return self.change_function_mode(function_mode = 4, timeout=timeout, modem_path=modem_path)
+    
+    def enable_rf(self, timeout=30, modem_path=None):
+        return self.change_function_mode(function_mode = 1, timeout=timeout, modem_path=modem_path)
 
     def send_ussd_code(self, code="*101#", modem_path=None):
         modem_obj = self.get_modem_from_list(modem_path)

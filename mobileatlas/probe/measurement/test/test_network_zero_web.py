@@ -64,7 +64,7 @@ class TestNetworkZeroWebCheckSni(TestNetworkZeroWeb):
     def __init__(self, parser: TestParser):
         super().__init__(parser)
         self.ec2 = None
-        self.ec2_ip = None
+        self.ec2_ips = None
 
     def execute_test_network_pre(self):
         #first do ec2 shit
@@ -72,7 +72,7 @@ class TestNetworkZeroWebCheckSni(TestNetworkZeroWeb):
         # TODO: load ec2 id and key from environment variable or config
         self.ec2 = Ec2Instance()
         self.ec2.start_instance_forward_web(self.get_url_zero_rated())
-        self.ec2_ip = self.ec2.get_ip()
+        self.ec2_ips = self.ec2.get_ip()
         self.mobile_atlas_mediator.disable_veth_gateway()
 
         # then call super method
@@ -87,7 +87,7 @@ class TestNetworkZeroWebCheckSni(TestNetworkZeroWeb):
         self.mobile_atlas_mediator.disable_veth_gateway()
 
     def get_fixed_ip(self):
-        return self.ec2_ip
+        return self.ec2_ips
 
 class TestNetworkZeroWebCheckIp(TestNetworkZeroWeb):
     DEFAULT_SNI_HOST = "example.com"

@@ -78,6 +78,8 @@ class TestBase(MobileAtlasPlugin):
                 # if creditchecker does not utilize the modem disable the modems radio via at-command (might speed up billing?)
                 if not self.credit_checker.use_modem():
                     self.mobile_atlas_mediator.disable_rf()
+                else:
+                    self.mobile_atlas_mediator.toggle_rf()
                 self.credit_checker.wait_for_bill()
         self.mobile_atlas_mediator.cleanup(clean_pdp_context=True)
         self.mobile_atlas_mediator.shutdown() # stop glib loop

@@ -20,7 +20,7 @@ def custom_resolver(builtin_resolver):
 socket.getaddrinfo = custom_resolver(socket.getaddrinfo)
 
 #https://stackoverflow.com/questions/16276913/reliably-get-ipv6-address-in-python
-def _get_ip(domain_name, port=None, ip='ipv4v6'):
+def _get_ips(domain_name, port=None, ip='ipv4v6'):
     try:
         # search for all addresses, but take only the v6 ones
         alladdr = socket.getaddrinfo(domain_name, port)
@@ -32,28 +32,36 @@ def _get_ip(domain_name, port=None, ip='ipv4v6'):
             lambda x: x[0] == socket.AF_INET6, # means its ip6
             alladdr
         )
-        if ip is 'ipv4':
-            return list(ip4)[0][4][0]
-        elif ip is 'ipv6':
-            return list(ip6)[0][4][0]
+        if ip == 'ipv4':
+            return list(set([a[0] for a in [e[4] for e in ip6]]))
+        elif ip == 'ipv6':
+            return list(set([a[0] for a in [e[4] for e in ip6]]))
         else:
-            return alladdr[0][4][0]
+            return list(set([a[0] for a in [e[4] for e in alladdr]]))
     except Exception:
-        return None
+        return []
 
-def _bind_ip(domain_name, port, ip):
+def _bind_ips(domain_name, port, ips):
     '''
     resolve (domain_name,port) to a given ip
     '''
     key = (domain_name, port)
-    ipaddr = ipaddress.ip_address(ip)
-    # (family, type, proto, canonname, sockaddr)
-    if ipaddr.version == 4:
-        value = (socket.AddressFamily.AF_INET, socket.SocketKind.SOCK_STREAM, 6, '', (ip, port))
-    else:
-        value = (socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_STREAM, 6, '', (ip, port, 0, 0))
-        
-    etc_hosts[key] = [value]
+    value_v4 = []
+    value_v6 = []
+    for ip in ips:
+        ipaddr = ipaddress.ip_address(ip)
+        # (family, type, proto, canonname, sockaddr)
+        if ipaddr.version == 4:
+            value_v4.append((socket.AddressFamily.AF_INET, socket.SocketKind.SOCK_STREAM, 6, '', (ip, port)))
+            value_v4.append((socket.AddressFamily.AF_INET, socket.SocketKind.SOCK_DGRAM, 17, '', (ip, port)))
+            value_v4.append((socket.AddressFamily.AF_INET, socket.SocketKind.SOCK_RAW, 0, '', (ip, port)))
+        else:
+            value_v6.append((socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_STREAM, 6, '', (ip, port, 0, 0)))
+            value_v6.append((socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_DGRAM, 17, '', (ip, port, 0, 0)))
+            value_v6.append((socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_RAW, 0, '', (ip, port, 0, 0)))
+    value = [*value_v6, *value_v4] #prefer ipv6 over ipv4
+    if value:
+        etc_hosts[key] = value
 
 def _remove_binding(domain_name, port):
     try:
@@ -63,8 +71,6 @@ def _remove_binding(domain_name, port):
         return False
 
 def _fix_ip(domain_name, port):
-    ip = _get_ip(domain_name)
-    if ip is not None:
-        _bind_ip(domain_name, port, ip)
-        return True
-    return False
+    ips = _get_ips(domain_name)
+    _bind_ips(domain_name, port, ips)
+    return bool(ips)
