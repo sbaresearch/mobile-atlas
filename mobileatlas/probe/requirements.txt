@@ -27,3 +27,4 @@ pytz
 gitpython
 boto3
 dnspython
+pyudev

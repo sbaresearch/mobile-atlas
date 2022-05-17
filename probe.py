@@ -9,6 +9,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 activate_this = os.path.join(base_dir, 'mobileatlas/probe/venv/bin/activate_this.py')
 exec(open(activate_this).read(), {'__file__': activate_this})
 
+import pyudev
 import pexpect
 import kmod
 import time
@@ -17,9 +18,6 @@ from mobileatlas.probe.probe_args import ProbeParser
 from mobileatlas.probe.tunnel.modem_tunnel import ModemTunnel
 
 logger = logging.getLogger(__name__)
-
-# wait 15 sec until modem is initialized
-SLEEP_MODEM_INIT = 15
 
 # set of modules allowed to be blacklisted
 MODULES_BLACKLIST_ALLOWED = {"option", "qmi_wwan", "cdc_mbim", "cdc_wdm", "cdc_ncm", "cdc_acm", "cdc_ether", "usb_wwan",
@@ -44,7 +42,14 @@ def blacklist_kernel_modules(module_list):
                 f"Module {mod.name} is currently loaded but on blacklist and therefore has to be removed")
             km.rmmod(mod.name)
 
-
+def wait_for_modem(vendor_id='2c7c', model_id='0125'):
+    context = pyudev.Context()
+    while(True):
+        modem_device = list(context.list_devices(subsystem="usb", ID_VENDOR_ID=vendor_id, ID_MODEL_ID=model_id)) #alternatively a more generic filter could be used?
+        if modem_device:
+            break
+        time.sleep(1)
+    
 def main():
     """
     Main script on measurement node
@@ -72,7 +77,7 @@ def main():
     tunnel.setup()  # resets modem
 
     logger.info("wait some time until modem is initialized...")
-    time.sleep(SLEEP_MODEM_INIT)
+    wait_for_modem()
 
     if parser.is_measurement_namespace_enabled():
         # Start ModemManager and NetworkManager and generate namespace  with Magic Script
