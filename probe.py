@@ -51,6 +51,7 @@ def wait_for_modem(vendor_id='2c7c', model_id='0125'):
         time.sleep(1)
     
 def main():
+    start = time.time()
     """
     Main script on measurement node
          1) Connect to Serial Modem and GPIO with ModemTunnel
@@ -78,6 +79,8 @@ def main():
 
     logger.info("wait some time until modem is initialized...")
     wait_for_modem()
+    modem_reset_time = time.time() - start
+    logger.info(f"modem was detected after {modem_reset_time:.2f} seconds")
 
     if parser.is_measurement_namespace_enabled():
         # Start ModemManager and NetworkManager and generate namespace  with Magic Script
