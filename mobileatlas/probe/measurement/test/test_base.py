@@ -31,11 +31,11 @@ class TestBase(MobileAtlasPlugin):
         }
     }
 
-    def __init__(self, parser: TestParser, use_credit_checker=False):
+    def __init__(self, parser: TestParser, use_credit_checker=False, use_sms = False, use_call = False, use_ussd = False, use_connection = False, use_internet_gw = False):
         logger.info("creating test class...")
         self.parser = parser
         self.validate_test_config()
-        super().__init__(MobileAtlasMediator(parser.get_modem_type())) #create new mediator
+        super().__init__(MobileAtlasMediator(parser.get_modem_type()), use_sms, use_call, use_ussd, use_connection, use_internet_gw) #create new mediator
         self.result_logger = logging.getLogger("RESULTS")
         self.test_needs_billing_info = use_credit_checker
         self.credit_checker: CreditChecker = None

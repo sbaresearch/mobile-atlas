@@ -13,12 +13,46 @@ class ModemManagerCall:
         self._multiparty: bool = call_obj.get_multiparty()
         self._audio_port: str = call_obj.get_audio_port()
         self._audio_format: CallAudioFormat = CallAudioFormat(call_obj.get_audio_format())
+        
+    def get_path(self):
+        return self._path
+          
+    def get_state(self):
+        return self._state
+         
+    def get_state_reason(self):
+        return self._state_reason
+       
+    def get_direction(self):
+        return self._direction
+    
+    def get_number(self):
+        return self._number
+    
+    def get_multiparty(self):
+        return self._multiparty
+    
+    def get_audio_port(self):
+        return self._audio_port
+    
+    def get_audio_format(self):
+        return self._audio_format
 
 class CallAudioFormat:
     def __init__(self, audio_format_obj):
         self._encoding: str = audio_format_obj.get_encoding()
         self._rate: int =  audio_format_obj.get_rate()
         self._resolution: str =  audio_format_obj.get_resolution()
+    
+    def get_encoding(self):
+        return self._encoding
+         
+    def get_rate(self):
+        return self._rate
+         
+    def get_resolution(self):
+        return self._resolution
+        
 
 class ModemManagerSms:
     def __init__(self, sms_obj, received = False):

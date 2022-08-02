@@ -1,5 +1,5 @@
 
-from mobileatlas.probe.measurement.mediator.mm_definitions import ModemManagerSms
+from mobileatlas.probe.measurement.mediator.mm_definitions import ModemManagerSms, ModemManagerCall
 from mobileatlas.probe.measurement.mediator.mobile_atlas_mediator import MobileAtlasMediator
 
 
@@ -19,6 +19,9 @@ class MobileAtlasPlugin():
 
     def sms_received(self, sms: ModemManagerSms):
         pass
+    
+    def call_received(self, call: ModemManagerCall):
+        pass
 
     def ussd_notification_received(self, message):
         pass
@@ -34,7 +37,7 @@ class MobileAtlasPlugin():
         if self.use_sms:
             self.mobile_atlas_mediator.add_sms_observer(self.sms_received)
         if self.use_call:
-            pass    #TODO: add callback stuff for calls
+            self.mobile_atlas_mediator.add_call_observer(self.call_received)
         if self.use_ussd:
             self.mobile_atlas_mediator.add_ussd_observer(self.ussd_notification_received)
         if self.use_connection:
@@ -56,6 +59,6 @@ class MobileAtlasPlugin():
         if self.use_ussd:
             self.mobile_atlas_mediator.remove_ussd_observer(self.ussd_notification_received)
         if self.use_call:
-            pass    #TODO: add callback stuff for calls
+            self.mobile_atlas_mediator.remove_call_observer(self.call_received)
         if self.use_sms:
             self.mobile_atlas_mediator.remove_sms_observer(self.sms_received)

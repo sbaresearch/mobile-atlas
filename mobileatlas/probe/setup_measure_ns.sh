@@ -15,6 +15,7 @@ ns_mobileatlas
 
 #create mobileatlas tmp directory
 mkdir -p /tmp/mobileatlas;
+rm -rf /tmp/mobileatlas/*;
 
 #create directory where netns are mapped in case it's not already present (note /run == /var/run)
 mkdir -p /run/netns;

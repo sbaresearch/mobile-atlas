@@ -24,7 +24,7 @@ import gi
 
 gi.require_version('ModemManager', '1.0')
 from gi.repository import Gio, GLib, ModemManager
-from mobileatlas.probe.measurement.mediator.mm_definitions import Modem3gppRegistrationState, Modem3gppUssdSessionState, ModemManagerCall, ModemManagerSms, ModemState, ModemStateChangeReason
+from mobileatlas.probe.measurement.mediator.mm_definitions import CallStateReason, Modem3gppRegistrationState, Modem3gppUssdSessionState, ModemManagerCall, ModemManagerSms, ModemState, ModemStateChangeReason, CallState
 
 class MMCallbackClass:
     def mm_modem_added(self, modem_path):
@@ -39,10 +39,10 @@ class MMCallbackClass:
     def mm_modem_sms_state_changed(self, sms: ModemManagerSms):
         raise NotImplementedError("method not implemented")
 
-    def mm_modem_call_added(self, modem_path, call_path, number, direction, state, state_reason):
+    def mm_modem_call_added(self, call: ModemManagerCall):
         raise NotImplementedError("method not implemented")
 
-    def mm_modem_call_state_changed(self, modem_path, call_path, old_state, new_state, reason):
+    def mm_modem_call_state_changed(self, call: ModemManagerCall, old: CallState, new: CallState):
         raise NotImplementedError("method not implemented")
 
     def mm_modem_ussd_notification_changed(self, modem_path, state: Modem3gppUssdSessionState, message: str):
@@ -222,21 +222,23 @@ class ModemWatcher:
 
     def on_call_added(self, voice, call_path, modem_obj):
         calls = voice.list_calls_sync()
-        call = self.find_obj_via_path(call_path, calls)
-        call.connect('state_changed',
-                     self.on_call_state_changed, call, modem_obj)
+        call_obj = self.find_obj_via_path(call_path, calls)
+        call_obj.connect('state_changed',
+                     self.on_call_state_changed, call_obj, modem_obj)
+        call = ModemManagerCall(call_obj)
         if self.callback_obj != None:
-            self.callback_obj.mm_modem_call_added(modem_obj.get_object_path(), call.get_object_path(), call.get_number(),
-                                                  ModemManager.CallDirection.get_string(call.get_direction()), ModemManager.CallState.get_string(call.get_state()), ModemManager.CallStateReason.get_string(call.get_state_reason()))
-        # call.accept_sync()
-        # call.send_dtmf_sync("123")
+            self.callback_obj.mm_modem_call_added(call)
+        # call_obj.accept_sync()
+        # call_obj.send_dtmf_sync("123")
 
     def on_call_state_changed(self, call, old, new, state_reason, call_obj, modem_obj):
         print("on_call_state_changed {} ({} -> {})".format(ModemManager.CallStateReason.get_string(
             state_reason), ModemManager.CallState.get_string(old), ModemManager.CallState.get_string(new)))
+        call = ModemManagerCall(call) #state_reason does not equal call.get_state_reason() :X
+        call._state = CallState(new)
+        call._state_reason = CallStateReason(state_reason)
         if self.callback_obj != None:
-            self.callback_obj.mm_modem_call_state_changed(modem_obj.get_object_path(), call_obj.get_object_path(), ModemManager.CallState.get_string(
-                old), ModemManager.CallState.get_string(new), ModemManager.CallStateReason.get_string(state_reason))
+            self.callback_obj.mm_modem_call_state_changed(call, CallState(old), CallState(new))
 
     def on_ussd_notification_changed(self, ussd, network_notification, modem_obj):
         #network_notification is GParamString
@@ -360,15 +362,35 @@ class ModemWatcher:
         args = GLib.Variant('a{sv}', {
             'number': GLib.Variant('s', number)
         })
-        path = modem_obj.get_modem_voice().call_create_call_sync(args, None)
-        calls = modem_obj.get_modem_voice().list_calls_sync()
-        call = self.find_obj_via_path(path, calls)
-        # return call.start_sync(None)
-        success = call.start_sync()
+        call_path = self.create_call(number, modem_path)
+        success = self.start_call(call_path)
         time.sleep(ringtime)
-        success = call.hangup_sync()
-        # return path
+        success = self.hangup_call(call_path)
         return True
+    
+    def create_call(self, number, modem_path=None):
+        modem_obj = self.get_modem_from_list(modem_path)
+        args = GLib.Variant('a{sv}', {
+            'number': GLib.Variant('s', number)
+        })
+        path = modem_obj.get_modem_voice().call_create_call_sync(args, None)
+        return path
+    
+    def find_call(self, call_path, modem_path=None):
+        modem_obj = self.get_modem_from_list(modem_path)
+        calls = modem_obj.get_modem_voice().list_calls_sync()
+        call = self.find_obj_via_path(call_path, calls)
+        return call
+    
+    def start_call(self, call_path, modem_path=None):
+        call = self.find_call(call_path, modem_path)
+        success = call.start_sync()
+        return success
+    
+    def hangup_call(self, call_path, modem_path=None):
+        call = self.find_call(call_path, modem_path)
+        success = call.hangup_sync()
+        return success
 
     def send_sms(self, number, text, modem_path=None):
         modem_obj = self.get_modem_from_list(modem_path)

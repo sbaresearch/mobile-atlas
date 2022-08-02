@@ -2,7 +2,7 @@
 from pathlib import Path
 import psutil
 from mobileatlas.probe.measurement.mediator.nm_definitions import DeviceState, DeviceStateReason
-from mobileatlas.probe.measurement.mediator.mm_definitions import Modem3gppRegistrationState, Modem3gppUssdSessionState, ModemManagerSms, ModemState, ModemStateChangeReason, SmsState
+from mobileatlas.probe.measurement.mediator.mm_definitions import Modem3gppRegistrationState, Modem3gppUssdSessionState, ModemManagerSms, ModemState, ModemStateChangeReason, SmsState, ModemManagerCall
 import os
 import json
 import time
@@ -68,6 +68,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         self.nm_modem_state = DeviceState.UNKNOWN
 
         self.sms_observer = []
+        self.call_observer = []
         self.connection_observer = []
         self.ussd_observer = []
 
@@ -119,15 +120,15 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         # combine mm state info with nm state info
         self.connection_state_changed()
 
-    def mm_modem_call_added(self, modem_path, call_path, number, direction, state, state_reason):
-        log_msg = f"mm_modem_call_received {call_path}: ({number}) -> {state} - {state_reason}"
-        logger.info(log_msg, extra=format_extra('mm_modem_call_received', {'modem_path' : modem_path, 
-                           'call_path': call_path, 'number': number, 'direction': direction, 'state': state, 'state_reason': state_reason}))
+    def mm_modem_call_added(self, call):
+        log_msg = f"mm_modem_call_received {call.get_path()}: ({call.get_number()}) -> {call.get_state()} - {call.get_state_reason()}"
+        logger.info(log_msg, extra=format_extra('mm_modem_call_received', {'call' : call}))
+        self.notify_call_subscriber(call)
 
-    def mm_modem_call_state_changed(self, modem_path, call_path, old_state, new_state, reason):
-        log_msg = f"mm_modem_call_state_changed {call_path}: {old_state} -> {new_state}"
-        logger.info(log_msg, extra=format_extra('mm_modem_call_state_changed', {'modem_path' : modem_path, 
-                           'call_path': call_path, 'old_state': old_state, 'new_state': new_state, 'reason': reason}))
+    def mm_modem_call_state_changed(self, call, old_state, new_state):
+        log_msg = f"mm_modem_call_state_changed: {call.get_path()}: {call.get_state()} ({old_state} -> {new_state})"
+        logger.info(log_msg, extra=format_extra('mm_modem_call_state_changed', {'call' : call}))
+        self.notify_call_subscriber(call)
 
     def mm_modem_ussd_notification_changed(self, modem_path, state: Modem3gppUssdSessionState, message: str):
         log_msg = 'mm_modem_ussd_notification_changed', {'state': state, 'message': message}
@@ -244,10 +245,25 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
 
     def change_charset(self, charset="UCS2"):
         return self.mm.change_charset(charset)
+    
+    def enable_usb_sound_card(self):
+        self.mm.send_at_command(command='AT+QPCMV=1,2', timeout=30)
 
     def send_ussd_code_at(self, code="*101#"):
         command = f"AT+CUSD=1,{code},15"
         self.mm.send_at_command(command=command, timeout=10)
+        
+    def call_ping(self, number, ringtime=10):
+        self.mm.call_ping(number, ringtime)
+        
+    def create_call(self, number):
+        return self.mm.create_call(number)
+    
+    def start_call(self, call_path):
+        return self.mm.start_call(call_path)
+    
+    def hangup_call(self, call_path):
+        return self.mm.hangup_call(call_path)
 
     def send_at_command(self, command):
         return self.mm.send_at_command(command=command, timeout=10)
@@ -274,6 +290,7 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             #self.clear_pdp_context_list()
             # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
             self.change_charset(charset="UCS2")
+            self.enable_usb_sound_card()
         #TODO: if driver != option
         os.system("ip netns exec default ip link set wwan0 netns ns_mobileatlas")
 
@@ -435,6 +452,16 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
     
     def remove_sms_observer(self, observer):
         self.sms_observer.append(observer)
+        
+    def add_call_observer(self, observer):
+        self.call_observer.append(observer)
+    
+    def notify_call_subscriber(self, call: ModemManagerCall):
+        for observer in self.call_observer:
+            observer(call)
+    
+    def remove_call_observer(self, observer):
+        self.call_observer.append(observer)
 
     def add_connection_observer(self, observer):
         self.connection_observer.append(observer)
