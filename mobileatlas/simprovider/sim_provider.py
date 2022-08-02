@@ -6,6 +6,7 @@ import logging
 from mobileatlas.simprovider.device_observer import DeviceEvent, DeviceObserver
 from pySim.transport.serial import SerialSimLink
 from pySim.transport.pcsc import PcscSimLink
+from pySim.transport.bluetooth_rsap import BluetoothSapSimLink
 from pySim.commands import SimCardCommands
 from pySim.cards import SimCard
 
@@ -19,8 +20,12 @@ class SimInfo:
         self.sl = sl
 
 class SimProvider(DeviceEvent):
-    def __init__(self):
+    def __init__(self, bluetooth_mac=None):
         self.sims = []
+        if bluetooth_mac:
+            sl = BluetoothSapSimLink(bluetooth_mac) #("80:5A:04:0E:90:F6")
+            sim = SimProvider.query_sim_info("Bluetooth[rSAP]", sl)
+            self.sims.append(sim)
         observer = DeviceObserver()
         observer.add_observer(self)
         observer.start()
@@ -73,6 +78,7 @@ class SimProvider(DeviceEvent):
         if not imsi:
             logging.debug(f"Error querying imsi ({imsi}, {sw})")
             return None
+        #imsi = "123456789101112"
 
         sim_info = SimInfo(iccid, imsi, device_name, sl.get_atr(), sl)
 

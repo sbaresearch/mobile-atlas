@@ -12,7 +12,6 @@ import argparse
 from mobileatlas.simprovider.sim_provider import SimProvider
 from mobileatlas.simprovider.tunnel.sim_tunnel import SimTunnel
 
-
 HOST_DEFAULT = "0.0.0.0"
 PORT_DEFAULT = 8888
 
@@ -49,10 +48,11 @@ def main():
     parser = argparse.ArgumentParser(conflict_handler="resolve")
     parser.add_argument('-h', '--host', default=HOST_DEFAULT, help="IP for TCP/IP Socket")
     parser.add_argument('-p', '--port', type=int, default=PORT_DEFAULT, help="Port for TCP/IP Socket")
+    parser.add_argument('-b', '--bluetooth-mac', type=str, required=False, help='MAC address of the bluetooth device (rSAP)')
     args = parser.parse_args()
 
     # sim_mapping[ imsi:string ] = serial_port:string
-    sim_provider = SimProvider()
+    sim_provider = SimProvider(args.bluetooth_mac)
     srv = init_server(args.host, args.port)
 
     while True:
