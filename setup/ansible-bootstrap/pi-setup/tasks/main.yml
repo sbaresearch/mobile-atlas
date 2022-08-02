@@ -100,6 +100,14 @@
       state: stopped
     become: yes
 
+  - name: Manipulate network-manager config file
+    ini_file:
+      path: /etc/NetworkManager/NetworkManager.conf
+      section: keyfile
+      option: unmanaged-devices
+      value: interface-name:veth0;interface-name:veth1
+    become: yes
+
   - name: Block QMI kernel module
     lineinfile:
       path: /etc/modprobe.d/blacklist-mobileatlas.conf
@@ -202,16 +210,17 @@
     become: yes
 
   - name: Add 30 seconds delay to wg startup (ntp server needs to sync time before wireguard sets default dns)
-    hosts: all
-    remote_user: pi
-    tasks:
-      - name: Manipulate wg service file
-        ini_file:
-          path: /lib/systemd/system/wg-quick@.service
-          section: Service
-          option: ExecStartPre
-          value: /bin/sleep 30
-        become: yes
+    ini_file:
+      path: /lib/systemd/system/wg-quick@.service
+      section: Service
+      option: ExecStartPre
+      value: /bin/sleep 30
+    become: yes
+
+  - name: Set timezone to UTC
+    timezone:
+      name: UTC
+    become: yes
 
   - name: Reboot the raspi
     reboot:

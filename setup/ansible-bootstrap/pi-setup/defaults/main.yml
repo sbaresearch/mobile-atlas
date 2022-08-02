@@ -25,6 +25,7 @@ packages:
   - git
   - speedtest-cli
   - tcpdump
+  - socat
   - network-manager
   - wireguard
   - watchdog
