@@ -27,6 +27,7 @@ packages:
   - tcpdump
   - socat
   - network-manager
+  - uhubctl
   - wireguard
   - watchdog
   - gir1.2-nm-1.0

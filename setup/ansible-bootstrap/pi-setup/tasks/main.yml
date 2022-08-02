@@ -108,6 +108,12 @@
       value: interface-name:veth0;interface-name:veth1
     become: yes
 
+  - name: Add debugging option to pppd
+    lineinfile:
+      path: /etc/ppp/options
+      line: debug
+    become: yes
+
   - name: Block QMI kernel module
     lineinfile:
       path: /etc/modprobe.d/blacklist-mobileatlas.conf
