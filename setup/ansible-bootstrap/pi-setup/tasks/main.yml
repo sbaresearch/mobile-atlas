@@ -100,6 +100,13 @@
       state: stopped
     become: yes
 
+  - name: Stop and disable NetworkManager service
+    service:
+      name: NetworkManager
+      enabled: no
+      state: stopped
+    become: yes
+
   - name: Manipulate network-manager config file
     ini_file:
       path: /etc/NetworkManager/NetworkManager.conf
@@ -114,10 +121,10 @@
       line: debug
     become: yes
 
-  - name: Block QMI kernel module
+  - name: Create kernelmodule blacklist file
     lineinfile:
       path: /etc/modprobe.d/blacklist-mobileatlas.conf
-      line: blacklist qmi_wwan
+      line: blacklist
       owner: root
       group: root
       mode: '0644'
