@@ -147,8 +147,14 @@
 
   - name: Clone mobileatlas git repository
     git:
-      repo: https://measurement-probe:MBGTnHVeqaR4U73qjfis@gitlab.sba-research.org/Willi/mobile-atlas.git
+      repo: https://github.com/sbaresearch/mobile-atlas.git
       dest: /home/pi/mobile-atlas
+    become_user: pi
+
+  - name: Clone mobileatlas config (private) git repository
+    git:
+      repo: https://measurement-probe:fillinaccesskey@gitlab.sba-research.org/ggegenhuber/mobile-atlas-config.git
+      dest: /home/pi/mobile-atlas-config
     become_user: pi
 
   - name: Install virtualenv for all users
