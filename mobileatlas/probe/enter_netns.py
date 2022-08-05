@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import psutil
+import pexpect
+
+modem_interface = "wwan0"
+measurement_ns = "ns_mobile_atlas"
+
+def move_modem_to_ns(x):
+    if psutil.net_if_addrs().get(modem_interface):
+        print("move wwan to measurement namespace...")
+        pexpect.run(f"ip link set {modem_interface} netns {measurement_ns}")
 
 def main():
     enter_namespace = '--no-namespace' not in sys.argv
@@ -21,11 +29,12 @@ def main():
 
         # Execute nsenter to switch all namespaces (incl. network namespace) into ModemManager namespace
         #    and execute testscript with python3
-        os.system(f'nsenter -t {process[0].pid} -a --wd={os.getcwd()} {command}')
+        cmd = f'nsenter -t {process[0].pid} -n -m -p --wd={os.getcwd()} {command}'
+        pexpect.run(cmd, logfile=sys.stdout.buffer, events={':nm_modem_added:':move_modem_to_ns})
 
     # --no-namespace option --> just execute test script without wrapping it into new ns
     else:
-        os.system(command)
+        pexpect.run(command)
 
 if __name__ == '__main__':
     main()
