@@ -291,8 +291,6 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
             # hotfix: set charset to ucs2 to get modemmanagers ussd code work out of the box
             self.change_charset(charset="UCS2")
             self.enable_usb_sound_card()
-        #TODO: if driver != option
-        os.system("ip netns exec default ip link set wwan0 netns ns_mobileatlas")
 
     def connect_modem(self, apn=None, username=None, password=None, pdp_type=None, network_id=None, connection_timeout = 20, connected_preservation_time = 5, registration_timeout = 60, registered_preservation_time = None, retries=10, cooldown=10):
         if self.modem_connected.is_set():
