@@ -69,6 +69,13 @@
     ignore_errors: yes
     become: yes
 
+  - name: Stop and disable login via tty1
+    service:
+      name: getty@tty1
+      enabled: no
+      state: stopped
+    become: yes
+
   - name: Adapt config
     blockinfile:
       path: /boot/config.txt
@@ -147,7 +154,8 @@
 
   - name: Clone mobileatlas git repository
     git:
-      repo: https://github.com/sbaresearch/mobile-atlas.git
+      #repo: https://github.com/sbaresearch/mobile-atlas.git
+      repo: https://measurement-probe-read:sbaglpat-jxjjihMJdxi5wYd7bAsC@gitlab.sba-research.org/ggegenhuber/mobile-atlas-public.git
       dest: /home/pi/mobile-atlas
     become_user: pi
 

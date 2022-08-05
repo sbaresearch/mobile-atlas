@@ -16,14 +16,18 @@ apt_keys:
     id: 04EE7237B7D453EC
   - server: keyserver.ubuntu.com
     id: 648ACFD622F3D138
+  - server: keyserver.ubuntu.com
+    id: 0E98404D386FA1D9
 
 packages:
   - raspberrypi-kernel-headers
   - python3-pip
   - git
+  - vim
   - speedtest-cli
   - tcpdump
   - socat
+  - dnsutils #dig
   - network-manager
   - uhubctl
   - wireguard
