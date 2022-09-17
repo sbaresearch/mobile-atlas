@@ -1,0 +1,36 @@
+body {
+	font-family: "Open Sans", sans-serif;
+	color: #212529;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: "Jost", sans-serif;
+	font-weight: bold;
+	color: #37517e;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid black;
+  padding: .5em;
+}
+
+.center {
+  text-align: center;
+}
+
+td.right {
+  text-align: right;
+}
+
+.hidden {
+  display: none;
+}
+
+.inner {
+  border: none;
+  padding: .2em;
+}

@@ -1,0 +1,10 @@
+flask
+flask-sqlalchemy
+flask-migrate
+flask-redis
+flask-basicauth
+phone-iso3166
+emoji-country-flag
+
+# For probe stub
+requests

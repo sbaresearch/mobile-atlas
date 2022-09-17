@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+    {% block content %}
+    <h2>Probe {{p.name if p.name}} - {{p.mac}}</h2>
+    <table>
+        <tr><th>ID</th><td class="center">{{p.id}}</td></tr>
+
+        <tr><td colspan="2" style="border:none;"></td></tr>
+        <tr><th>Name</th><td class="center">{{p.name if p.name}}</td></tr>
+        <tr><th>MAC</th><td class="center">{{p.mac}}</td></tr>
+        <tr><th>Last Service Startup</th><td class="center">{{startups[0].timestamp.strftime('%Y-%m-%d %H:%M:%S') if startups}}{%if startups %} <a href="/probe/{{p.id}}/startups">➕ {{startups|length}}</a>{%endif%}</td></tr>
+        <tr><th>Last Poll</th><td class="center">{{p.token_last_access.strftime('%Y-%m-%d %H:%M:%S') if p.token_last_access}}</td></tr>
+        <tr><th class="center">Polled last interval</th><td class="center">{{'✅' if p.is_polling() else ('❌' if p.token_last_access)}}</td></tr>
+
+        <tr><td colspan="2" style="border:none;"></td></tr>
+        <tr><th>Current Status</th><td class="center">{%if status and status[0].status.name=="online"%}🟢 online{%elif status and status[0].status.name=="offline"%}🟥 offline{%endif%}{%if status %} {{status[0].duration()}}  <a href="/probe/{{p.id}}/status">➕ {{status|length}}</a>{%endif%}</td></tr>
+        {% for st, p in percentages.items() %}
+        <tr>
+            <th>{%if st.name=="online"%}🟢 online{%elif st.name=="offline"%}🟥 offline{%endif%}</th>
+            <td class="center">{{p|round(2)}}%</td>
+        </tr>
+        {% endfor %}
+
+        <tr><td colspan="2" style="border:none;"></td></tr>
+        <tr><th>Token</th><td class="center">{%if p.token%}{{p.token[:4]}}...{{p.token[-4:]}}{%endif%}</td></tr>
+        <tr><th>Token Expiration</th><td class="center">{{p.token_expiration.strftime("%Y-%m-%d") if p.token_expiration}}</td></tr>
+        <tr><th>Token Candidate</th><td class="center">{%if p.token_candidate%}{{p.token_candidate[:4]}}...{{p.token_candidate[-4:]}}{%endif%}</td></tr>
+        <tr><th>Token Activated</th><td class="center">{{'✅' if p.is_activated() else  ('❌' if p.token)}}</td></tr>
+
+        {% if psi %}
+        <tr><td colspan="2" style="border:none;"></td></tr>
+        <tr><th>Latest SystemInformation</th><td class="center">{{psi[0].timestamp.strftime('%Y-%m-%d %H:%M:%S')}}</td></tr>
+        <tr><th>Total Updates</th><td class="center"><a href="/probe/{{p.id}}/systeminformations">➕ {{psi|length}}</a></td></tr>
+        <tr><th>Uptime</th><td class="center">{{psi[0].uptime()}}</td></tr>
+        <tr><th>Temp</th><td class="center">{{psi[0].temperature()|round(2)}}°C</td></tr>
+        <tr><th>HEAD Commit</th><td class="center">{{psi[0].head()}}</td></tr>
+        <tr><th>Network</th><td class="center">{%for a,b,c,d in psi[0].network() if a in ['wg0','eth0']%}<b>{{a}}</b><br>{{b}}<br>RX: {{c|round(2)}}MB<br>TX: {{d|round(2)}}MB<br>{%endfor%}</td></tr>
+        {% endif %}
+    </table>
+    {% endblock %}

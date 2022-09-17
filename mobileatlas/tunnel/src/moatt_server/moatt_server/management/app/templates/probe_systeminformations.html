@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+    {% block content %}
+    <h2>ProbeSystemInformations for {{p.name if p.name}} - {{p.mac}}</h2>
+    {% if psi %}
+        <table>
+            <tr>
+                <th class="hidden">ID</th>
+                <th>Timestamp</th>
+                <th>Uptime</th>
+                <th>Temp</th>
+                <th>HEAD Commit</th>
+                <th>Network</th>
+                <th>JSON</th>
+            </tr>
+        {% for si in psi %}
+            <tr>
+                <td class="hidden">{{si.id}}</td>
+                <td>{{si.timestamp.strftime('%Y-%m-%d %H:%M:%S')}}</td>
+                <td>{{si.uptime()}}</td>
+                <td class="center">{{si.temperature()|round(2)}}°C</td>
+                <td class="center">{{si.head()}}</td>
+                <td><table class="inner">{%for a,b,c,d in si.network() if a in ['wg0','eth0']%}<tr><td class="inner right">{{a}}</td><td class="inner right">{{b}}</td><td class="inner right">RX: {{c|round(2)}}MB</td><td class="inner right">TX: {{d|round(2)}}MB</td></tr>{%endfor%}</table></td>
+                <td><button class="show">Show JSON</button><textarea class="hidden">{{si.pretty()}}</textarea></td>
+            </tr>
+        {% endfor %}
+        </table>
+    {% endif %}
+    {% endblock %}
