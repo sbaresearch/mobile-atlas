@@ -82,7 +82,7 @@ class CreditChecker_AT_A1_SMS(CreditChecker):
                 used_zero_rating = self.receive_used_units_zero_rating()
                 billed_units = used_units - used_zero_rating
                 ret.traffic_bytes_total = billed_units
-                ret.bill_dump = {'used_bytes':used_units, 'free_stream_bytes':used_units}
+                ret.bill_dump = {'used_bytes':used_units, 'free_stream_bytes':used_zero_rating}
 
                 if ret.traffic_bytes_total is None:
                     raise ValueError("Failed to retrieve current bill")

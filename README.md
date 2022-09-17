@@ -23,8 +23,12 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [setup](/setup): setup scripts that are used to install the MobileAtlas framework on a dedicated Raspberry Pi device
 
 ### Related Repositories
+* [mobile-atlas-management](https://github.com/sbaresearch/mobile-atlas-management): management dashboard for admin interactions with deployed probes
 * [pySIM](https://github.com/GGegenhuber/pysim): forked version of pySIM that is used by SIM provider and measurement probe
 * [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating practices
+
+### Publications
+* [GLOBECOM22: Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
 
 ### Geographical Decoupling of SIM Card and Modem
 Physically moving devices and SIM cards between countries to enable measurements in a roaming environment is costly and does not scale well.
@@ -52,6 +56,7 @@ A detailed breakdown of all used hardware components can be found in the in the 
 
 ##### Measurement Probe Deployment During Current Fieldtest
 MobileAtlas is currently deployed in eight European countries: Austria, Belgium, Croatia, Finland, Germany, Romania, Slovakia, and Slovenia.
+Although our focus lies on countries within the EU we also have measurement probes in two American countries: Canada and USA.
 <p align="left">
     <img alt="Current MobileAtlas Measurement Probe Prototype" title="Current MobileAtlas Measurement Probe Prototype" src="images/current_deployment.png" width="550">
 </p>
