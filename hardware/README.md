@@ -46,7 +46,7 @@ Measurement Probe
 | Modem Adapter | [Sixfab Raspberry Pi LTE Base HAT](https://sixfab.com/product/raspberry-pi-base-hat-3g-4g-lte-minipcie-cards/) | 44€ |
 | Antenna | [Pulse W6113B0100](https://sixfab.com/product/lte-main-diversity-gnss-triple-port-u-fl-antenna-100mm/) | 10€ |
 | Case | [Sixfab Raspberry Pi IP54 Case](https://sixfab.com/product/raspberry-pi-ip54-outdoor-iot-project-enclosure/) | 80€ |
-| SIM Adapter | [Selfmade PCB](sim-adapter/) | 2€ |
+| SIM Adapter | [Selfmade SIM PCB](sim-adapter/) | 2€ |
 | Misc | Network Cable, Wires, etc. | 3€ |
 
 Further remarks regarding hardware components:
@@ -89,3 +89,18 @@ Althouth the early prototype was working as expected, we experienced some stabil
     <img alt="Early MobileAtlas Measurement Probe Prototype" title="Early MobileAtlas Measurement Probe Prototype" src="../images/probe_early_prototype.png" width="550">
 </p>
 
+
+
+### Candidate Components for 5G-ready Probe Version (testing)
+| Component | Model | Cost |
+| --- | --- | ---: |
+| Single-Board Computer | [Raspberry Pi 4 Model B, 8GB RAM](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) | 100€ |
+| Power Supply | [Official Raspberry Pi Power Supply](https://www.raspberrypi.com/products/type-c-power-supply/) | 10€ |
+| SD Card | Samsung EVO Plus 512GB (MB-MC512GA/EU) | 80€ |
+| Modem | [Quectel RM500Q (M.2)](https://www.quectel.com/wp-content/uploads/2021/03/Quectel_RM500Q-AE_5G_Specification_V1.1.pdf) | 500€ |
+| Modem Adapter | [Sixfab Raspberry Pi 5G Development Kit (including Case, Antennas)](https://sixfab.com/product/raspberry-pi-5g-development-kit-5g-hat/) | 210€ |
+| SIM Adapter | [Selfmade SIM PCB](sim-adapter/) | 2€ |
+| Misc | Network Cable, Wires, etc. | 3€ |
+
+Further remarks:
+We're currently building a 5G-ready prototype with the listed components. Supporting other modems should be easily possible, because we use ModemManager as an abstraction layer to communicate with the attached modem. Similarily, other 5G HATs (e.g., [SIM8200EA-M2 5G HAT](https://www.waveshare.com/wiki/SIM8200EA-M2_5G_HAT)) should work equally well, since the modem is actually just attached via USB. However, we currently use HAT-specific GPIO ports to send out-of-band control messages to the modem (e.g., powering up/down via pulling a specific pin to high/low). Using a different HAT therefore requires minor patches to correctly map this to the corresponding GPIO pins.
