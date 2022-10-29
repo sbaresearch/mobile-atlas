@@ -13,7 +13,9 @@ import pyudev
 import pexpect
 import kmod
 import time
+from datetime import datetime
 import logging
+from pathlib import Path
 from mobileatlas.probe.probe_args import ProbeParser
 from mobileatlas.probe.tunnel.modem_tunnel import ModemTunnel
 
@@ -51,7 +53,7 @@ def wait_for_modem(vendor_id='2c7c', model_id='0125'):
         time.sleep(1)
     
 def main():
-    start = time.time()
+    start = datetime.utcnow()
     """
     Main script on measurement node
          1) Connect to Serial Modem and GPIO with ModemTunnel
@@ -79,8 +81,8 @@ def main():
 
     logger.info("wait some time until modem is initialized...")
     wait_for_modem()
-    modem_reset_time = time.time() - start
-    logger.info(f"modem was detected after {modem_reset_time:.2f} seconds")
+    modem_reset_time = datetime.utcnow() - start
+    logger.info(f"modem was detected after {modem_reset_time.total_seconds():.2f} seconds")
 
     if parser.is_measurement_namespace_enabled():
         # Start ModemManager and NetworkManager and generate namespace  with Magic Script
@@ -106,10 +108,16 @@ def main():
 
     # shutdown sim tunnel connection
     tunnel.shutdown()
+    stop = datetime.utcnow()
 
-    logger.info("finished, bye!")
+    # simple test log
+    path = Path("/etc/activities.csv")
+    path.touch()
+    with path.open('a') as f:
+        f.write(f"0,{parser.get_test_name()},{start.isoformat(timespec='seconds')},{stop.isoformat(timespec='seconds')}")
+
+    logger.info(f"finished (duration {stop-start}), bye!")
     exit(0)
-
 
 if __name__ == "__main__":
     main()

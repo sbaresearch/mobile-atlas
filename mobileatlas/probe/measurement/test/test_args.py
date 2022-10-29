@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import uuid
 import argparse
 from datetime import datetime
 import logging
@@ -55,6 +56,7 @@ class TestParser():
                         default=TestParser.DEFAULT_MODEM_TYPE, help='Modem model that is used within the test environment (default: %(default)s)')
         self.parser.add_argument('--testname', default=None, help='Name of the test will be executed (default: %(default)s)')
         self.parser.add_argument('--configfile', type=argparse.FileType('r', encoding='UTF-8'), required=True)
+        self.parser.add_argument('--uuid', default=uuid.uuid1(), help='Unique identifier for the test run (per default an auto-generated uuid is used))')
         self.parser.add_argument('--imsi', type=int, default=None, help="Override imsi from configfile")
         self.parser.add_argument('--debug-bridge', dest='debug_bridge', action='store_true', help='Enable virtual ethernet bridge and forward ports to allow debugging inside netns')
         self.parser.add_argument('--loglevel', dest='log_level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO', help='Log level (default: %(default)s)')
@@ -76,6 +78,10 @@ class TestParser():
         # get all args and replace config filepath with absolute path
         argv_copy = [self.config_file_path if a == self.test_args.configfile.name else a for a in sys.argv]
         all_args = ' '.join(argv_copy[1:])  # skip executable file name
+        # fixate uuid
+        if '--uuid ' not in all_args:
+            all_args = f"{all_args} --uuid {self.get_uuid()}"
+
         return all_args
 
     def parse(self):
@@ -111,6 +117,9 @@ class TestParser():
 
     def get_modem_type(self):
         return self.test_args.modem
+
+    def get_uuid(self):
+        return self.test_args.uuid
     
     def get_imsi(self):
         # cmdline imsi overrides test config imsi
