@@ -107,11 +107,11 @@
           </div>
           <div class="card-body">
             <h5 class="card-title">Uptime</h5>
-            <p class="card-text">16 days, 21:52:21</p>
+            <p class="card-text">{{ system_info.get('uptime') }}</p>
           </div>
           <div class="card-body">
             <h5 class="card-title">Temperature</h5>
-            <p class="card-text">55.99°C</p>
+            <p class="card-text">{{ system_info.get('temperature') }}</p>
           </div>
         </div>
 
@@ -122,24 +122,41 @@
           <div class="card-header">
             Network
           </div>
-
           <div class="card-body">
             <h5 class="card-title">MAC Address</h5>
-            <p class="card-text">FF:FF:FF:FF:FF</p>
+            <p class="card-text">{{ network_info.get('mac_address') }}</p>
           </div>
           <div class="card-body">
             <h5 class="card-title">Hostname</h5>
-            <p class="card-text">mobileatlas-probe</p>
+            <p class="card-text">{{ network_info.get('hostname') }}</p>
           </div>
+          
           <div class="card-body">
-            <h5 class="card-title">IP Address</h5>
-            <p class="card-text">255.255.255.255</p>
-          </div>
-          <div class="card-body">
-            <h5 class="card-title">Network Usage</h5>
-            <p class="card-text">1376.52MB (RX), 149.5MB (TX)</p>
+            <h5 class="card-title">Interfaces</h5>
+            <div class="card-text row">
+              {% for name, values in network_info.get('interfaces', {}).items() %}
+              <div class="col-sm-6">
+                <div class="card border-light">
+                  <div class="card-header">
+                    {{name}}
+                  </div>
+                  <div class="card-body">
+                    <h6 class="card-title">IP Address</h6>
+                    <p class="card-text">{{ values.get('ip_address') }}</p>
+                  </div>
+                  <div class="card-body">
+                    <h6 class="card-title">Network Usage</h6>
+                    <p class="card-text">{{ values.get('traffic_stats') }}</p>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
+          
+
+  
 
         <br>
         
@@ -151,49 +168,67 @@
           
           <div class="card-body">
             <h5 class="card-title">Total Measurement Counter</h5>
-            <p class="card-text">123</p>
+            <p class="card-text">{{activities.get('measurement_cnt')}}</p>
           </div>
 
           <div class="card-body">
             <h5 class="card-title">Recent Measurements</h5>
             <div class="card-text">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Start</th>
-                    <th scope="col">Stop</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <th scope="row">1</th>
-                    <td>TestNetworkCheckIp</td>
-                    <td>2022-10-27 12:54:43</td>
-                    <td>2022-10-27 12:56:49</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">2</th>
-                    <td>TestNetworkZeroWeb</td>
-                    <td>2022-10-27 13:12:21</td>
-                    <td></td>
-                  </tr>
-                  <tr>
-                    <th scope="row">3</th>
-                    <td>TestNetworkBase</td>
-                    <td>2022-10-27 13:14:01</td>
-                    <td>2022-10-27 13:16:33</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Start</th>
+                      <th scope="col">Stop</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for m in activities.get('measurement', []) %}
+                    <tr>
+                      <th scope="row">{{m.get('id')}}</th>
+                      <td>{{m.get('activity_name')}}</td>
+                      <td>{{m.get('start')}}</td>
+                      <td>{{m.get('stop')}}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <h5 class="card-title">Service Log</h5>
+            <div class="card-text">
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Start</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for m in activities.get('service', []) %}
+                    <tr>
+                      <th scope="row">{{m.get('id')}}</th>
+                      <td>{{m.get('activity_name')}}</td>
+                      <td>{{m.get('start')}}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>  
+              </div>
             </div>
           </div>
         </div>
 
 
       </div>
-    </section><!-- End About Us Section -->
+    </section><!-- End Status Page Section -->
 
 
     <!-- ======= Contact Section ======= -->

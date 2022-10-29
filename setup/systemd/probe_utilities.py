@@ -2,7 +2,9 @@
 
 import subprocess
 import os
+import csv
 import json
+import socket
 from pathlib import Path
 
 NET_INTERFACE = "eth0"
@@ -35,6 +37,23 @@ def get_network_info():
         return network_info    
     except Exception:
         pass
+    
+def filter_network_info(if_list, if_name=NET_INTERFACE):
+    return next((x for x in if_list if x.get('ifname') == if_name), None)
+
+def extract_ip_addr(if_info):
+    addr_infos = if_info.get('addr_info', [])
+    addr_info = next((x for x in addr_infos), dict())
+    return addr_info.get('local')
+
+def extract_traffic_stats(if_info):
+    stats = if_info.get('stats64', {})
+    rx = stats.get('rx', {})
+    tx = stats.get('tx', {})
+    return rx.get('bytes'), tx.get('bytes')
+
+def get_hostname():
+    return socket.gethostname()
 
 def get_git_head(git_dir):
     # git HEAD commit
@@ -69,11 +88,20 @@ def get_system_information(git_dir=GIT_DIR):
 
 
 def write_activity_log(id, activity_name, start, stop="", target_dir=MOBILE_ATLAS_MAIN_DIR, filename="activities.csv"):
-    path = Path(target_dir / filename)
+    path = Path(target_dir) / filename
     path.touch()
     with path.open('a') as f:
         f.write(f"{id},{activity_name},{start},{stop}\n")
+        
+def get_activities(target_dir=MOBILE_ATLAS_MAIN_DIR, filename="activities.csv"):
+   path = Path(target_dir) / filename
+   with path.open('r') as f:
+       reader = csv.DictReader(f, fieldnames=['id', 'activity_name', 'start', 'stop'])
+       return list(reader)
+   return []
 
+def filter_activities(activity_list, activity_name):
+    return [x for x in activity_list if activity_name in x.get('activity_name')]
 
 def load_token(token_dir):
     """Load the stored token or None"""
