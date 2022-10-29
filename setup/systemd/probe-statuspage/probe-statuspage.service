@@ -6,7 +6,7 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=/usr/local/lib/probe-statuspage/
-ExecStart=venv/bin/gunicorn -b 0.0.0.:8080 -w 1 probe-statuspage:app
+ExecStart=/usr/local/lib/probe-statuspage/venv/bin/gunicorn -b 0.0.0.0:8080 -w 1 probe-statuspage:app
 Type=simple
 Restart=on-failure
 
