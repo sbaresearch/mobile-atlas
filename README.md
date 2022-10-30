@@ -28,7 +28,7 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [pySIM](https://github.com/GGegenhuber/pysim): forked version of pySIM that is used by SIM provider and measurement probe
 * [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating 
 * [wehe-server](https://github.com/phfrenzel/wehe-server): wehe-server that was extended (support for multiple traffic streams, IPv6) and is used for measurements on the MobileAtlas platform
-* [wehe-client](https://github.com/phfrenzel/wehe-cmdline): counterpart to the adapted wehe-server; to be used within MobileAtlas the wehe client and pre-recorded traffic recordings are placed within the probe's [measurement implementation](/probe/measurement/payload/res/wehe)
+* [wehe-client](https://github.com/phfrenzel/wehe-cmdline): counterpart to the adapted wehe-server; to be used within MobileAtlas the wehe client and pre-recorded traffic recordings are placed within the probe's [measurement implementation](mobileatlas/probe/measurement/payload/res/wehe)
 
 ### Publications
 * [GLOBECOM22: Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
