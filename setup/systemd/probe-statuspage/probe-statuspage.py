@@ -7,7 +7,6 @@ import humanize
 import sys
 from pathlib import Path
 PROBE_UTILITIES_DIR = str(Path(__file__).parent.parent.resolve())
-print(PROBE_UTILITIES_DIR)
 sys.path.append(PROBE_UTILITIES_DIR)
 import probe_utilities
 

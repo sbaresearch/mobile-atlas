@@ -9,9 +9,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 #hack to add probe utlities module
-PROBE_UTILITIES_DIR = str(Path(__file__).parent.parent.resolve())
+PROBE_UTILITIES_DIR = "/home/pi/mobile-atlas/setup/systemd/"
 sys.path.append(PROBE_UTILITIES_DIR)
-
 import probe_utilities
 
 MAM_URL = "https://mam.mobileatlas.eu"

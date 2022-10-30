@@ -6,6 +6,7 @@ After=network-online.target
 
 [Service]
 # Command to execute when the service is started
+WorkingDirectory=/usr/local/lib/mobile-atlas/
 ExecStart=/usr/bin/python3 /usr/local/lib/mobile-atlas/mobile-atlas-daemon.py
 
 # Disable Python's buffering of STDOUT and STDERR, so that output from the
