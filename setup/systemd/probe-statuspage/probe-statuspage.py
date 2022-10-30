@@ -55,7 +55,7 @@ def hello_world():
                 'ip_address' : eth0_ip,
                 'traffic_stats' : eth0_stats
             },
-            'Wireguard' : {
+            'WireGuard' : {
                 'ip_address' : wg0_ip,
                 'traffic_stats' : wg0_stats
             }
