@@ -674,8 +674,8 @@ section {
   padding: 60px 100px 0 100px;
 }
 
-.participate .content h3 {
-  font-weight: 400;
+.participate .content h2 {
+  font-weight: bold;
   font-size: 34px;
   color: #37517e;
 }
@@ -726,6 +726,11 @@ section {
   padding-right: 30px;
   outline: none;
   cursor: pointer;
+}
+
+.participate .accordion-list a:focus {
+  outline: thin dotted;
+  outline-offset: 0.125rem;
 }
 
 .participate .accordion-list span {
@@ -1300,6 +1305,11 @@ section {
   cursor: pointer;
 }
 
+.faq .faq-list a:focus {
+  outline: thin dotted;
+  outline-offset: 0.125rem;
+}
+
 .faq .faq-list .icon-help {
   font-size: 24px;
   position: absolute;
@@ -1754,7 +1764,7 @@ section {
 #footer .footer-top .footer-contact p {
   font-size: 14px;
   line-height: 24px;
-  margin-bottom: 0;<
+  margin-bottom: 0;
   font-family: "Jost", sans-serif;
   color: #5e5e5e;
 }
