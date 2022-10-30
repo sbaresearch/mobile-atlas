@@ -21,11 +21,14 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [mobileatlas](/mobileatlas): mobileatlas python modules
 * [hardware](/hardware): hardware specification and SIM tunneling technique
 * [setup](/setup): setup scripts that are used to install the MobileAtlas framework on a dedicated Raspberry Pi device
+* [probe-statuspage](/setup/systemd/probe-statuspage/doc/): documentation of lightweight status page that is running locally on the probes
 
 ### Related Repositories
 * [mobile-atlas-management](https://github.com/sbaresearch/mobile-atlas-management): management dashboard for admin interactions with deployed probes
 * [pySIM](https://github.com/GGegenhuber/pysim): forked version of pySIM that is used by SIM provider and measurement probe
-* [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating practices
+* [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating 
+* [wehe-server](https://github.com/phfrenzel/wehe-server): wehe-server that was extended (support for multiple traffic streams, IPv6) and is used for measurements on the MobileAtlas platform
+* [wehe-client](https://github.com/phfrenzel/wehe-cmdline): counterpart to the adapted wehe-server; to be used within MobileAtlas the wehe client and pre-recorded traffic recordings are placed within the probe's [measurement implementation](/probe/measurement/payload/res/wehe)
 
 ### Publications
 * [GLOBECOM22: Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
