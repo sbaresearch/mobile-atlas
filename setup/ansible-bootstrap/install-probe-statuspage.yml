@@ -1,0 +1,55 @@
+---
+- name: Install statuspage and update mobile-atlas service
+  hosts: all
+  remote_user: pi
+  tasks:
+    - name: Pull mobileatlas git repository to ensure most recent version is installed
+      git:
+        repo: https://github.com/sbaresearch/mobile-atlas.git
+        dest: /home/pi/mobile-atlas
+        update: yes
+        version: master
+      become_user: pi
+
+    - name: Remove file-symlink and mobile-atlas service directory since it will be replaced by a directory symlink
+      file:
+        path: '{{ item }}'
+        force: yes
+        state: absent
+      with_items:
+        - '/usr/local/lib/mobile-atlas/mobile-atlas-daemon.py'
+        - '/usr/local/lib/mobile-atlas/'
+
+    - name: Create directory symlink for mobile-atlas and statuspage service
+      file:
+        src: '{{ item.src }}'
+        dest: '{{ item.dest }}'
+        state: link
+        owner: root
+        group: root
+        mode: '0644'
+      with_items:
+      - { src: '/home/pi/mobile-atlas/setup/systemd/mobile-atlas', dest: '/usr/local/lib/mobile-atlas' }
+      - { src: '/home/pi/mobile-atlas/setup/systemd/probe-statuspage', dest: '/usr/local/lib/probe-statuspage' }
+      become: yes
+
+    - name: Copy files for systemd scripts (mobile-atlas and probe-statuspage)
+      copy:
+        src: '{{ item.src }}'
+        dest: '{{ item.dest }}'
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+      with_items:
+      #- { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.py', dest: '/usr/local/lib/wireguard-register/' }
+      #- { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.service', dest: '/lib/systemd/system/' }
+      - { src: '/home/pi/mobile-atlas/setup/systemd/mobile-atlas/mobile-atlas.service', dest: '/lib/systemd/system/' }
+      - { src: '/home/pi/mobile-atlas/setup/systemd/probe-statuspage/probe-statuspage.service', dest: '/lib/systemd/system/' }
+      become: yes
+
+    - name: Setup virtualenv for probe-statuspage
+      pip:
+        requirements: /home/pi/mobile-atlas/setup/systemd/probe-statuspage/requirements.txt
+        virtualenv: /home/pi/mobile-atlas/setup/systemd/probe-statuspage/venv
+      become_user: pi
