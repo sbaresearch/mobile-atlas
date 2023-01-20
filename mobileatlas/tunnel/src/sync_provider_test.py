@@ -16,6 +16,8 @@ def main():
     if stream == None:
         raise Exception("Connection failed.")
 
+    stream = stream[1]
+
     logger.debug("Successfully received a connection.")
 
     for i in range(10):

@@ -6,7 +6,7 @@ from typing import Optional, Callable
 from clients.client import Client
 from clients.streams import ApduStream, TcpStream
 from tunnelTypes.connect import (AuthStatus, ConnectRequest, ConnectResponse, ConnectStatus,
-                                   IdentifierType, Token)
+                                   IdentifierType, Token, Imsi, Iccid)
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class ProviderClient(Client):
         self.cb = cb
         super().__init__(identifier, token, host, port)
 
-    def wait_for_connection(self) -> Optional[ApduStream]:
+    def wait_for_connection(self) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
         logger.debug("Opening connection.")
         stream = TcpStream(socket.create_connection((self.host, self.port)))
 
@@ -37,7 +37,7 @@ class ProviderClient(Client):
 
         return apdu_stream
 
-    def _wait_for_connection(self, stream: TcpStream) -> Optional[ApduStream]:
+    def _wait_for_connection(self, stream: TcpStream) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
         auth_status = self._authenticate(stream)
 
         if auth_status != AuthStatus.Success:
@@ -62,7 +62,7 @@ class ProviderClient(Client):
             logger.info(f"Rejected request for SIM '{conn_req.identifier}' with '{status}'")
             return None
 
-        return ApduStream(stream)
+        return (conn_req.identifier, ApduStream(stream))
 
     @staticmethod
     def _con_req_missing(b: bytes) -> int:
