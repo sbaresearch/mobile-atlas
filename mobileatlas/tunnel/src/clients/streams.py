@@ -3,7 +3,7 @@ import logging
 
 from typing import Optional
 
-from tunnelTypes.connect import ApduPacket, ApduOp
+from mobileatlas_tunnel.src.tunnelTypes.connect import ApduPacket, ApduOp
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,12 @@ class TcpStream:
         self.buf = b""
 
     def write_all(self, buf: bytes) -> None:
-        self.socket.sendall(buf)
+        try:
+            print(f"write all {len(buf)}")
+            self.socket.sendall(buf)
+            print("successful")
+        except:
+            print("except")
 
     def read_exactly(self, n: int) -> bytes:
         while True:

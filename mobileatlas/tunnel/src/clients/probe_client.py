@@ -3,9 +3,9 @@ import socket
 
 from typing import Optional
 
-from clients.client import Client
-from clients.streams import TcpStream, ApduStream
-from tunnelTypes.connect import (AuthStatus, ConnectRequest, ConnectResponse, Imsi, Iccid,
+from mobileatlas_tunnel.src.clients.client import Client
+from mobileatlas_tunnel.src.clients.streams import TcpStream, ApduStream
+from mobileatlas_tunnel.src.tunnelTypes.connect import (AuthStatus, ConnectRequest, ConnectResponse, Imsi, Iccid,
                              ConnectStatus, Token)
 
 logger = logging.getLogger(__name__)
@@ -14,13 +14,14 @@ class ProbeClient(Client):
     def __init__(self, identifier: int, token: Token, host, port):
         super().__init__(identifier, token, host, port)
 
-    def connect(self, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
+    def connect(self, sim_id) -> Optional[ApduStream]:
         logger.debug("Opening connection.")
         stream = TcpStream(socket.create_connection((self.host, self.port)))
 
         try:
             apdu_stream = self._connect(stream, sim_id)
         except:
+            print("EXCEPT!!!!")
             stream.close()
             return None
 
@@ -29,8 +30,9 @@ class ProbeClient(Client):
 
         return apdu_stream
 
-    def _connect(self, stream: TcpStream, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
+    def _connect(self, stream: TcpStream, sim_id) -> Optional[ApduStream]:
         auth_status = self._authenticate(stream)
+        print(f"\n\nSTATUS {auth_status}")
 
         if auth_status != AuthStatus.Success:
             logger.info("Authorisation failed!")

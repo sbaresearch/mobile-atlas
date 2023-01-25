@@ -128,7 +128,7 @@ class AuthResponse:
         return struct.pack("!BB", 1, self.status.value)
 
 class ConnectRequest:
-    def __init__(self, identifier: Imsi | Iccid):
+    def __init__(self, identifier):
         self.identifier = identifier
 
     @staticmethod
