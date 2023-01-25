@@ -67,21 +67,21 @@ class ProviderClient(Client):
     @staticmethod
     def _con_req_missing(b: bytes) -> int:
         if len(b) < 2:
-            return 10 - len(b)
+            return ConnectRequest.MIN_LENGTH - len(b)
 
         try:
             ident_type = IdentifierType(b[1])
             if ident_type == IdentifierType.Imsi:
-                return 10 - len(b)
+                return (2 + Imsi.LENGTH) - len(b)
             elif ident_type == IdentifierType.Iccid:
-                return 11 - len(b)
+                return (2 + Iccid.LENGTH) - len(b)
             else:
                 raise NotImplemented
         except ValueError:
             return 0
 
     def _read_con_req(self, stream) -> Optional[ConnectRequest]:
-        buf = stream.read(n=11)
+        buf = stream.read(n=ConnectRequest.MIN_LENGTH)
 
         if len(buf) == 0:
             raise EOFError

@@ -11,7 +11,8 @@ token = read_tokens()[0]
 def main():
     logging.basicConfig(level=logging.DEBUG)
     c = ProbeClient(2, token, "::1", 5555)
-    stream = c.connect(Imsi(b"\x01\x02\x03\x04\x05\x06\x07\x08"))
+    #stream = c.connect(Imsi(b"\x01\x02\x03\x04\x05\x06\x07\x08"))
+    stream = c.connect(Imsi("12345678"))
 
     if stream == None:
         raise Exception("Connection failed.")

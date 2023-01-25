@@ -10,8 +10,8 @@ async def main():
     logging.basicConfig(level=logging.DEBUG)
     probe_handler = ProbeHandler()
     provider_handler = ProviderHandler()
-    probe_server = await asyncio.start_server(probe_handler.handle, '::', 5555)
-    provider_server = await asyncio.start_server(provider_handler.handle, '::', 6666)
+    probe_server = await asyncio.start_server(probe_handler.handle, '0.0.0.0', 5555)
+    provider_server = await asyncio.start_server(provider_handler.handle, '0.0.0.0', 6666)
     await asyncio.gather(
             probe_server.serve_forever(),
             provider_server.serve_forever()
