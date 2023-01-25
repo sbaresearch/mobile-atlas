@@ -174,13 +174,9 @@ class AuthResponse:
         return struct.pack("!BB", 1, self.status.value)
 
 class ConnectRequest:
-<<<<<<< HEAD
-    def __init__(self, identifier):
-=======
     MIN_LENGTH = 17
 
-    def __init__(self, identifier: Imsi | Iccid):
->>>>>>> 271361d19b6dd01acf2631a8fd461a467f94036b
+    def __init__(self, identifier):
         self.identifier = identifier
 
     @staticmethod
