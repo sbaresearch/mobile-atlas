@@ -13,8 +13,7 @@ def read_tokens(filename="tokens.json"):
 def read_provider_mapping(filename="prov_map.json"):
     with open(filename, "r") as f:
         res = json.load(f)
-    return {"imsi": { bytes.fromhex(k): v for k, v in res["imsi"].items()},
-            "iccid:": { bytes.fromhex(k): v for k, v in res["iccid"].items()}}
+    return res
 
 valid_tokens = read_tokens()
 sim_provider_mapping = read_provider_mapping()
@@ -38,6 +37,6 @@ def find_provider(token: Token, identifier: Imsi | Iccid) -> Optional[int]:
         raise AuthError
 
     if identifier.identifier_type() == IdentifierType.Imsi:
-        return sim_provider_mapping["imsi"].get(identifier.encode())
+        return sim_provider_mapping["imsi"].get(identifier.imsi)
     else:
-        return sim_provider_mapping["iccid"].get(identifier.encode())
+        return sim_provider_mapping["iccid"].get(identifier.iccid)
