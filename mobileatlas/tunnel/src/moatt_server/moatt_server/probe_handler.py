@@ -1,10 +1,10 @@
 import asyncio
 import logging
 
-import server.connection_queue as connection_queue
-from tunnelTypes.connect import AuthRequest, AuthStatus, ConnectStatus, AuthResponse, ConnectResponse
-from server.util import read_con_req, write_msg
-from server.auth import valid, find_provider, AuthError
+import connection_queue as connection_queue
+from moatt_types.connect import AuthRequest, AuthStatus, ConnectStatus, AuthResponse, ConnectResponse
+from util import read_con_req, write_msg
+from auth import valid, find_provider, AuthError
 
 logger = logging.getLogger(__name__)
 

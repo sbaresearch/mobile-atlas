@@ -3,9 +3,9 @@ import logging
 
 from typing import Optional, Callable
 
-from clients.client import Client
-from clients.streams import ApduStream, TcpStream
-from tunnelTypes.connect import (AuthStatus, ConnectRequest, ConnectResponse, ConnectStatus,
+from moatt_clients.client import Client
+from moatt_clients.streams import ApduStream, TcpStream
+from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, ConnectStatus,
                                    IdentifierType, Token, Imsi, Iccid)
 
 logger = logging.getLogger(__name__)

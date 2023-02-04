@@ -3,7 +3,7 @@ import logging
 import struct
 
 from typing import Optional
-from tunnelTypes.connect import ApduPacket, Token
+from moatt_types.connect import ApduPacket, Token
 
 logger = logging.getLogger(__name__)
 

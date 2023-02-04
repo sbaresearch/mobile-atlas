@@ -2,7 +2,7 @@ import json
 import logging
 
 from typing import Optional
-from tunnelTypes.connect import Imsi, Iccid, Token, IdentifierType
+from moatt_types.connect import Imsi, Iccid, Token, IdentifierType
 
 logger = logging.getLogger(__name__)
 

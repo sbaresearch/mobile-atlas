@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moatt_server"
+version = "0.0.1"
+dependencies = [
+  "moatt_types @ git+https://gitlab.sba-research.org/pfrenzel/mobile-atlas-tunnel@v0.0.1#subdirectory=src/moatt_types"
+]
+
+[tool.setuptools.packages.find]
+where = ["moatt_server"]
+exclude = ["test"]

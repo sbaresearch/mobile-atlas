@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from typing import Optional
-from tunnelTypes.connect import ConnectRequest, IdentifierType, Imsi, Iccid
+from moatt_types.connect import ConnectRequest, IdentifierType, Imsi, Iccid
 
 logger = logging.getLogger(__name__)
 

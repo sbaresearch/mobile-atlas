@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from server.probe_handler import ProbeHandler
-from server.provider_handler import ProviderHandler
+from probe_handler import ProbeHandler
+from provider_handler import ProviderHandler
 
 logger = logging.getLogger(__name__)
 

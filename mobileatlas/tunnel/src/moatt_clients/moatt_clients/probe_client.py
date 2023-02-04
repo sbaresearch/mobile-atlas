@@ -3,9 +3,9 @@ import socket
 
 from typing import Optional
 
-from mobileatlas_tunnel.src.clients.client import Client
-from mobileatlas_tunnel.src.clients.streams import TcpStream, ApduStream
-from mobileatlas_tunnel.src.tunnelTypes.connect import (AuthStatus, ConnectRequest, ConnectResponse, Imsi, Iccid,
+from moatt_clients.client import Client
+from moatt_clients.streams import TcpStream, ApduStream
+from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, Imsi, Iccid,
                              ConnectStatus, Token)
 
 logger = logging.getLogger(__name__)

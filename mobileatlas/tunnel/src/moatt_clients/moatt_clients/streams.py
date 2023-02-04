@@ -3,7 +3,7 @@ import logging
 
 from typing import Optional
 
-from mobileatlas_tunnel.src.tunnelTypes.connect import ApduPacket, ApduOp
+from moatt_types.connect import ApduPacket, ApduOp
 
 logger = logging.getLogger(__name__)
 

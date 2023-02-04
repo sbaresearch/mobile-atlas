@@ -1,11 +1,11 @@
 import asyncio
 import logging
 
-import server.connection_queue as connection_queue
-from server.apdu_stream import ApduStream
-from tunnelTypes.connect import AuthRequest, AuthStatus, ConnectResponse, AuthResponse, ConnectStatus
-from server.util import write_msg
-from server.auth import valid
+import connection_queue as connection_queue
+from apdu_stream import ApduStream
+from moatt_types.connect import AuthRequest, AuthStatus, ConnectResponse, AuthResponse, ConnectStatus
+from util import write_msg
+from auth import valid
 
 logger = logging.getLogger(__name__)
 

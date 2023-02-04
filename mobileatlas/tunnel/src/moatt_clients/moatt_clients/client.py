@@ -1,7 +1,7 @@
 import logging
 
-from mobileatlas_tunnel.src.tunnelTypes.connect import AuthRequest, AuthResponse, AuthStatus, Token
-from mobileatlas_tunnel.src.clients.streams import TcpStream
+from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, Token
+from moatt_clients.streams import TcpStream
 
 logger = logging.getLogger(__name__)
 
