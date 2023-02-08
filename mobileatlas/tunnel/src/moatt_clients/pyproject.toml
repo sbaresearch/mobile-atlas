@@ -10,5 +10,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["moatt_clients"]
 exclude = ["test"]
