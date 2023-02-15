@@ -1,10 +1,14 @@
 import json
 import logging
+import secrets
 
 from typing import Optional
 from moatt_types.connect import Imsi, Iccid, Token, IdentifierType
 
 logger = logging.getLogger(__name__)
+
+def generate_session_token() -> str:
+    return secrets.token_urlsafe()
 
 def read_tokens(filename="tokens.json"):
     with open(filename, "r") as f:
@@ -15,8 +19,8 @@ def read_provider_mapping(filename="prov_map.json"):
         res = json.load(f)
     return res
 
-valid_tokens = read_tokens()
-sim_provider_mapping = read_provider_mapping()
+#valid_tokens = read_tokens()
+#sim_provider_mapping = read_provider_mapping()
 
 class AuthError(Exception):
     def __init__(self):
