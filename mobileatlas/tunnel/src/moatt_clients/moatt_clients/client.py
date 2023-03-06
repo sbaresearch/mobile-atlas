@@ -9,6 +9,13 @@ from moatt_clients.streams import TcpStream
 
 logger = logging.getLogger(__name__)
 
+def deregister(api_url: str, session_token: SessionToken) -> None:
+    cookies = dict(session_token=session_token.as_base64())
+    r = requests.delete(f"{api_url}/deregister", cookies=cookies)
+
+    if r.status_code != requests.codes.ok:
+        raise Exception("Deregistration failed.")
+
 def register(api_url: str, token: Token) -> Optional[SessionToken]:
     headers = {"Authorization": f"Bearer {token.as_base64()}"}
     r = requests.post(f"{api_url}/register", headers=headers)

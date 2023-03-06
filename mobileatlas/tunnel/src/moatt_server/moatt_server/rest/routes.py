@@ -1,11 +1,12 @@
 import logging
 import datetime
+import base64
 
-from flask import Response, request, jsonify, g, session
+from flask import Response, request, jsonify, g
 from moatt_server.rest import app, flask_http_auth, db
 from moatt_server import auth
 from moatt_server.rest.auth import protected
-from typing import Optional
+from moatt_types.connect import SessionToken
 
 #from moatt_server.models import Sim, Provider, Imsi as DbImsi
 import moatt_server.models as dbm
@@ -64,6 +65,25 @@ def register():
 
     return resp
 
+@app.route("/deregister", methods=["DELETE"])
+def deregister():
+    session_token = request.cookies.get("session_token")
+
+    if session_token == None:
+        return Response(status=200)
+
+    try:
+        SessionToken(base64.b64decode(session_token))
+    except ValueError:
+        return Response(status=400)
+
+    stmt = db.select(dbm.Provider).where(dbm.Provider.session_token == session_token)
+    provider = db.session.scalar(stmt)
+    db.session.delete(provider)
+    db.session.commit()
+
+    return Response(status=200)
+
 @app.route("/provider/sims", methods=["POST"])
 @protected
 def provider_register():
@@ -78,11 +98,6 @@ def provider_register():
     new_iccids = set(iccids).difference(set([sim.iccid for sim in existing_sims]))
     now = datetime.datetime.now(tz=datetime.timezone.utc)
 
-    #session_token = auth.generate_session_token()
-    #provider = dbm.Provider(token=g._http_bearer_auth.token, session_token=session_token)
-    #provider = dbm.Provider(token="tokenplaceholder", session_token=session_token.as_base64())
-    #db.session.add(provider)
-    
     provider = g._session_token_auth.provider
 
     for sim in existing_sims:

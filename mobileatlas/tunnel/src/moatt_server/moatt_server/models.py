@@ -33,7 +33,7 @@ class Sim(Base):
 
     iccid: Mapped[str] = mapped_column(String, primary_key=True)
     imsi: Mapped[List["Imsi"]] = relationship("Imsi", back_populates="sim")
-    available: Mapped[bool] = mapped_column(Boolean)
+    available: Mapped[bool] = mapped_column(Boolean) # TODO: currently unused
     provider_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("providers.id"))
     provider: Mapped["Provider"] = relationship("Provider", back_populates="sims")
 
