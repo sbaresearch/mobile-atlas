@@ -1,15 +1,17 @@
 import asyncio
 import logging
 
-import connection_queue as connection_queue
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+import moatt_server.tunnel.connection_queue as connection_queue
 from moatt_types.connect import AuthRequest, AuthStatus, ConnectStatus, AuthResponse, ConnectResponse
-from util import read_con_req, write_msg
-from auth import valid, find_provider, AuthError
+from moatt_server.tunnel.util import read_con_req, write_msg
+from moatt_server.auth import valid, find_provider, AuthError, is_registered
 
 logger = logging.getLogger(__name__)
 
 class ProbeHandler:
-    def __init__(self, timeout=0):
+    def __init__(self, async_session: async_sessionmaker[AsyncSession], timeout=0):
+        self.async_session = async_session
         self.timeout = timeout
 
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -30,7 +32,14 @@ class ProbeHandler:
             await writer.wait_closed()
             return
 
-        if not valid(auth_req.token):
+        if not await is_registered(self.async_session, auth_req.session_token):
+            logger.debug("Received an invalid session token. Closing connection.")
+            await write_msg(writer, AuthResponse(AuthStatus.NotRegistered))
+            writer.close()
+            await writer.wait_closed()
+            return
+
+        if not await valid(self.async_session, auth_req.token):
             logger.debug("Received an invalid token. Closing connection.")
             await write_msg(writer, AuthResponse(AuthStatus.InvalidToken))
             writer.close()
@@ -51,7 +60,7 @@ class ProbeHandler:
             return
 
         try:
-            provider_id = find_provider(auth_req.token, con_req.identifier)
+            provider_id, iccid = await find_provider(self.async_session, auth_req.token, con_req.identifier)
         except AuthError:
             logger.debug("Received disallowed SIM request from probe. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.Forbidden))
@@ -69,7 +78,5 @@ class ProbeHandler:
         #logger.debug("got successful probe con request. Sending success status.")
         #await write_msg(writer, ConnectResponse(ConnectStatus.Success))
 
-        logger.debug("sending stream to provider handler")
-        await connection_queue.put(provider_id, (con_req, auth_req.token, reader, writer))
-
-
+        logger.debug("Sending stream to provider handler")
+        await connection_queue.put(provider_id, (iccid, con_req, auth_req.token, reader, writer))

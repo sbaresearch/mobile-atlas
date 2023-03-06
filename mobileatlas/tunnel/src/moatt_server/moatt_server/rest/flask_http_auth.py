@@ -2,17 +2,17 @@ from flask import request, Response, g
 from types import SimpleNamespace
 import base64
 from moatt_types.connect import Token
-from moatt_server.auth import valid
+from moatt_server.auth import sync_valid
 from functools import wraps
 
-class HttpAuth:
-    def __init__(self, app=None):
-        self.app = app
-        #if app is not None:
-        #    self.init_app(app)
+from moatt_server.rest import db
 
-    #def init_app(self, app):
-    #    pass
+#class HttpAuth:
+#    def __init__(self, app=None):
+#        if app is not None:
+#            self.init_app(app)
+#
+#    def init_app(self, app):
 
 def required(f):
     @wraps(f)
@@ -39,7 +39,7 @@ def required(f):
                     headers={"WWW-Authenticate": "Bearer error=\"invalid_request\""}
                     )
 
-        if not valid(token):
+        if not sync_valid(db.session, token):
             return Response(
                     status=401,
                     headers={"WWW-Authenticate": "Bearer error=\"invalid_token\""}
@@ -47,6 +47,7 @@ def required(f):
 
         g._http_bearer_auth = SimpleNamespace()
         g._http_bearer_auth.valid_token = True
+        g._http_bearer_auth.token = token
 
         return f(*args, **kwargs)
 

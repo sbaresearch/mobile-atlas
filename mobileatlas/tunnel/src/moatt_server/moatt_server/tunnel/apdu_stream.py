@@ -3,12 +3,13 @@ import logging
 import struct
 
 from typing import Optional
-from moatt_types.connect import ApduPacket, Token
+from moatt_types.connect import ApduPacket, Token, Iccid
 
 logger = logging.getLogger(__name__)
 
 class ApduStream:
-    def __init__(self, token: Token, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    def __init__(self, iccid: Iccid, token: Token, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        self.iccid = iccid
         self.token = token
         self.reader = reader
         self.writer = writer

@@ -6,13 +6,13 @@ from typing import Optional
 from moatt_clients.client import Client
 from moatt_clients.streams import TcpStream, ApduStream
 from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, Imsi, Iccid,
-                             ConnectStatus, Token)
+                             ConnectStatus, Token, SessionToken)
 
 logger = logging.getLogger(__name__)
 
 class ProbeClient(Client):
-    def __init__(self, identifier: int, token: Token, host, port):
-        super().__init__(identifier, token, host, port)
+    def __init__(self, session_token: SessionToken, token: Token, host, port):
+        super().__init__(session_token, token, host, port)
 
     def connect(self, sim_id) -> Optional[ApduStream]:
         logger.debug("Opening connection.")
@@ -21,7 +21,6 @@ class ProbeClient(Client):
         try:
             apdu_stream = self._connect(stream, sim_id)
         except:
-            print("EXCEPT!!!!")
             stream.close()
             return None
 
@@ -30,7 +29,7 @@ class ProbeClient(Client):
 
         return apdu_stream
 
-    def _connect(self, stream: TcpStream, sim_id) -> Optional[ApduStream]:
+    def _connect(self, stream: TcpStream, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
         auth_status = self._authenticate(stream)
         print(f"\n\nSTATUS {auth_status}")
 

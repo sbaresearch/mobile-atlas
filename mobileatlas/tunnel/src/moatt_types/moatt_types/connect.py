@@ -1,4 +1,4 @@
-import enum, struct, logging
+import enum, struct, logging, base64
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -8,7 +8,13 @@ class Token:
         assert len(token) == 25
         self.token = token
 
+    def __repr__(self):
+        return f"Token({self.token})"
+
     def __eq__(self, other):
+        if type(other) != Token:
+            return NotImplemented
+
         return self.token == other.token
 
     def __hash__(self):
@@ -16,6 +22,32 @@ class Token:
 
     def as_bytes(self):
         return self.token
+
+    def as_base64(self) -> str:
+        return base64.b64encode(self.token).decode()
+
+class SessionToken:
+    def __init__(self, token: bytes):
+        assert len(token) == 25
+        self.token = token
+
+    def __repr__(self):
+        return f"Token({self.token})"
+
+    def __eq__(self, other):
+        if type(other) != Token:
+            return NotImplemented
+
+        return self.token == other.token
+
+    def __hash__(self):
+        return hash(self.token)
+
+    def as_bytes(self):
+        return self.token
+
+    def as_base64(self) -> str:
+        return base64.b64encode(self.token).decode()
 
 @enum.unique
 class IdentifierType(enum.Enum):
@@ -26,6 +58,7 @@ class IdentifierType(enum.Enum):
 class AuthStatus(enum.Enum):
     Success = 0
     InvalidToken = 1
+    NotRegistered = 2
 
 @enum.unique
 class ConnectStatus(enum.Enum):
@@ -88,6 +121,18 @@ class Imsi:
 
         self.imsi = imsi
 
+    def __repr__(self):
+        return f"Imsi(\"{self.imsi}\")"
+
+    def __eq__(self, other):
+        if type(other) != Imsi:
+            return NotImplemented
+
+        return self.imsi == other.imsi
+
+    def __hash__(self):
+        return hash(self.imsi)
+
     def identifier_type(self):
         return IdentifierType.Imsi
 
@@ -115,6 +160,18 @@ class Iccid:
 
         self.iccid = iccid
 
+    def __repr__(self):
+        return f"Iccid(\"{self.iccid}\")"
+
+    def __eq__(self, other):
+        if type(other) != Iccid:
+            return NotImplemented
+
+        return self.iccid == other.iccid
+
+    def __hash__(self):
+        return hash(self.iccid)
+
     def identifier_type(self):
         return IdentifierType.Iccid
 
@@ -134,25 +191,24 @@ class Iccid:
         return self.iccid.encode() + b'\x00' * (Iccid.LENGTH - len(self.iccid))
 
 class AuthRequest:
-    LENGTH = 30
+    LENGTH = 51
 
-    def __init__(self, identifier: int, token: Token):
-        self.identifier = identifier
+    def __init__(self, session_token: SessionToken, token: Token):
+        self.session_token = session_token
         self.token = token
 
     @staticmethod
     def decode(msg: bytes) -> Optional["AuthRequest"]:
-        if len(msg) != 30 or msg[0] != 1:
+        if len(msg) != AuthRequest.LENGTH or msg[0] != 1:
             return None
 
         try:
-            identifier, = struct.unpack("!I", msg[1:5])
-            return AuthRequest(identifier, Token(msg[5:]))
+            return AuthRequest(SessionToken(msg[1:26]), Token(msg[26:]))
         except ValueError:
             return None
 
     def encode(self) -> bytes:
-        return struct.pack("!BI", 1, self.identifier) + self.token.as_bytes()
+        return b'\x01' + self.session_token.as_bytes() + self.token.as_bytes()
 
 class AuthResponse:
     LENGTH = 2

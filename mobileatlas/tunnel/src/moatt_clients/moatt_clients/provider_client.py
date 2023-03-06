@@ -1,26 +1,44 @@
 import socket
+import requests
 import logging
+import base64
 
 from typing import Optional, Callable
 
-from moatt_clients.client import Client
+from moatt_clients.client import Client, register
 from moatt_clients.streams import ApduStream, TcpStream
 from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, ConnectStatus,
-                                   IdentifierType, Token, Imsi, Iccid)
+                                   IdentifierType, Token, Imsi, Iccid, SessionToken)
 
 logger = logging.getLogger(__name__)
+
+def register_sims(api_url: str, token: Token, sims: list[dict]) -> Optional[SessionToken]:
+    session_token = register(api_url, token)
+
+    if session_token == None:
+        return None
+
+    cookies = dict(session_token=session_token.as_base64())
+    r = requests.post(f"{api_url}/provider/sims", json=sims, cookies=cookies)
+
+    if r.status_code != requests.codes.ok:
+        logger.error(f"Registration failed. Received {r.status_code} status from server.")
+        return None
+
+    return session_token
+
 
 class ProviderClient(Client):
     def __init__(
             self,
-            identifier: int,
+            session_token: SessionToken,
             token: Token,
             host,
             port: int,
-            cb: Callable[[ConnectRequest], ConnectStatus]
+            cb: Callable[[ConnectRequest], ConnectStatus],
             ):
         self.cb = cb
-        super().__init__(identifier, token, host, port)
+        super().__init__(session_token, token, host, port)
 
     def wait_for_connection(self) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
         logger.debug("Opening connection.")
@@ -28,11 +46,13 @@ class ProviderClient(Client):
 
         try:
             apdu_stream = self._wait_for_connection(stream)
-        except:
+        except Exception as e:
+            logger.warn(f"Exception was raised while waiting for connection: {e}")
             stream.close()
             return None
 
         if apdu_stream == None:
+            logger.debug("APDU stream is none")
             stream.close()
 
         return apdu_stream

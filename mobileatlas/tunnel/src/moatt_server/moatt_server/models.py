@@ -1,59 +1,72 @@
-from moatt_types.connect import ApduOp
-from moatt_server import db
+import datetime
+import enum
 
-class Token(db.Model): # type: ignore
+from typing import Optional, List
+from moatt_types.connect import ApduOp
+from sqlalchemy import String, DateTime, Boolean, Integer, ForeignKey, Text, Enum, LargeBinary
+from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
+
+class Base(DeclarativeBase):
+    pass
+
+class Token(Base):
     __tablename__ = "tokens"
 
-    value = db.Column(db.String(36), nullable=False, primary_key=True)
-    created = db.Column(db.DateTime, nullable=False)
-    expires = db.Column(db.DateTime)
-    last_access = db.Column(db.DateTime)
-    active = db.Column(db.Boolean, nullable=False)
+    value: Mapped[str] = mapped_column(String(36), primary_key=True)
+    created: Mapped[DateTime] = mapped_column(DateTime)
+    expires: Mapped[Optional[DateTime]] = mapped_column(DateTime)
+    last_access: Mapped[Optional[DateTime]] = mapped_column(DateTime)
+    active: Mapped[bool] = mapped_column(Boolean)
+    providers: Mapped[List["Provider"]] = relationship("Provider", back_populates="token")
 
-class Imsi(db.Model): # type: ignore
+class Imsi(Base):
     __tablename__ = "imsis"
 
-    id = db.Column(db.Integer, primary_key=True)
-    imsi = db.Column(db.String, nullable=False)
-    # TODO: introduce another field to order history entries
-    # using the timestamp is acceptable for now but not very
-    # future proof
-    registered = db.Column(db.DateTime, nullable=False)
-    sim_iccid = db.Column(db.String, db.ForeignKey("sims.iccid"), nullable=False)
-    sim = db.relationship("Sim", back_populates="imsi")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    imsi: Mapped[str] = mapped_column(String)
+    registered: Mapped[DateTime] = mapped_column(DateTime)
+    sim_iccid: Mapped[str] = mapped_column(String, ForeignKey("sims.iccid"))
+    sim: Mapped["Sim"] = relationship("Sim", back_populates="imsi")
 
-
-class Sim(db.Model): # type: ignore
+class Sim(Base):
     __tablename__ = "sims"
 
-    iccid = db.Column(db.String, primary_key=True)
-    imsi = db.relationship("Imsi", back_populates="sim")
-    available = db.Column(db.Boolean, nullable=False)
-    provider_id = db.Column(db.Integer, db.ForeignKey("providers.id"))
-    provider = db.relationship("Provider", back_populates="sims")
+    iccid: Mapped[str] = mapped_column(String, primary_key=True)
+    imsi: Mapped[List["Imsi"]] = relationship("Imsi", back_populates="sim")
+    available: Mapped[bool] = mapped_column(Boolean)
+    provider_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("providers.id"))
+    provider: Mapped["Provider"] = relationship("Provider", back_populates="sims")
 
-class Provider(db.Model): # type: ignore
+class Provider(Base):
     __tablename__ = "providers"
 
-    id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.Integer, db.ForeignKey("tokens.value"))
-    session_token = db.Column(db.String, unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_id: Mapped[str] = mapped_column(String(36), ForeignKey("tokens.value"))
+    token: Mapped[Token] = relationship("Token", back_populates="providers")
+    session_token: Mapped[str] = mapped_column(String(36), unique=True)
 
-    sims = db.relationship("Sim", back_populates="provider")
+    sims: Mapped[List["Sim"]] = relationship("Sim", back_populates="provider")
 
-class Probe(db.Model): # type: ignore
+class Probe(Base):
     __tablename__ = "probes"
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Text, unique=True)
-    mac = db.Column(db.Text, index=True, unique=True)
-    token = db.Column(db.Integer, db.ForeignKey("tokens.value"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, unique=True)
+    mac: Mapped[str] = mapped_column(Text, index=True, unique=True)
+    token: Mapped[int] = mapped_column(Integer, ForeignKey("tokens.value"))
 
-class ApduLog(db.Model): # type: ignore
+@enum.unique
+class Sender(enum.Enum):
+    Probe = 1
+    Provider = 2
+
+class ApduLog(Base):
     __tablename__ = "apdu_log"
 
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, nullable=False)
-    iccid = db.Column(db.String, db.ForeignKey("sims.iccid"))
-    command = db.Column(db.Enum(ApduOp), nullable=False)
-    payload = db.Column(db.LargeBinary)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    timestamp: Mapped[DateTime] = mapped_column(DateTime, default=datetime.datetime.now(datetime.timezone.utc))
+    sim_id: Mapped[str] = mapped_column(String, ForeignKey("sims.iccid"))
+    sim: Mapped[Sim] = relationship("Sim")
+    command: Mapped[Enum] = mapped_column(Enum(ApduOp))
+    payload: Mapped[Optional[bytes]] = mapped_column(LargeBinary)
+    sender: Mapped[Enum] = mapped_column(Enum(Sender))
