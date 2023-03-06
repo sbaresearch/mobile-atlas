@@ -6,7 +6,7 @@ from typing import Optional
 from moatt_types.connect import Imsi, Iccid, Token, IdentifierType, SessionToken
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 #from moatt_server.models import Sim, Imsi, Provider, Token as DBToken
 import moatt_server.models as dbm
 
@@ -104,7 +104,9 @@ def _check_is_registered(provider: dbm.Provider | None, session_token: SessionTo
 async def get_registration(async_session: async_sessionmaker[AsyncSession], session_token: SessionToken) -> Optional[dbm.Provider]:
     assert type(session_token) == SessionToken
 
-    stmt = select(dbm.Provider).where(dbm.Provider.session_token == session_token.as_base64())
+    stmt = select(dbm.Provider)\
+            .where(dbm.Provider.session_token == session_token.as_base64())\
+            .options(selectinload(dbm.Provider.token))
     async with async_session() as session:
         provider = await session.scalar(stmt)
 

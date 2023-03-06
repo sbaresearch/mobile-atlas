@@ -1,25 +1,22 @@
 import asyncio
 import logging
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import moatt_server.tunnel.connection_queue as connection_queue
 from moatt_server.tunnel.apdu_stream import ApduStream
-from moatt_types.connect import AuthRequest, AuthStatus, ConnectResponse, AuthResponse, ConnectStatus
+from moatt_types.connect import ConnectResponse, ConnectStatus
 import moatt_server.models as dbm
 from moatt_server.tunnel.util import write_msg
-from moatt_server.auth import valid, get_registration
+from moatt_server.tunnel.handler import Handler
 
 logger = logging.getLogger(__name__)
 
-class ProviderHandler:
+class ProviderHandler(Handler):
     def __init__(self, async_session: async_sessionmaker[AsyncSession], timeout=0):
-        self.async_session = async_session
-        self.timeout = timeout
+        super().__init__(async_session, timeout)
 
     async def handle_established_connection(self, probe: ApduStream, provider: ApduStream):
-        # TODO APDU logging
         probe_task = asyncio.create_task(probe.recv(), name="probe")
         provider_task = asyncio.create_task(provider.recv(), name="provider")
 
@@ -80,33 +77,12 @@ class ProviderHandler:
             await writer.wait_closed()
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        logger.debug("Waiting for authorisation message.")
-        auth_req = AuthRequest.decode(await reader.readexactly(AuthRequest.LENGTH))
-        logger.debug(f"Got authorisation packet: {auth_req}")
+        provider = await self._handle_auth(reader, writer)
 
-        if auth_req == None:
-            logger.warn("Received malformed authorisation message. Closing connection.")
-            writer.close()
-            await writer.wait_closed()
-            return
-
-        provider = await get_registration(self.async_session, auth_req.session_token)
         if provider == None:
-            logger.debug("Received an invalid session token. Closing connection.")
-            await write_msg(writer, AuthResponse(AuthStatus.NotRegistered))
-            writer.close()
-            await writer.wait_closed()
             return
 
-        if not await valid(self.async_session, auth_req.token):
-            logger.debug("Received an invalid token. Closing connection.")
-            await write_msg(writer, AuthResponse(AuthStatus.InvalidToken))
-            writer.close()
-            await writer.wait_closed()
-            return
-        else:
-            logger.debug("Sending 'authorisation successful' status message.")
-            await write_msg(writer, AuthResponse(AuthStatus.Success))
+        token, provider = provider
 
         while True:
             logger.debug("waiting for connection request.")
@@ -149,9 +125,8 @@ class ProviderHandler:
             await probe_writer.wait_closed()
             return
 
-        # TODO
         probe_stream = ApduStream(iccid, probe_token, probe_reader, probe_writer)
-        provider_stream = ApduStream(iccid, auth_req.token, reader, writer)
+        provider_stream = ApduStream(iccid, token, reader, writer)
 
         try:
             await self.handle_established_connection(probe_stream, provider_stream)

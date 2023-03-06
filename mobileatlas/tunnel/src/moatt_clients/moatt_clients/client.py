@@ -39,7 +39,7 @@ class Client:
 
     def _authenticate(self, stream: TcpStream) -> AuthStatus:
         logger.debug("Sending authorisation message.")
-        stream.write_all(AuthRequest(self.session_token, self.token).encode())
+        stream.write_all(AuthRequest(self.session_token).encode())
         logger.debug("Waiting for authorisation response.")
         auth_res = AuthResponse.decode(stream.read_exactly(AuthResponse.LENGTH))
 

@@ -191,11 +191,10 @@ class Iccid:
         return self.iccid.encode() + b'\x00' * (Iccid.LENGTH - len(self.iccid))
 
 class AuthRequest:
-    LENGTH = 51
+    LENGTH = 26
 
-    def __init__(self, session_token: SessionToken, token: Token):
+    def __init__(self, session_token: SessionToken):
         self.session_token = session_token
-        self.token = token
 
     @staticmethod
     def decode(msg: bytes) -> Optional["AuthRequest"]:
@@ -203,12 +202,12 @@ class AuthRequest:
             return None
 
         try:
-            return AuthRequest(SessionToken(msg[1:26]), Token(msg[26:]))
+            return AuthRequest(SessionToken(msg[1:]))
         except ValueError:
             return None
 
     def encode(self) -> bytes:
-        return b'\x01' + self.session_token.as_bytes() + self.token.as_bytes()
+        return b'\x01' + self.session_token.as_bytes()
 
 class AuthResponse:
     LENGTH = 2

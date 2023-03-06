@@ -1,7 +1,6 @@
 import socket
 import requests
 import logging
-import base64
 
 from typing import Optional, Callable
 
