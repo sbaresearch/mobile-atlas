@@ -72,8 +72,11 @@ Acknowledgments
 ---------------------------------------
 MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) by 
 [Gabriel K. Gegenhuber](https://www.sba-research.org/team/gabriel-k-gegenhuber/),
-[Wilfried Mayer](https://www.sba-research.org/team/wilfried-mayer/), and
-[Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/).
+[Wilfried Mayer](https://www.sba-research.org/team/wilfried-mayer/),
+[Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/), and
+[Philipp Frenzel](https://www.sba-research.org/team/philipp-frenzel/).
+
+Furthermore, we want to thank all hosters of measurement probes who made this work possible at all.
 
 
 ### Funding
