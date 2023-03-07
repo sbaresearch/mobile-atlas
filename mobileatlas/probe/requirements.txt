@@ -1,7 +1,7 @@
 # Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@faf4dabfa71e2a49e92ff4728ee3c763570598dd#egg=pysim
+-e git+https://github.com/GGegenhuber/pysim.git@100bf03a72d35b5fe16dc610d73bb070c50d3e48#egg=pysim
 # python3 port of kmod
--e git+https://github.com/mahatma1/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
+-e git+https://github.com/GGegenhuber/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
 
 
 pexpect
