@@ -31,13 +31,12 @@ class ProviderClient(Client):
     def __init__(
             self,
             session_token: SessionToken,
-            token: Token,
             host,
             port: int,
             cb: Callable[[ConnectRequest], ConnectStatus],
             ):
         self.cb = cb
-        super().__init__(session_token, token, host, port)
+        super().__init__(session_token, host, port)
 
     def wait_for_connection(self) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
         logger.debug("Opening connection.")

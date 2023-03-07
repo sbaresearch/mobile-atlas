@@ -38,9 +38,8 @@ def register(api_url: str, token: Token) -> Optional[SessionToken]:
     return session_token
 
 class Client:
-    def __init__(self, session_token: SessionToken, token: Token, host, port):
+    def __init__(self, session_token: SessionToken, host, port):
         self.session_token = session_token
-        self.token = token
         self.host = host
         self.port = port
 
