@@ -31,7 +31,8 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [wehe-client](https://github.com/phfrenzel/wehe-cmdline): counterpart to the adapted wehe-server; to be used within MobileAtlas the wehe client and pre-recorded traffic recordings are placed within the probe's [measurement implementation](mobileatlas/probe/measurement/payload/res/wehe)
 
 ### Publications
-* [GLOBECOM22: Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
+* [[GLOBECOM22] Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
+* [USENIX Security '23] MobileAtlas: Geographically Decoupled Measurements in Cellular Networks for Security and Privacy Research (paper currently under embargo)
 
 ### Geographical Decoupling of SIM Card and Modem
 Physically moving devices and SIM cards between countries to enable measurements in a roaming environment is costly and does not scale well.
