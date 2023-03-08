@@ -77,6 +77,8 @@ MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) by
 [Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/), and
 [Philipp Frenzel](https://www.sba-research.org/team/philipp-frenzel/).
 
+Additionaly, thanks go to [Markus Maier](https://www.sba-research.org/team/markus-maier/) for his occasional advice and his help designing the [SIM PCB](/hardware/sim-adapter).
+
 Furthermore, we want to thank all hosters of measurement probes who made this work possible at all.
 
 
