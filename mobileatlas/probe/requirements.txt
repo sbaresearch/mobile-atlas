@@ -1,5 +1,5 @@
 # Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@100bf03a72d35b5fe16dc610d73bb070c50d3e48#egg=pysim
+-e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pysim
 # python3 port of kmod
 -e git+https://github.com/GGegenhuber/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
 

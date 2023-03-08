@@ -1,4 +1,4 @@
 # Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@100bf03a72d35b5fe16dc610d73bb070c50d3e48#egg=pysim
+-e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pysim
 
 requests
