@@ -77,15 +77,17 @@ MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) by
 [Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/), and
 [Philipp Frenzel](https://www.sba-research.org/team/philipp-frenzel/).
 
-Additionaly, thanks go to [Markus Maier](https://www.sba-research.org/team/markus-maier/) for his occasional advice and his help designing the [SIM PCB](/hardware/sim-adapter).
+Additionally, thanks go to [Markus Maier](https://www.sba-research.org/team/markus-maier/) for his occasional advice and his help designing the [SIM PCB](/hardware/sim-adapter).
 
 Furthermore, we want to thank all hosters of measurement probes who made this work possible at all.
 
 
 ### Funding
-This project is funded through the [NGI0 PET](https://nlnet.nl/PET) Fund, a fund established by NLnet with financial support from the European Commission's [Next Generation Internet](https://ngi.eu/) programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825310.
+This project was funded through the [NGI0 Entrust](https://nlnet.nl/entrust) Fund, a fund established by [NLnet](https://nlnet.nl/) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu/), under the aegis of DG Communications Networks, Content and Technology under grant agreement No 101069594.
 
-This research is also funded by the Austrian Science Fund (FWF): P30637-N31.
+This project was funded through the [NGI0 PET](https://nlnet.nl/PET) Fund, a fund established by [NLnet](https://nlnet.nl/) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu/) programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825310.
+
+This research was also funded by the Austrian Science Fund (FWF): P30637-N31.
 
 ### Image credits
 
