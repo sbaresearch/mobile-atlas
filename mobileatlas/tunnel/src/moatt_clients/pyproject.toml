@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "moatt_clients"
 version = "0.0.1"
 dependencies = [
-  "moatt_types @ git+https://measurement-probe-read:sbaglpat-m5Ut9LybXAs1AdMSG1Qa@gitlab.sba-research.org/pfrenzel/mobile-atlas-tunnel@main#subdirectory=src/moatt_types"
+  "moatt_types @ git+https://measurement-probe-read:sbaglpat-m5Ut9LybXAs1AdMSG1Qa@gitlab.sba-research.org/pfrenzel/mobile-atlas-tunnel@main#subdirectory=src/moatt_types",
+  "requests",
 ]
 
 [tool.setuptools.packages.find]
