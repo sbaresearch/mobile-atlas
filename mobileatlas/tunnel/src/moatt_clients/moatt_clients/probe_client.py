@@ -31,7 +31,6 @@ class ProbeClient(Client):
 
     def _connect(self, stream: TcpStream, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
         auth_status = self._authenticate(stream)
-        print(f"\n\nSTATUS {auth_status}")
 
         if auth_status != AuthStatus.Success:
             logger.info("Authorisation failed!")

@@ -4,21 +4,21 @@ import logging
 
 from typing import Optional, Callable
 
-from moatt_clients.client import Client, register
+from moatt_clients.client import Client
 from moatt_clients.streams import ApduStream, TcpStream
 from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, ConnectStatus,
-                                   IdentifierType, Token, Imsi, Iccid, SessionToken)
+                                   IdentifierType, Imsi, Iccid, SessionToken)
 
 logger = logging.getLogger(__name__)
 
-def register_sims(api_url: str, token: Token, sims: list[dict]) -> Optional[SessionToken]:
-    session_token = register(api_url, token)
+def register_sims(api_url: str, session_token: SessionToken, sims: list[dict]) -> Optional[SessionToken]:
+    #session_token = register(api_url, token)
 
     if session_token == None:
         return None
 
     cookies = dict(session_token=session_token.as_base64())
-    r = requests.post(f"{api_url}/provider/sims", json=sims, cookies=cookies)
+    r = requests.put(f"{api_url}/provider/sims", json=sims, cookies=cookies)
 
     if r.status_code != requests.codes.ok:
         logger.error(f"Registration failed. Received {r.status_code} status from server.")

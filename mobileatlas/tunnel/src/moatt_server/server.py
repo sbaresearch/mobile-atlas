@@ -12,7 +12,7 @@ def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
     url = "sqlite+aiosqlite:///app.db"
 
     engine = create_async_engine(url)
-    return async_sessionmaker(engine) # expire_on_commit=False
+    return async_sessionmaker(engine, expire_on_commit=False)
 
 async def main():
     logging.basicConfig(level=logging.DEBUG)

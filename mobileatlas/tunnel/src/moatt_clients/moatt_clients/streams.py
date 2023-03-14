@@ -12,13 +12,11 @@ class TcpStream:
         self.socket = socket
         self.buf = b""
 
+    def getpeername(self):
+        return self.socket.getpeername()
+
     def write_all(self, buf: bytes) -> None:
-        try:
-            print(f"write all {len(buf)}")
-            self.socket.sendall(buf)
-            print("successful")
-        except:
-            print("except")
+        self.socket.sendall(buf)
 
     def read_exactly(self, n: int) -> bytes:
         while True:
@@ -58,6 +56,9 @@ class TcpStream:
 class ApduStream:
     def __init__(self, stream: TcpStream):
         self.stream = stream
+
+    def getpeername(self):
+        return self.stream.getpeername()
 
     def send_apdu(self, payload: bytes) -> None:
         self.send(ApduPacket(ApduOp.Apdu, payload))

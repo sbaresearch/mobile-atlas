@@ -8,7 +8,6 @@ from moatt_server import auth
 from moatt_server.rest.auth import protected
 from moatt_types.connect import SessionToken
 
-#from moatt_server.models import Sim, Provider, Imsi as DbImsi
 import moatt_server.models as dbm
 from moatt_types.connect import Imsi, Iccid
 
@@ -19,7 +18,6 @@ class Sim:
         self.iccid = iccid
         self.imsi = imsi
 
-# {""}
 def parse_sim(sim) -> Sim:
     if type(sim) != dict or len(sim) != 2:
         raise ValueError
@@ -33,7 +31,7 @@ def parse_sim(sim) -> Sim:
     return Sim(Iccid(iccid), Imsi(imsi))
 
 def parse_sims(sims) -> dict[Iccid, Sim]:
-    if type(sims) != list or len(sims) == 0:
+    if type(sims) != list:
         raise ValueError
 
     parsed_sims = {}
@@ -52,12 +50,16 @@ def parse_sims(sims) -> dict[Iccid, Sim]:
 @app.route("/register", methods=["POST"])
 @flask_http_auth.required
 def register():
+    token = g._http_bearer_auth.token
     session_token = auth.generate_session_token()
-    #session['session_token'] = session_token.as_base64()
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
 
-    provider = dbm.Provider(token_id=g._http_bearer_auth.token.as_base64(), session_token=session_token.as_base64())
-    logger.debug(provider)
-    db.session.add(provider)
+    db.session.add(dbm.SessionToken(
+        value=session_token.as_base64(),
+        created=now,
+        last_access=now,
+        token_id=token.as_base64()
+        ))
     db.session.commit()
 
     resp = jsonify(session_token.as_base64())
@@ -73,18 +75,21 @@ def deregister():
         return Response(status=200)
 
     try:
-        SessionToken(base64.b64decode(session_token))
+        session_token = SessionToken(base64.b64decode(session_token))
     except ValueError:
         return Response(status=400)
 
-    stmt = db.select(dbm.Provider).where(dbm.Provider.session_token == session_token)
-    provider = db.session.scalar(stmt)
-    db.session.delete(provider)
+    session_token = db.session.get(dbm.SessionToken, session_token.as_base64())
+
+    if session_token.provider != None:
+        db.session.delete(session_token.provider)
+
+    db.session.delete(session_token)
     db.session.commit()
 
     return Response(status=200)
 
-@app.route("/provider/sims", methods=["POST"])
+@app.route("/provider/sims", methods=["PUT"])
 @protected
 def provider_register():
     try:
@@ -92,30 +97,49 @@ def provider_register():
     except ValueError:
         return Response(status=400)
 
+    session = db.session.get(dbm.SessionToken, g._session_token_auth.session_token.as_base64())
+
+    if session.provider == None:
+        provider = dbm.Provider(
+                session_token_id=session.value
+                )
+        db.session.add(provider)
+    else:
+        provider = session.provider
+
     iccids = list(map(lambda x: x.iccid, sims.keys()))
-    print(list(sims.keys()))
+
+    removed_sims = db.session.scalars(
+            db.select(dbm.Sim)\
+                    .where(dbm.Sim.provider_id == provider.id)\
+                    .where(dbm.Sim.iccid.not_in(iccids))
+            )
+
+    for sim in removed_sims:
+        sim.provider = None
+
+    if len(sims) == 0:
+        db.session.commit()
+        return Response(status=200)
+
     existing_sims = list(db.session.scalars(db.select(dbm.Sim).where(dbm.Sim.iccid.in_(iccids))))
     new_iccids = set(iccids).difference(set([sim.iccid for sim in existing_sims]))
     now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-    provider = g._session_token_auth.provider
 
     for sim in existing_sims:
         imsi = sims[Iccid(sim.iccid)].imsi.imsi
 
         if sim.provider != None:
-            # TODO: A SIM card can only be published by one provider
-            # to ensure that providers can reregister SIMs when they
-            # lose connection without deregistering we need to implement
-            # a heartbeat and a gc mechanism
-            raise NotImplementedError
+            if sim.provider.id == provider.id:
+                continue
+
+            if sim.provider.allow_reregistration == False:
+                return Response(status=403)
 
         sim.provider = provider
         db.session.add(dbm.Imsi(imsi=imsi,registered=now,sim=sim))
 
     for iccid in new_iccids:
-        print(sims.keys())
-        print(iccid)
         sim = dbm.Sim(
                 iccid=iccid,
                 imsi=[dbm.Imsi(imsi=sims[Iccid(iccid)].imsi.imsi, registered=now)],
@@ -128,53 +152,3 @@ def provider_register():
     db.session.commit()
 
     return Response(status=200)
-
-
-# TODO: (un)marshalling Imsi/Iccid
-#@app.route("/provider/foo", methods=["POST"])
-#@protected
-def provider_registe():
-    try:
-        sims = parse_sims(request.get_json())
-    except ValueError:
-        return Response(status=400)
-
-    iccids = list(map(lambda x: x.iccid, sims.keys()))
-    print(list(sims.keys()))
-    existing_sims = list(db.session.scalars(db.select(dbm.Sim).where(dbm.Sim.iccid.in_(iccids))))
-    new_iccids = set(iccids).difference(set([sim.iccid for sim in existing_sims]))
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-    session_token = auth.generate_session_token()
-    #provider = dbm.Provider(token=g._http_bearer_auth.token, session_token=session_token)
-    provider = dbm.Provider(token="tokenplaceholder", session_token=session_token.as_base64())
-    db.session.add(provider)
-
-    for sim in existing_sims:
-        imsi = sims[Iccid(sim.iccid)].imsi.imsi
-
-        if sim.provider != None:
-            # TODO: A SIM card can only be published by one provider
-            # to ensure that providers can reregister SIMs when they
-            # lose connection without deregistering we need to implement
-            # a heartbeat and a gc mechanism
-            raise NotImplementedError
-
-        sim.provider = provider
-        db.session.add(dbm.Imsi(imsi=imsi,registered=now,sim=sim))
-
-    for iccid in new_iccids:
-        print(sims.keys())
-        print(iccid)
-        sim = dbm.Sim(
-                iccid=iccid,
-                imsi=[dbm.Imsi(imsi=sims[Iccid(iccid)].imsi.imsi, registered=now)],
-                available=True,
-                provider=provider
-                )
-        db.session.add(sim)
-
-
-    db.session.commit()
-
-    return jsonify(session_token.as_base64())

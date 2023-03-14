@@ -3,9 +3,9 @@ import logging
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 import moatt_server.tunnel.connection_queue as connection_queue
-from moatt_types.connect import ConnectStatus, ConnectResponse
+from moatt_types.connect import ConnectStatus, ConnectResponse, AuthResponse, AuthStatus
 from moatt_server.tunnel.util import read_con_req, write_msg
-from moatt_server.auth import find_provider, AuthError
+from moatt_server.auth import get_sim, AuthError
 from moatt_server.tunnel.handler import Handler
 
 logger = logging.getLogger(__name__)
@@ -17,17 +17,19 @@ class ProbeHandler(Handler):
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             await self._handle(reader, writer)
-        except:
+        except Exception as e:
+            logger.warn(f"Exception occurred while handling connection: {e}")
             writer.close()
             await writer.wait_closed()
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        provider = await self._handle_auth(reader, writer)
+        session_token = await self._handle_auth_req(reader, writer)
 
-        if provider == None:
+        if session_token == None:
             return
 
-        token, provider = provider
+        logger.debug("Sending successful authorisation message.")
+        await write_msg(writer, AuthResponse(AuthStatus.Success))
 
         logger.debug("waiting for probe connect request")
         con_req = await read_con_req(reader)
@@ -40,7 +42,7 @@ class ProbeHandler(Handler):
             return
 
         try:
-            provider_id, iccid = await find_provider(self.async_session, token, con_req.identifier)
+            sim = await get_sim(self.async_session, session_token, con_req.identifier)
         except AuthError:
             logger.debug("Received disallowed SIM request from probe. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.Forbidden))
@@ -48,15 +50,12 @@ class ProbeHandler(Handler):
             await writer.wait_closed()
             return
 
-        if provider_id == None:
+        if sim == None:
             logger.debug("Probe requested unknown SIM. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.NotFound))
             writer.close()
             await writer.wait_closed()
             return
 
-        #logger.debug("got successful probe con request. Sending success status.")
-        #await write_msg(writer, ConnectResponse(ConnectStatus.Success))
-
         logger.debug("Sending stream to provider handler")
-        await connection_queue.put(provider_id, (iccid, con_req, token, reader, writer))
+        await connection_queue.put(sim.provider.id, (sim, con_req, reader, writer))

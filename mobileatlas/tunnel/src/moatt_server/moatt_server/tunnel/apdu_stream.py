@@ -3,14 +3,14 @@ import logging
 import struct
 
 from typing import Optional
-from moatt_types.connect import ApduPacket, Token, Iccid
+from moatt_types.connect import ApduPacket
+import moatt_server.models as dbm
 
 logger = logging.getLogger(__name__)
 
 class ApduStream:
-    def __init__(self, iccid: Iccid, token: Token, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        self.iccid = iccid
-        self.token = token
+    def __init__(self, sim: dbm.Sim, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        self.sim = sim
         self.reader = reader
         self.writer = writer
         self.background_tasks = set()

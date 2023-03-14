@@ -2,10 +2,11 @@ from flask import request, Response, g
 from types import SimpleNamespace
 import base64
 from functools import wraps
+import datetime
 
 from moatt_types.connect import SessionToken, Token
 
-from moatt_server.auth import sync_get_registration
+from moatt_server.auth import sync_get_session
 
 from moatt_server.rest import db
 
@@ -24,26 +25,25 @@ def protected(f):
         except:
             return Response(status=401) # TODO: add www-authenticate header
 
-        provider = sync_get_registration(db.session, session_token)
+        #provider = sync_get_registration(db.session, session_token)
+        sess = sync_get_session(db.session, session_token)
 
-        if provider == None or type(provider) != dbm.Provider or provider.session_token != session_token.as_base64():
+        if sess == None or type(sess) != dbm.SessionToken or sess.value != session_token.as_base64():
             return Response(status=403)
 
-        # TODO: check expiration
-        if provider.token.active == False:
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        if sess.token.active == False or (sess.token.expires != None and sess.token.expires < now):
             return Response(status=403)
 
         try:
-            token = Token(base64.b64decode(provider.token.value))
+            token = Token(base64.b64decode(sess.token.value))
         except:
             return Response(status=500)
 
         g._session_token_auth = SimpleNamespace()
-        g._session_token_auth.valid_session_token = True
         g._session_token_auth.session_token = session_token
+        g._session_token_auth.session = sess
         g._session_token_auth.token = token
-        g._session_token_auth.provider_id = provider.id
-        g._session_token_auth.provider = provider
 
         return f(*args, **kwargs)
 

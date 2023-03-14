@@ -1,37 +1,26 @@
-import json
 import logging
 import secrets
+import datetime
 
 from typing import Optional
 from moatt_types.connect import Imsi, Iccid, Token, IdentifierType, SessionToken
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
-#from moatt_server.models import Sim, Imsi, Provider, Token as DBToken
 import moatt_server.models as dbm
 
 logger = logging.getLogger(__name__)
 
+def now() -> datetime.datetime:
+    return datetime.datetime.now(tz=datetime.timezone.utc)
+
 def generate_session_token() -> SessionToken:
     return SessionToken(secrets.token_bytes(25))
-
-def read_tokens(filename="tokens.json"):
-    with open(filename, "r") as f:
-        return list(map(lambda x: Token(bytes.fromhex(x)), json.load(f)))
-
-def read_provider_mapping(filename="prov_map.json"):
-    with open(filename, "r") as f:
-        res = json.load(f)
-    return res
-
-#valid_tokens = read_tokens()
-#sim_provider_mapping = read_provider_mapping()
 
 class AuthError(Exception):
     def __init__(self):
         super().__init__("Authorisation failure.")
 
-# TODO: combine sync_valid and valid
 def sync_valid(session: Session, token: Token) -> bool:
     logger.debug(f"'{token.as_base64()}'")
     result = session.get(dbm.Token, token.as_base64())
@@ -45,104 +34,95 @@ def sync_valid(session: Session, token: Token) -> bool:
     else:
         return False
 
-async def valid(async_session: async_sessionmaker[AsyncSession], token: Token) -> bool:
-    async with async_session() as session:
-        result = await session.get(dbm.Token, token.as_base64())
+def token_is_valid(token: dbm.Token) -> bool:
+    assert type(token) == dbm.Token
 
-        if result == None:
-            logger.debug("token none")
-            return False
-        
-        logger.debug(result)
-        logger.debug(token)
-        if result.active and result.value == token.as_base64():
-            return True
-        else:
-            return False
+    return token.active and not token_is_expired(token)
 
-async def allowed_sim_request(async_session: async_sessionmaker[AsyncSession], token: Token, identifier: Imsi | Iccid) -> bool:
-    if not await valid(async_session, token):
-        raise AuthError
+def token_is_expired(token: dbm.Token) -> bool:
+    assert type(token) == dbm.Token
 
-    id(identifier)
-    return True
+    return not (token.expires == None or token.expires > now())
 
-def sync_get_registration(session: Session, session_token: SessionToken) -> Optional[dbm.Provider]:
-    assert type(session_token) == SessionToken
+def sessiontoken_is_valid(token: dbm.SessionToken) -> bool:
+    assert type(token) == dbm.SessionToken
 
-    logger.debug(f"Session token: '{session_token.as_base64()}'")
-    stmt = select(dbm.Provider).where(dbm.Provider.session_token == session_token.as_base64())
-    provider = session.scalar(stmt)
+    return token_is_valid(token.token) and not sessiontoken_is_expired(token)
 
-    if not _check_is_registered(provider, session_token):
+def sessiontoken_is_expired(token: dbm.SessionToken) -> bool:
+    assert type(token) == dbm.SessionToken
+
+    return not (token.expires == None or token.expires > now())
+
+def sync_get_session(session: Session, session_token: SessionToken) -> Optional[dbm.SessionToken]:
+    dbsess = session.get(dbm.SessionToken, session_token.as_base64())
+
+    if dbsess == None or (dbsess.expires != None and dbsess.expires < now()):
         return None
 
-    return provider
+    #dbsess.last_access = now # TODO isolation level
+    #session.commit()
+    return dbsess
 
-def sync_is_registered(session: Session, session_token: SessionToken) -> bool:
+async def get_sessiontoken(async_session: async_sessionmaker[AsyncSession], session_token: SessionToken) -> Optional[dbm.SessionToken]:
     assert type(session_token) == SessionToken
 
-    logger.debug(f"Session token: '{session_token.as_base64()}'")
-    stmt = select(dbm.Provider).where(dbm.Provider.session_token == session_token.as_base64())
-    provider = session.scalar(stmt)
-
-    return _check_is_registered(provider, session_token)
-
-def _check_is_registered(provider: dbm.Provider | None, session_token: SessionToken) -> bool:
-    if provider == None:
-        logger.debug("Provider is none")
-        return False
-
-    logger.debug(provider.session_token)
-    logger.debug(session_token)
-
-    if provider.session_token == session_token.as_base64():
-        return True
-    else:
-        return False
-
-async def get_registration(async_session: async_sessionmaker[AsyncSession], session_token: SessionToken) -> Optional[dbm.Provider]:
-    assert type(session_token) == SessionToken
-
-    stmt = select(dbm.Provider)\
-            .where(dbm.Provider.session_token == session_token.as_base64())\
-            .options(selectinload(dbm.Provider.token))
+    stmt = select(dbm.SessionToken)\
+            .where(dbm.SessionToken.value == session_token.as_base64())\
+            .options(selectinload(dbm.SessionToken.provider))\
+            .options(selectinload(dbm.SessionToken.token))
     async with async_session() as session:
-        provider = await session.scalar(stmt)
+        st = await session.scalar(stmt)
 
-    if not _check_is_registered(provider, session_token):
+        if st == None:
+            return None
+
+        st.last_access = now()
+        await session.commit()
+
+    if sessiontoken_is_valid(st):
+        return st
+    else:
         return None
-    else:
-        return provider
 
-async def is_registered(async_session: async_sessionmaker[AsyncSession], session_token: SessionToken) -> bool:
-    assert type(session_token) == SessionToken
-
-    async with async_session() as session:
-        stmt = select(dbm.Provider).where(dbm.Provider.session_token == session_token.as_base64())
-        provider = await session.scalar(stmt)
-
-    return _check_is_registered(provider, session_token)
-
-async def find_provider(async_session: async_sessionmaker[AsyncSession], token: Token, identifier: Imsi | Iccid) -> tuple[Optional[int], Optional[Iccid]]:
-    if not await allowed_sim_request(async_session, token, identifier):
+async def get_sim(async_session: async_sessionmaker[AsyncSession], session_token: dbm.SessionToken, identifier: Imsi | Iccid) -> Optional[dbm.Sim]:
+    if not sessiontoken_is_valid(session_token):
         raise AuthError
+
+    token = session_token.token
 
     if identifier.identifier_type() == IdentifierType.Imsi:
         async with async_session() as session:
-            stmt = select(dbm.Sim).join(dbm.Sim.imsi).order_by(dbm.Imsi.registered.desc()).limit(1)
+            imsi = identifier.imsi # type: ignore
+            stmt = select(dbm.Sim)\
+                    .join(dbm.Sim.imsi)\
+                    .where(dbm.Imsi.imsi == imsi)\
+                    .order_by(dbm.Imsi.id.desc())\
+                    .limit(1)\
+                    .options(selectinload(dbm.Sim.provider))
             sim = await session.scalar(stmt)
 
-            if sim == None:
-                return None, None
+            if sim == None or sim.provider_id == None:
+                return None
 
-            return sim.provider_id, Iccid(sim.iccid)
-        #return sim_provider_mapping["imsi"].get(identifier.imsi)
+            session.add(token)
+            token.last_access = now()
+            await session.commit()
+
+            return sim
     else:
         async with async_session() as session:
-            sim = await session.get(dbm.Sim, identifier.iccid)
+            iccid = identifier.iccid # type: ignore
+            stmt = select(dbm.Sim)\
+                    .where(dbm.Sim.iccid == iccid)\
+                    .options(selectinload(dbm.Sim.provider))
+            sim = await session.scalar(stmt)
 
-            if sim == None:
-                return None, None
+            if sim == None or sim.provider_id == None:
+                return None
 
-            return sim.provider_id, sim.iccid
+            session.add(token)
+            token.last_access = now()
+            await session.commit()
+
+            return sim

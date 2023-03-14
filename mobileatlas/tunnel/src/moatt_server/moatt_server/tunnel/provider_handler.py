@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import moatt_server.tunnel.connection_queue as connection_queue
 from moatt_server.tunnel.apdu_stream import ApduStream
-from moatt_types.connect import ConnectResponse, ConnectStatus
+from moatt_types.connect import ConnectResponse, ConnectStatus, AuthResponse, AuthStatus
 import moatt_server.models as dbm
 from moatt_server.tunnel.util import write_msg
 from moatt_server.tunnel.handler import Handler
@@ -54,7 +54,7 @@ class ProviderHandler(Handler):
                     async with session.begin():
                         session.add(
                                 dbm.ApduLog(
-                                    sim_id=probe.iccid.iccid,
+                                    sim_id=probe.sim.iccid,
                                     command=r.op,
                                     payload=r.payload,
                                     sender=dbm.Sender.Probe if t.get_name() == "probe" else dbm.Sender.Provider,
@@ -72,23 +72,34 @@ class ProviderHandler(Handler):
         try:
             await self._handle(reader, writer)
         except Exception as e:
-            logger.warn(f"Exception occured while handling connection: {e}")
+            logger.warn(f"Exception occurred while handling connection: {e}")
             writer.close()
             await writer.wait_closed()
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        provider = await self._handle_auth(reader, writer)
+        session_token = await self._handle_auth_req(reader, writer)
 
-        if provider == None:
+        if session_token == None:
             return
 
-        token, provider = provider
+        if session_token.provider == None:
+            logger.debug("Provider has not registered any Sim cards.")
+            return
+
+        await write_msg(writer, AuthResponse(AuthStatus.Success))
 
         while True:
             logger.debug("waiting for connection request.")
-            iccid, con_req, probe_token, probe_reader, probe_writer = await connection_queue.get(
-                    provider.id
+            sim, con_req, probe_reader, probe_writer = await connection_queue.get(
+                    session_token.provider.id
                     )
+
+            if reader.at_eof():
+                logger.info("Provider disconnected.")
+                await connection_queue.put(session_token.provider.id, (sim, con_req, probe_reader, probe_writer))
+                writer.close()
+                await writer.wait_closed()
+                return
 
             if probe_reader.at_eof():
                 logger.warn("Probe disconnected early. Waiting for new request.")
@@ -125,8 +136,8 @@ class ProviderHandler(Handler):
             await probe_writer.wait_closed()
             return
 
-        probe_stream = ApduStream(iccid, probe_token, probe_reader, probe_writer)
-        provider_stream = ApduStream(iccid, token, reader, writer)
+        probe_stream = ApduStream(sim, probe_reader, probe_writer)
+        provider_stream = ApduStream(sim, reader, writer)
 
         try:
             await self.handle_established_connection(probe_stream, provider_stream)
