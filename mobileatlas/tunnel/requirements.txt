@@ -1,4 +1,5 @@
+alembic
 flask
 flask-sqlalchemy
-flask-migrate
-git+https://gitlab.sba-research.org/pfrenzel/mobile-atlas-tunnel@v0.0.1#subdirectory=src/moatt_types
+git+https://measurement-probe-read:sbaglpat-m5Ut9LybXAs1AdMSG1Qa@gitlab.sba-research.org/pfrenzel/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
+git+https://measurement-probe-read:sbaglpat-m5Ut9LybXAs1AdMSG1Qa@gitlab.sba-research.org/pfrenzel/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients
