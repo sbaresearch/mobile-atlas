@@ -49,7 +49,7 @@ class Client:
         logger.debug("Waiting for authorisation response.")
         auth_res = AuthResponse.decode(stream.read_exactly(AuthResponse.LENGTH))
 
-        if auth_res == None:
+        if auth_res is None:
             logger.warn("Received malformed message during connection.")
             raise ValueError
 

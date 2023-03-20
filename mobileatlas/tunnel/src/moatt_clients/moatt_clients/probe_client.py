@@ -1,7 +1,7 @@
 import logging
 import socket
 
-from typing import Optional
+from typing import Optional, Union
 
 from moatt_clients.client import Client
 from moatt_clients.streams import TcpStream, ApduStream
@@ -24,12 +24,12 @@ class ProbeClient(Client):
             stream.close()
             return None
 
-        if apdu_stream == None:
+        if apdu_stream is None:
             stream.close()
 
         return apdu_stream
 
-    def _connect(self, stream: TcpStream, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
+    def _connect(self, stream: TcpStream, sim_id: Union[Imsi, Iccid]) -> Optional[ApduStream]:
         auth_status = self._authenticate(stream)
 
         if auth_status != AuthStatus.Success:
@@ -42,7 +42,7 @@ class ProbeClient(Client):
         logger.debug("Waiting for answer to connection request message.")
         conn_res = ConnectResponse.decode(stream.read_exactly(ConnectResponse.LENGTH))
 
-        if conn_res == None:
+        if conn_res is None:
             logger.warn("Received malformed message during connection.")
             return None
 

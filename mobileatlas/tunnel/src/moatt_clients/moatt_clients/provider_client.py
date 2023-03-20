@@ -2,7 +2,7 @@ import socket
 import requests
 import logging
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Union, List, Tuple
 
 from moatt_clients.client import Client
 from moatt_clients.streams import ApduStream, TcpStream
@@ -11,10 +11,8 @@ from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, Co
 
 logger = logging.getLogger(__name__)
 
-def register_sims(api_url: str, session_token: SessionToken, sims: list[dict]) -> Optional[SessionToken]:
-    #session_token = register(api_url, token)
-
-    if session_token == None:
+def register_sims(api_url: str, session_token: SessionToken, sims: List[dict]) -> Optional[SessionToken]:
+    if session_token is None:
         return None
 
     cookies = dict(session_token=session_token.as_base64())
@@ -38,7 +36,7 @@ class ProviderClient(Client):
         self.cb = cb
         super().__init__(session_token, host, port)
 
-    def wait_for_connection(self) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
+    def wait_for_connection(self) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
         logger.debug("Opening connection.")
         stream = TcpStream(socket.create_connection((self.host, self.port)))
 
@@ -49,13 +47,13 @@ class ProviderClient(Client):
             stream.close()
             return None
 
-        if apdu_stream == None:
+        if apdu_stream is None:
             logger.debug("APDU stream is none")
             stream.close()
 
         return apdu_stream
 
-    def _wait_for_connection(self, stream: TcpStream) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
+    def _wait_for_connection(self, stream: TcpStream) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
         auth_status = self._authenticate(stream)
 
         if auth_status != AuthStatus.Success:
@@ -65,7 +63,7 @@ class ProviderClient(Client):
         logging.debug("Waiting for connection request.")
         conn_req = self._read_con_req(stream)
 
-        if conn_req == None:
+        if conn_req is None:
             logger.warn("Malformed connection request.")
             return None
 
@@ -94,7 +92,7 @@ class ProviderClient(Client):
             elif ident_type == IdentifierType.Iccid:
                 return (2 + Iccid.LENGTH) - len(b)
             else:
-                raise NotImplemented
+                raise NotImplementedError
         except ValueError:
             return 0
 

@@ -89,7 +89,7 @@ class ApduStream:
         logger.debug(buf)
         p = ApduPacket.decode(buf)
 
-        if p == None:
+        if p is None:
             raise ValueError
 
         return p
