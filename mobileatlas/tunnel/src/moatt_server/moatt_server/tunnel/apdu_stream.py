@@ -20,8 +20,6 @@ class ApduStream:
 
         if len(buf) == 0:
             return None
-            #raise EOFError
-            #raise asyncio.IncompleteReadError(buf, self._bytes_missing(buf))
 
         missing = ApduStream._bytes_missing(buf)
         while missing > 0:
@@ -35,7 +33,7 @@ class ApduStream:
 
         p = ApduPacket.decode(buf)
 
-        if p == None:
+        if p is None:
             raise ValueError
 
         return p
@@ -59,8 +57,8 @@ class ApduStream:
         if len(msg) < 6:
             return 6 - len(msg)
 
-        l, = struct.unpack("!I", msg[2:6])
-        if len(msg) < 6 + l:
-            return (6 + l) - len(msg)
+        plen, = struct.unpack("!I", msg[2:6])
+        if len(msg) < 6 + plen:
+            return (6 + plen) - len(msg)
         else:
             return 0

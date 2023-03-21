@@ -25,7 +25,7 @@ class ProbeHandler(Handler):
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         session_token = await self._handle_auth_req(reader, writer)
 
-        if session_token == None:
+        if session_token is None:
             return
 
         logger.debug("Sending successful authorisation message.")
@@ -35,7 +35,7 @@ class ProbeHandler(Handler):
         con_req = await read_con_req(reader)
         logger.debug(f"got probe connect request {con_req}")
 
-        if con_req == None:
+        if con_req is None:
             logger.warn("Received malformed connection request message. Closing connection.")
             writer.close()
             await writer.wait_closed()
@@ -50,7 +50,7 @@ class ProbeHandler(Handler):
             await writer.wait_closed()
             return
 
-        if sim == None:
+        if sim is None:
             logger.debug("Probe requested unknown SIM. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.NotFound))
             writer.close()

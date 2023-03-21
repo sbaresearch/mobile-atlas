@@ -25,7 +25,7 @@ def parse_sim(sim) -> Sim:
     try:
         iccid = sim["iccid"]
         imsi = sim["imsi"]
-    except:
+    except KeyError:
         raise ValueError
 
     return Sim(Iccid(iccid), Imsi(imsi))
@@ -71,7 +71,7 @@ def register():
 def deregister():
     session_token = request.cookies.get("session_token")
 
-    if session_token == None:
+    if session_token is None:
         return Response(status=200)
 
     try:
@@ -81,7 +81,7 @@ def deregister():
 
     session_token = db.session.get(dbm.SessionToken, session_token.as_base64())
 
-    if session_token.provider != None:
+    if session_token.provider is not None:
         db.session.delete(session_token.provider)
 
     db.session.delete(session_token)
@@ -99,7 +99,7 @@ def provider_register():
 
     session = db.session.get(dbm.SessionToken, g._session_token_auth.session_token.as_base64())
 
-    if session.provider == None:
+    if session.provider is None:
         provider = dbm.Provider(
                 session_token_id=session.value
                 )
@@ -129,11 +129,11 @@ def provider_register():
     for sim in existing_sims:
         imsi = sims[Iccid(sim.iccid)].imsi.imsi
 
-        if sim.provider != None:
+        if sim.provider is not None:
             if sim.provider.id == provider.id:
                 continue
 
-            if sim.provider.allow_reregistration == False:
+            if sim.provider.allow_reregistration is False:
                 return Response(status=403)
 
         sim.provider = provider

@@ -15,4 +15,3 @@ app.config["SECRET_KEY"] = secrets.token_hex()
 db = SQLAlchemy(app)
 #http_auth = HttpAuth(app)
 
-from moatt_server.rest import routes

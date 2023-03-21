@@ -26,7 +26,7 @@ def sync_valid(session: Session, token: Token) -> bool:
     result = session.get(dbm.Token, token.as_base64())
     logger.debug(result)
 
-    if result == None:
+    if result is None:
         return False
 
     if result.active and result.value == token.as_base64():
@@ -42,7 +42,7 @@ def token_is_valid(token: dbm.Token) -> bool:
 def token_is_expired(token: dbm.Token) -> bool:
     assert type(token) == dbm.Token
 
-    return not (token.expires == None or token.expires > now())
+    return not (token.expires is None or token.expires > now())
 
 def sessiontoken_is_valid(token: dbm.SessionToken) -> bool:
     assert type(token) == dbm.SessionToken
@@ -52,19 +52,22 @@ def sessiontoken_is_valid(token: dbm.SessionToken) -> bool:
 def sessiontoken_is_expired(token: dbm.SessionToken) -> bool:
     assert type(token) == dbm.SessionToken
 
-    return not (token.expires == None or token.expires > now())
+    return not (token.expires is None or token.expires > now())
 
 def sync_get_session(session: Session, session_token: SessionToken) -> Optional[dbm.SessionToken]:
     dbsess = session.get(dbm.SessionToken, session_token.as_base64())
 
-    if dbsess == None or (dbsess.expires != None and dbsess.expires < now()):
+    if dbsess is None or (dbsess.expires is not None and dbsess.expires < now()):
         return None
 
     #dbsess.last_access = now # TODO isolation level
     #session.commit()
     return dbsess
 
-async def get_sessiontoken(async_session: async_sessionmaker[AsyncSession], session_token: SessionToken) -> Optional[dbm.SessionToken]:
+async def get_sessiontoken(
+        async_session: async_sessionmaker[AsyncSession],
+        session_token: SessionToken
+        ) -> Optional[dbm.SessionToken]:
     assert type(session_token) == SessionToken
 
     stmt = select(dbm.SessionToken)\
@@ -74,7 +77,7 @@ async def get_sessiontoken(async_session: async_sessionmaker[AsyncSession], sess
     async with async_session() as session:
         st = await session.scalar(stmt)
 
-        if st == None:
+        if st is None:
             return None
 
         st.last_access = now()
@@ -85,7 +88,11 @@ async def get_sessiontoken(async_session: async_sessionmaker[AsyncSession], sess
     else:
         return None
 
-async def get_sim(async_session: async_sessionmaker[AsyncSession], session_token: dbm.SessionToken, identifier: Imsi | Iccid) -> Optional[dbm.Sim]:
+async def get_sim(
+        async_session: async_sessionmaker[AsyncSession],
+        session_token: dbm.SessionToken,
+        identifier: Imsi | Iccid
+        ) -> Optional[dbm.Sim]:
     if not sessiontoken_is_valid(session_token):
         raise AuthError
 
@@ -102,7 +109,7 @@ async def get_sim(async_session: async_sessionmaker[AsyncSession], session_token
                     .options(selectinload(dbm.Sim.provider))
             sim = await session.scalar(stmt)
 
-            if sim == None or sim.provider_id == None:
+            if sim is None or sim.provider_id is None:
                 return None
 
             session.add(token)
@@ -118,7 +125,7 @@ async def get_sim(async_session: async_sessionmaker[AsyncSession], session_token
                     .options(selectinload(dbm.Sim.provider))
             sim = await session.scalar(stmt)
 
-            if sim == None or sim.provider_id == None:
+            if sim is None or sim.provider_id is None:
                 return None
 
             session.add(token)

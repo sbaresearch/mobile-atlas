@@ -80,7 +80,10 @@ class ApduLog(Base):
     __tablename__ = "apdu_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.now(datetime.timezone.utc))
+    timestamp: Mapped[datetime.datetime] = mapped_column(
+            DateTime,
+            default=datetime.datetime.now(datetime.timezone.utc)
+            )
     sim_id: Mapped[str] = mapped_column(String, ForeignKey("sims.iccid"))
     sim: Mapped[Sim] = relationship("Sim")
     command: Mapped[Enum] = mapped_column(Enum(ApduOp))

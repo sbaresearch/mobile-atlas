@@ -22,7 +22,7 @@ def _con_req_missing(b: bytes) -> int:
             return (2 + Iccid.LENGTH) - len(b)
         else:
             logger.warn("NotImplemented")
-            raise NotImplemented
+            raise NotImplementedError
     except ValueError as e:
         logger.warn(f"ValueError: {e}")
         return 0

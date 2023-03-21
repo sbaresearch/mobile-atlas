@@ -1,4 +1,8 @@
-import enum, struct, logging, base64
+import base64
+import enum
+import logging
+import struct
+
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -90,21 +94,15 @@ class ApduPacket:
         except ValueError:
             return None
 
-        l, = struct.unpack("!I", msg[2:6])
+        plen, = struct.unpack("!I", msg[2:6])
 
-        if len(msg) != 6 + l:
+        if len(msg) != 6 + plen:
             return None
 
         return ApduPacket(op, msg[6:])
 
     def encode(self) -> bytes:
         return struct.pack("!BBI", 1, self.op.value, len(self.payload)) + self.payload
-
-#def _is_valid_imsi(msg: bytes) -> bool:
-#    def _is_digit(x: int):
-#        return x >= ord(b'0') and x <= ord(b'9')
-#
-#    return len(msg) >= 5 and len(msg) <= 15 and all(map(_is_digit, msg))
 
 def _only_digits(msg: bytes) -> bool:
     def _is_digit(x: int):
@@ -250,7 +248,7 @@ class ConnectRequest:
 
             imsi = Imsi.decode(msg[2:])
 
-            if imsi == None:
+            if imsi is None:
                 return None
 
             return ConnectRequest(imsi)
@@ -260,13 +258,14 @@ class ConnectRequest:
 
             iccid = Iccid.decode(msg[2:])
 
-            if iccid == None:
+            if iccid is None:
                 return None
 
             return ConnectRequest(iccid)
 
     def encode(self) -> bytes:
-        return struct.pack("!BB", 1, self.identifier.identifier_type().value) + self.identifier.encode()
+        return struct.pack("!BB", 1, self.identifier.identifier_type().value)\
+                + self.identifier.encode()
 
 class ConnectResponse:
     LENGTH = 2

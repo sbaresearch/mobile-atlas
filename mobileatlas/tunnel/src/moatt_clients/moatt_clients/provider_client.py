@@ -11,7 +11,11 @@ from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, Co
 
 logger = logging.getLogger(__name__)
 
-def register_sims(api_url: str, session_token: SessionToken, sims: List[dict]) -> Optional[SessionToken]:
+def register_sims(
+        api_url: str,
+        session_token: SessionToken,
+        sims: List[dict],
+        ) -> Optional[SessionToken]:
     if session_token is None:
         return None
 
@@ -53,7 +57,10 @@ class ProviderClient(Client):
 
         return apdu_stream
 
-    def _wait_for_connection(self, stream: TcpStream) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
+    def _wait_for_connection(
+            self,
+            stream: TcpStream,
+            ) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
         auth_status = self._authenticate(stream)
 
         if auth_status != AuthStatus.Success:

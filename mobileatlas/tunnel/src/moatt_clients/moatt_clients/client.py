@@ -1,6 +1,7 @@
+import base64
+import binascii
 import logging
 import requests
-import base64
 
 from typing import Optional
 
@@ -31,7 +32,7 @@ def register(api_url: str, token: Token) -> Optional[SessionToken]:
 
     try:
         session_token = SessionToken(base64.b64decode(session_token, validate=True))
-    except:
+    except (binascii.Error, ValueError):
         logger.warn("Received a malformed session_token")
         return None
 

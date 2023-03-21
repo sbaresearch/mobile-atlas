@@ -4,7 +4,7 @@ queues = {}
 
 def _get_queue(session_token) -> asyncio.Queue:
     q = queues.get(session_token)
-    if q == None:
+    if q is None:
         q = asyncio.Queue()
         queues[session_token] = q
     return q

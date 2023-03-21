@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import base64
 from functools import wraps
 import datetime
+import binascii
 
 from moatt_types.connect import SessionToken, Token
 
@@ -17,27 +18,30 @@ def protected(f):
     def auth(*args, **kwargs):
         session_token = request.cookies.get("session_token")
 
-        if session_token == None:
+        if session_token is None:
             return Response(status=401) # TODO: add www-authenticate header
 
         try:
-            session_token = SessionToken(base64.b64decode(session_token))
-        except:
+            session_token = SessionToken(base64.b64decode(session_token, validate=True))
+        except (binascii.Error, ValueError):
             return Response(status=401) # TODO: add www-authenticate header
 
         #provider = sync_get_registration(db.session, session_token)
         sess = sync_get_session(db.session, session_token)
 
-        if sess == None or type(sess) != dbm.SessionToken or sess.value != session_token.as_base64():
+        if sess is None or\
+                type(sess) != dbm.SessionToken or\
+                sess.value != session_token.as_base64():
             return Response(status=403)
 
         now = datetime.datetime.now(tz=datetime.timezone.utc)
-        if sess.token.active == False or (sess.token.expires != None and sess.token.expires < now):
+        if sess.token.active is False or\
+                (sess.token.expires is not None and sess.token.expires < now):
             return Response(status=403)
 
         try:
-            token = Token(base64.b64decode(sess.token.value))
-        except:
+            token = Token(base64.b64decode(sess.token.value, validate=True))
+        except (binascii.Error, ValueError):
             return Response(status=500)
 
         g._session_token_auth = SimpleNamespace()

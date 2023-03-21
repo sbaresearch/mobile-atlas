@@ -1,6 +1,7 @@
 from flask import request, Response, g
 from types import SimpleNamespace
 import base64
+import binascii
 from moatt_types.connect import Token
 from moatt_server.auth import sync_valid
 from functools import wraps
@@ -19,7 +20,7 @@ def required(f):
     def auth(*args, **kwargs):
         auth_header = request.headers.get("Authorization") # TODO: multiple headers
 
-        if auth_header == None:
+        if auth_header is None:
             return Response(status=401, headers={"WWW-Authenticate": "Bearer"})
 
         if not auth_header.startswith("Bearer ") or len(auth_header.split(' ')) != 2:
@@ -29,11 +30,11 @@ def required(f):
                     ) # TODO WWW-Auth header
 
         try:
-            token = Token(base64.b64decode(auth_header.split(' ')[1]))
+            token = Token(base64.b64decode(auth_header.split(' ')[1], validate=True))
 
-            if token == None: # TODO refactor error handling
+            if token is None: # TODO refactor error handling
                 raise ValueError
-        except:
+        except (binascii.Error | ValueError):
             return Response(
                     status=400,
                     headers={"WWW-Authenticate": "Bearer error=\"invalid_request\""}

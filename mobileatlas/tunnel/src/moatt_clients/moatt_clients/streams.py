@@ -102,8 +102,8 @@ class ApduStream:
         if len(msg) < 6:
             return 6 - len(msg)
 
-        l, = struct.unpack("!I", msg[2:6])
-        if len(msg) < 6 + l:
-            return (6 + l) - len(msg)
+        plen, = struct.unpack("!I", msg[2:6])
+        if len(msg) < 6 + plen:
+            return (6 + plen) - len(msg)
         else:
             return 0

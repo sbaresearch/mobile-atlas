@@ -20,7 +20,8 @@ class ProbeClient(Client):
 
         try:
             apdu_stream = self._connect(stream, sim_id)
-        except:
+        except Exception as e:
+            logger.error(f"Connection failed: {e}")
             stream.close()
             return None
 

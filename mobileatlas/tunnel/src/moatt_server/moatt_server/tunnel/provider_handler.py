@@ -27,7 +27,10 @@ class ProviderHandler(Handler):
             await provider.close()
 
         while True:
-            done, pending = await asyncio.wait([probe_task, provider_task], return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(
+                    [probe_task, provider_task],
+                    return_when=asyncio.FIRST_COMPLETED
+                    )
 
             assert len(done) > 0 and len(done) <= 2
             assert len(pending) >= 0 and len(pending) < 2
@@ -35,17 +38,17 @@ class ProviderHandler(Handler):
                 try:
                     r = t.result()
                 except asyncio.IncompleteReadError as e:
-                    logger.warn(f"Unexpected EOF while trying to read from {t.get_name()} connection."
-                                f"(expected at least {e.expected} more bytes.)")
+                    logger.warn(f"Unexpected EOF while trying to read from {t.get_name()} "
+                                f"connection. (expected at least {e.expected} more bytes.)")
 
                     await cleanup()
                     return
                 except ValueError:
-                    logger.warn(f"Received a malformed packet. Closing connections.")
+                    logger.warn("Received a malformed packet. Closing connections.")
                     await cleanup()
                     return
 
-                if r == None:
+                if r is None:
                     logger.info(f"{t.get_name()} closed the connection.")
                     await cleanup()
                     return
@@ -57,7 +60,8 @@ class ProviderHandler(Handler):
                                     sim_id=probe.sim.iccid,
                                     command=r.op,
                                     payload=r.payload,
-                                    sender=dbm.Sender.Probe if t.get_name() == "probe" else dbm.Sender.Provider,
+                                    sender=dbm.Sender.Probe if t.get_name() == "probe"\
+                                                            else dbm.Sender.Provider,
                                     )
                                 )
 
@@ -79,10 +83,10 @@ class ProviderHandler(Handler):
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         session_token = await self._handle_auth_req(reader, writer)
 
-        if session_token == None:
+        if session_token is None:
             return
 
-        if session_token.provider == None:
+        if session_token.provider is None:
             logger.debug("Provider has not registered any Sim cards.")
             return
 
@@ -96,7 +100,10 @@ class ProviderHandler(Handler):
 
             if reader.at_eof():
                 logger.info("Provider disconnected.")
-                await connection_queue.put(session_token.provider.id, (sim, con_req, probe_reader, probe_writer))
+                await connection_queue.put(
+                        session_token.provider.id,
+                        (sim, con_req, probe_reader, probe_writer)
+                        )
                 writer.close()
                 await writer.wait_closed()
                 return
@@ -117,7 +124,7 @@ class ProviderHandler(Handler):
         con_res = ConnectResponse.decode(await reader.readexactly(ConnectResponse.LENGTH))
         logger.debug(f"Received a response for a connection request: {con_res}")
 
-        if con_res == None:
+        if con_res is None:
             logger.warn("Received malformed connection request status. Closing connections.")
             writer.close()
             await writer.wait_closed()
