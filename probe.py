@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 MODULES_BLACKLIST_ALLOWED = {"option", "qmi_wwan", "cdc_mbim", "cdc_wdm", "cdc_ncm", "cdc_acm", "cdc_ether", "usb_wwan",
                              "usbnet", "usbserial", "usbcore"}
 
+MODEM_IDS = [
+    (0x2c7c, 0x0125), # 4G Quectel EG25-G
+    (0x2c7c, 0x0800), # 5G Quectel RM500Q
+]
+
 def blacklist_kernel_modules(module_list):
     # filter modules, only allow certain modules to be blacklisted
     module_list = MODULES_BLACKLIST_ALLOWED.intersection(module_list)
@@ -34,7 +39,7 @@ def blacklist_kernel_modules(module_list):
         f"Create blacklist file for unwanted kernel modules: [{*module_list,}]")
     with open('/etc/modprobe.d/blacklist-mobileatlas.conf', 'w') as f:
         for mod in module_list:
-            f.write(f"blacklist {mod}\n")
+            f.write(f"install {mod} /bin/false\n")
 
     # then remove modules in case they were already loaded
     km = kmod.Kmod()  # [(m.name, m.size) for m in km.loaded()]
@@ -44,12 +49,14 @@ def blacklist_kernel_modules(module_list):
                 f"Module {mod.name} is currently loaded but on blacklist and therefore has to be removed")
             km.rmmod(mod.name)
 
-def wait_for_modem(vendor_id='2c7c', model_id='0125'):
+def wait_for_modem():
     context = pyudev.Context()
-    while(True):
-        modem_device = list(context.list_devices(subsystem="usb", ID_VENDOR_ID=vendor_id, ID_MODEL_ID=model_id)) #alternatively a more generic filter could be used?
-        if modem_device:
-            break
+    modem_device = None
+    while(not modem_device):
+        for vendor_id, model_id in MODEM_IDS:
+            modem_device = list(context.list_devices(subsystem="usb", ID_VENDOR_ID=vendor_id, ID_MODEL_ID=model_id)) #alternatively a more generic filter could be used?
+            if modem_device:
+                break
         time.sleep(1)
     
 def main():
@@ -76,7 +83,7 @@ def main():
 
     # Create modem tunnel
     logger.info("setup modem tunnel...")
-    tunnel = ModemTunnel(parser.get_modem_type(), parser.get_host(), parser.get_port(), parser.get_imsi())
+    tunnel = ModemTunnel(parser.get_modem_type(), parser.get_modem_adapter(), parser.get_host(), parser.get_port(), parser.get_imsi())
     tunnel.setup()  # resets modem
 
     logger.info("wait some time until modem is initialized...")

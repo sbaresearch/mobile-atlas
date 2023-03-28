@@ -20,9 +20,10 @@ class ModemTunnel(VirtualSim):
     Then simulate SIM with SerialModemLink
     """
     DEV_SERIAL = "/dev/ttyAMA1"
-    
+
     # using bcm pin numbering
-    PIN_MODEM_POWER = 26 
+    PINS_MODEM_POWER_M2 = [(16, 1), (26, 0)] # pin and (default) off state
+    PINS_MODEM_POWER_MPCIE = [(26, 1)] #pin and (default) off state
     PIN_SIM_RST = 5
 
     @staticmethod
@@ -45,7 +46,15 @@ class ModemTunnel(VirtualSim):
         else:
             raise Exception('Unknown modem')
 
-    def __init__(self, modem_type, sim_server_ip, sim_server_port, sim_imsi, rst_pin=None, do_pps=True):
+    @staticmethod
+    def get_powerup_pins(modem_adapter_type):
+        if modem_adapter_type == "mpcie":
+            return  ModemTunnel.PINS_MODEM_POWER_MPCIE
+        elif modem_adapter_type == "m2":
+            return  ModemTunnel.PINS_MODEM_POWER_M2
+        return []
+
+    def __init__(self, modem_type, adapter_type, sim_server_ip, sim_server_port, sim_imsi, rst_pin=None, do_pps=True):
         self._modem_type = modem_type
         self._clock = ModemTunnel.get_modem_clk(modem_type)
         self._sim_server_ip = sim_server_ip
@@ -54,6 +63,7 @@ class ModemTunnel(VirtualSim):
         self._rst_pin = rst_pin
         if self._rst_pin is None:
             self._rst_pin = ModemTunnel.PIN_SIM_RST
+        self._power_pins = ModemTunnel.get_powerup_pins(adapter_type)
         self._s = None  # Initialize in __init__, set in setup_connection
         self._setup_gpios()
 
@@ -72,13 +82,14 @@ class ModemTunnel(VirtualSim):
     def _cleanup_gpios(self):
         # GPIO.cleanup() # cleanup all GPIOs (sets them to imput mode)
         # disable the modem when it is not needed
-        GPIO.output(ModemTunnel.PIN_MODEM_POWER, 1)
+        self._set_modem_power(0)
 
     def _setup_gpios(self):
         GPIO.setwarnings(False)  # surpress gpio already in use warning
         GPIO.setmode(GPIO.BCM)  # Broadcom pin-numbering scheme
         GPIO.setup(self._rst_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(ModemTunnel.PIN_MODEM_POWER, GPIO.OUT)
+        for pin, off_state in self._power_pins:
+            GPIO.setup(pin, GPIO.OUT)
 
     def _setup_connection(self):
         # create a socket object
@@ -100,12 +111,20 @@ class ModemTunnel(VirtualSim):
         # start virtualsim thread
         self.start()
 
+    def _set_modem_power(self, power_state):
+        for pin, off_state in self._power_pins:
+            if power_state:
+                off_state = not off_state
+            GPIO.output(pin, int(off_state))
 
     def _reset_modem(self):
         # pexpect.run("sudo ./reset-usb.sh")  #since we use the sixfab board this could be directly done via python rasp gpio
-        GPIO.output(ModemTunnel.PIN_MODEM_POWER, 1)
-        time.sleep(2)
-        GPIO.output(ModemTunnel.PIN_MODEM_POWER, 0)
+        if self._power_pins:
+            self._set_modem_power(0)
+            time.sleep(2)
+            self._set_modem_power(1)
+        else: #usb type --> power cycle usb hub :)
+            pexpect.run("sudo uhubctl -a cycle")
         logger.info("modem power cycled --> listen for RST")
 
     def wait_for_reset(self, rst_count=2):
