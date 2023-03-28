@@ -56,7 +56,7 @@ class TestParser():
         self.parser.add_argument('--modem', choices=['quectel', 'huawei', 'telit', 'simcom'],
                         default=TestParser.DEFAULT_MODEM_TYPE, help='Modem model that is used within the test environment (default: %(default)s)')
         self.parser.add_argument('--modem-adapter', dest='modem_adapter', choices=['m2', 'mpcie', 'usb'],
-                        default=TestParser.DEFAULT_MODEM_TYPE, help='Modem adapter that is used within the test environment (default: %(default)s)')
+                        default=TestParser.DEFAULT_MODEM_ADAPTER, help='Modem adapter that is used within the test environment (default: %(default)s)')
         self.parser.add_argument('--testname', default=None, help='Name of the test will be executed (default: %(default)s)')
         self.parser.add_argument('--configfile', type=argparse.FileType('r', encoding='UTF-8'), required=True)
         self.parser.add_argument('--uuid', default=uuid.uuid1(), help='Unique identifier for the test run (per default an auto-generated uuid is used))')
