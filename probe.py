@@ -26,8 +26,8 @@ MODULES_BLACKLIST_ALLOWED = {"option", "qmi_wwan", "cdc_mbim", "cdc_wdm", "cdc_n
                              "usbnet", "usbserial", "usbcore"}
 
 MODEM_IDS = [
-    (0x2c7c, 0x0125), # 4G Quectel EG25-G
-    (0x2c7c, 0x0800), # 5G Quectel RM500Q
+    ('2c7c', '0125'), # 4G Quectel EG25-G
+    ('2c7c', '0800'), # 5G Quectel RM500Q
 ]
 
 def blacklist_kernel_modules(module_list):
