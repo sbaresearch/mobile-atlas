@@ -89,8 +89,11 @@
         # used for sim eumlation 
         dtoverlay=uart2
 
-        #set pin 26 to high (disables modem module)
-        gpio=26=op,dh 
+        #set pin 26 to high (disables modem module with mPCIe adapter)
+        gpio=26=op,dh
+
+        #set pin 16 to high (disables modem module with m.2 adapter)
+        gpio=16=op,dh
     become: yes
 
   - name: Install modemmanager from testing repository
