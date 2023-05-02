@@ -1,22 +1,16 @@
 import logging
-import datetime
 import base64
 
 from flask import Response, request, jsonify, g
 from moatt_server.rest import app, flask_http_auth, db
 from moatt_server import auth
+from moatt_server.auth import Sim
 from moatt_server.rest.auth import protected
 from moatt_types.connect import SessionToken
 
-import moatt_server.models as dbm
 from moatt_types.connect import Imsi, Iccid
 
 logger = logging.getLogger(__name__)
-
-class Sim:
-    def __init__(self, iccid: Iccid, imsi: Imsi):
-        self.iccid = iccid
-        self.imsi = imsi
 
 def parse_sim(sim) -> Sim:
     if type(sim) != dict or len(sim) != 2:
@@ -51,16 +45,7 @@ def parse_sims(sims) -> dict[Iccid, Sim]:
 @flask_http_auth.required
 def register():
     token = g._http_bearer_auth.token
-    session_token = auth.generate_session_token()
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-    db.session.add(dbm.SessionToken(
-        value=session_token.as_base64(),
-        created=now,
-        last_access=now,
-        token_id=token.as_base64()
-        ))
-    db.session.commit()
+    session_token = auth.insert_new_session_token(db.session, token.as_base64())
 
     resp = jsonify(session_token.as_base64())
     resp.set_cookie("session_token", session_token.as_base64())
@@ -79,13 +64,7 @@ def deregister():
     except ValueError:
         return Response(status=400)
 
-    session_token = db.session.get(dbm.SessionToken, session_token.as_base64())
-
-    if session_token.provider is not None:
-        db.session.delete(session_token.provider)
-
-    db.session.delete(session_token)
-    db.session.commit()
+    auth.deregister_session(db.session, session_token)
 
     return Response(status=200)
 
@@ -97,58 +76,9 @@ def provider_register():
     except ValueError:
         return Response(status=400)
 
-    session = db.session.get(dbm.SessionToken, g._session_token_auth.session_token.as_base64())
-
-    if session.provider is None:
-        provider = dbm.Provider(
-                session_token_id=session.value
-                )
-        db.session.add(provider)
-    else:
-        provider = session.provider
-
-    iccids = list(map(lambda x: x.iccid, sims.keys()))
-
-    removed_sims = db.session.scalars(
-            db.select(dbm.Sim)\
-                    .where(dbm.Sim.provider_id == provider.id)\
-                    .where(dbm.Sim.iccid.not_in(iccids))
-            )
-
-    for sim in removed_sims:
-        sim.provider = None
-
-    if len(sims) == 0:
-        db.session.commit()
-        return Response(status=200)
-
-    existing_sims = list(db.session.scalars(db.select(dbm.Sim).where(dbm.Sim.iccid.in_(iccids))))
-    new_iccids = set(iccids).difference(set([sim.iccid for sim in existing_sims]))
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-    for sim in existing_sims:
-        imsi = sims[Iccid(sim.iccid)].imsi.imsi
-
-        if sim.provider is not None:
-            if sim.provider.id == provider.id:
-                continue
-
-            if sim.provider.allow_reregistration is False:
-                return Response(status=403)
-
-        sim.provider = provider
-        db.session.add(dbm.Imsi(imsi=imsi,registered=now,sim=sim))
-
-    for iccid in new_iccids:
-        sim = dbm.Sim(
-                iccid=iccid,
-                imsi=[dbm.Imsi(imsi=sims[Iccid(iccid)].imsi.imsi, registered=now)],
-                available=True,
-                provider=provider
-                )
-        db.session.add(sim)
-
-
-    db.session.commit()
+    try:
+        auth.register_provider(db.session, g._session_token_auth.session_token, sims)
+    except auth.AuthError:
+        return Response(status=403)
 
     return Response(status=200)

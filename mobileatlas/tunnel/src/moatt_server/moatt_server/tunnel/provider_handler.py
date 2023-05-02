@@ -7,6 +7,7 @@ import moatt_server.tunnel.connection_queue as connection_queue
 from moatt_server.tunnel.apdu_stream import ApduStream
 from moatt_types.connect import ConnectResponse, ConnectStatus, AuthResponse, AuthStatus
 import moatt_server.models as dbm
+from moatt_server import auth
 from moatt_server.tunnel.util import write_msg
 from moatt_server.tunnel.handler import Handler
 
@@ -53,17 +54,12 @@ class ProviderHandler(Handler):
                     await cleanup()
                     return
 
-                async with self.async_session() as session:
-                    async with session.begin():
-                        session.add(
-                                dbm.ApduLog(
-                                    sim_id=probe.sim.iccid,
-                                    command=r.op,
-                                    payload=r.payload,
-                                    sender=dbm.Sender.Probe if t.get_name() == "probe"\
-                                                            else dbm.Sender.Provider,
-                                    )
-                                )
+                await auth.log_apdu(
+                        self.async_session,
+                        probe.sim.iccid,
+                        r,
+                        dbm.Sender.Probe if t.get_name() == "probe" else dbm.Sender.Provider
+                        )
 
                 if t.get_name() == "probe":
                     provider.send_background(r)
@@ -84,10 +80,12 @@ class ProviderHandler(Handler):
         session_token = await self._handle_auth_req(reader, writer)
 
         if session_token is None:
+            # TODO
             return
 
         if session_token.provider is None:
             logger.debug("Provider has not registered any Sim cards.")
+            # TODO
             return
 
         await write_msg(writer, AuthResponse(AuthStatus.Success))

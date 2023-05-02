@@ -7,7 +7,7 @@ import binascii
 
 from moatt_types.connect import SessionToken, Token
 
-from moatt_server.auth import sync_get_session
+from moatt_server.auth import sync_get_session_token
 
 from moatt_server.rest import db
 
@@ -27,7 +27,7 @@ def protected(f):
             return Response(status=401) # TODO: add www-authenticate header
 
         #provider = sync_get_registration(db.session, session_token)
-        sess = sync_get_session(db.session, session_token)
+        sess = sync_get_session_token(db.session, session_token)
 
         if sess is None or\
                 type(sess) != dbm.SessionToken or\
