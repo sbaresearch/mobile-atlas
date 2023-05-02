@@ -1,5 +1,6 @@
 import logging
 import socket
+import ssl
 
 from typing import Optional, Union
 
@@ -11,12 +12,31 @@ from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, Im
 logger = logging.getLogger(__name__)
 
 class ProbeClient(Client):
-    def __init__(self, session_token: SessionToken, host, port):
-        super().__init__(session_token, host, port)
+    def __init__(
+            self,
+            session_token: SessionToken,
+            host,
+            port,
+            tls_ctx: Optional[ssl.SSLContext] = None,
+            server_hostname = None,
+            ):
+        super().__init__(
+                session_token,
+                host,
+                port,
+                tls_ctx=tls_ctx,
+                server_hostname=server_hostname
+                )
 
     def connect(self, sim_id) -> Optional[ApduStream]:
         logger.debug("Opening connection.")
-        stream = TcpStream(socket.create_connection((self.host, self.port)))
+
+        stream = TcpStream(
+                self.tls_ctx.wrap_socket(
+                    socket.create_connection((self.host, self.port)),
+                    server_hostname=self.server_hostname,
+                    )
+                )
 
         try:
             apdu_stream = self._connect(stream, sim_id)

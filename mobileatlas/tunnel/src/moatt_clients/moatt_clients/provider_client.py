@@ -1,4 +1,5 @@
 import socket
+import ssl
 import requests
 import logging
 
@@ -36,13 +37,20 @@ class ProviderClient(Client):
             host,
             port: int,
             cb: Callable[[ConnectRequest], ConnectStatus],
+            tls_ctx: Optional[ssl.SSLContext] = None,
+            server_hostname = None,
             ):
         self.cb = cb
-        super().__init__(session_token, host, port)
+        super().__init__(session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname)
 
     def wait_for_connection(self) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
         logger.debug("Opening connection.")
-        stream = TcpStream(socket.create_connection((self.host, self.port)))
+        stream = TcpStream(
+                self.tls_ctx.wrap_socket(
+                    socket.create_connection((self.host, self.port)),
+                    server_hostname=self.server_hostname,
+                    )
+                )
 
         try:
             apdu_stream = self._wait_for_connection(stream)
