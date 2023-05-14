@@ -69,6 +69,7 @@ class ConnectStatus(enum.Enum):
     Success = 0
     NotFound = 1
     Forbidden = 2
+    NotAvailable = 3
 
 @enum.unique
 class ApduOp(enum.Enum):

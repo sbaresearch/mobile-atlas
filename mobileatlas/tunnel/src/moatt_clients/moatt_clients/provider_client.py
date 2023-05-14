@@ -5,9 +5,9 @@ import logging
 
 from typing import Optional, Callable, Union, List, Tuple
 
-from moatt_clients.client import Client
-from moatt_clients.streams import ApduStream, TcpStream
-from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, ConnectStatus,
+from moatt_clients.client import Client, ProtocolError, SimRequestError
+from moatt_clients.streams import ApduStream, RawStream
+from moatt_types.connect import (ConnectRequest, ConnectResponse, ConnectStatus,
                                    IdentifierType, Imsi, Iccid, SessionToken)
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class ProviderClient(Client):
 
     def wait_for_connection(self) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
         logger.debug("Opening connection.")
-        stream = TcpStream(
+        stream = RawStream(
                 self.tls_ctx.wrap_socket(
                     socket.create_connection((self.host, self.port)),
                     server_hostname=self.server_hostname,
@@ -67,20 +67,16 @@ class ProviderClient(Client):
 
     def _wait_for_connection(
             self,
-            stream: TcpStream,
+            stream: RawStream,
             ) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
-        auth_status = self._authenticate(stream)
-
-        if auth_status != AuthStatus.Success:
-            logger.info("Authorisation failed!")
-            return None
+        self._authenticate(stream)
 
         logging.debug("Waiting for connection request.")
         conn_req = self._read_con_req(stream)
 
         if conn_req is None:
             logger.warn("Malformed connection request.")
-            return None
+            raise ProtocolError
 
         logger.debug(f"Received request for SIM: {conn_req.identifier}")
 
@@ -91,7 +87,7 @@ class ProviderClient(Client):
 
         if status != ConnectStatus.Success:
             logger.info(f"Rejected request for SIM '{conn_req.identifier}' with '{status}'")
-            return None
+            raise SimRequestError(status, conn_req.identifier)
 
         return (conn_req.identifier, ApduStream(stream))
 
@@ -108,7 +104,7 @@ class ProviderClient(Client):
                 return (2 + Iccid.LENGTH) - len(b)
             else:
                 raise NotImplementedError
-        except ValueError:
+        except ProtocolError:
             return 0
 
     def _read_con_req(self, stream) -> Optional[ConnectRequest]:

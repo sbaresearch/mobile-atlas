@@ -4,9 +4,9 @@ import ssl
 
 from typing import Optional, Union
 
-from moatt_clients.client import Client
-from moatt_clients.streams import TcpStream, ApduStream
-from moatt_types.connect import (AuthStatus, ConnectRequest, ConnectResponse, Imsi, Iccid,
+from moatt_clients.client import Client, ProtocolError, SimRequestError
+from moatt_clients.streams import RawStream, ApduStream
+from moatt_types.connect import (ConnectRequest, ConnectResponse, Imsi, Iccid,
                              ConnectStatus, SessionToken)
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class ProbeClient(Client):
     def connect(self, sim_id) -> Optional[ApduStream]:
         logger.debug("Opening connection.")
 
-        stream = TcpStream(
+        stream = RawStream(
                 self.tls_ctx.wrap_socket(
                     socket.create_connection((self.host, self.port)),
                     server_hostname=self.server_hostname,
@@ -41,21 +41,17 @@ class ProbeClient(Client):
         try:
             apdu_stream = self._connect(stream, sim_id)
         except Exception as e:
-            logger.error(f"Connection failed: {e}")
+            logger.error(f"Connection failed ({fmt_error(e)}). Closing connection.")
             stream.close()
-            return None
+            raise e
 
         if apdu_stream is None:
             stream.close()
 
         return apdu_stream
 
-    def _connect(self, stream: TcpStream, sim_id: Union[Imsi, Iccid]) -> Optional[ApduStream]:
-        auth_status = self._authenticate(stream)
-
-        if auth_status != AuthStatus.Success:
-            logger.info("Authorisation failed!")
-            return None
+    def _connect(self, stream: RawStream, sim_id: Union[Imsi, Iccid]) -> Optional[ApduStream]:
+        self._authenticate(stream)
 
         logger.debug(f"Sending connection request ({sim_id})")
         stream.write_all(ConnectRequest(sim_id).encode())
@@ -65,10 +61,18 @@ class ProbeClient(Client):
 
         if conn_res is None:
             logger.warn("Received malformed message during connection.")
-            return None
+            raise ProtocolError("Received a malformed message while trying to connect.")
 
         if conn_res.status != ConnectStatus.Success:
             logger.info(f"Requesting SIM {sim_id} failed!")
-            return None
+            raise SimRequestError(conn_res.status, sim_id)
 
         return ApduStream(stream)
+
+def fmt_error(e) -> str:
+    s = str(e)
+
+    if len(s) != 0:
+        s = ": " + s
+
+    return f"{type(e).__name__}" + s

@@ -3,11 +3,12 @@ import logging
 
 from typing import Optional
 
+from moatt_clients.client import ProtocolError
 from moatt_types.connect import ApduPacket, ApduOp
 
 logger = logging.getLogger(__name__)
 
-class TcpStream:
+class RawStream:
     def __init__(self, socket):
         self.socket = socket
         self.buf = b""
@@ -54,7 +55,7 @@ class TcpStream:
         self.socket.close()
 
 class ApduStream:
-    def __init__(self, stream: TcpStream):
+    def __init__(self, stream: RawStream):
         self.stream = stream
 
     def getpeername(self):
@@ -90,7 +91,7 @@ class ApduStream:
         p = ApduPacket.decode(buf)
 
         if p is None:
-            raise ValueError
+            raise ProtocolError("Received a malformed message.")
 
         return p
 

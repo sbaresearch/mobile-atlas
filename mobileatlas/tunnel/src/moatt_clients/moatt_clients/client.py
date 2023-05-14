@@ -4,19 +4,45 @@ import logging
 import requests
 import ssl
 
-from typing import Optional
+from typing import Optional, Union
 
-from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, Token, SessionToken
-from moatt_clients.streams import TcpStream
+from moatt_types.connect import (AuthRequest, AuthResponse, AuthStatus, Token, SessionToken,
+                                 ConnectStatus, Imsi, Iccid)
+from moatt_clients.streams import RawStream
 
 logger = logging.getLogger(__name__)
 
-def deregister(api_url: str, session_token: SessionToken) -> None:
+class SimRequestError(Exception):
+    def __init__(self, status: ConnectStatus, id: Union[Imsi, Iccid]):
+        self.status = status
+        self.id = id
+
+    def __str__(self):
+        return f"Connection with SIM card {self.id} could not be established. ({self.status})"
+
+class AuthError(Exception):
+    def __init__(self, status: AuthStatus):
+        self.status = status
+
+    def __str__(self):
+        return f"Authentication failed with error: {self.status}"
+
+class ProtocolError(Exception):
+    def __init__(self, msg=None):
+        self.msg = msg
+
+    def __str__(self):
+        return "Received an invalid message." + \
+            f" ({self.msg})" if self.msg is not None else ""
+
+def deregister(api_url: str, session_token: SessionToken) -> bool:
     cookies = dict(session_token=session_token.as_base64())
     r = requests.delete(f"{api_url}/deregister", cookies=cookies)
 
     if r.status_code != requests.codes.ok:
-        raise Exception("Deregistration failed.")
+        return False
+    else:
+        return True
 
 def register(api_url: str, token: Token) -> Optional[SessionToken]:
     headers = {"Authorization": f"Bearer {token.as_base64()}"}
@@ -34,7 +60,7 @@ def register(api_url: str, token: Token) -> Optional[SessionToken]:
     try:
         session_token = SessionToken(base64.b64decode(session_token, validate=True))
     except (binascii.Error, ValueError):
-        logger.warn("Received a malformed session_token")
+        logger.error("Received a malformed session_token")
         return None
 
     return session_token
@@ -54,7 +80,7 @@ class Client:
         self.tls_ctx = tls_ctx if tls_ctx is not None else ssl.create_default_context()
         self.server_hostname = server_hostname if server_hostname is not None else host
 
-    def _authenticate(self, stream: TcpStream) -> AuthStatus:
+    def _authenticate(self, stream: RawStream) -> None:
         logger.debug("Sending authorisation message.")
         stream.write_all(AuthRequest(self.session_token).encode())
         logger.debug("Waiting for authorisation response.")
@@ -62,6 +88,8 @@ class Client:
 
         if auth_res is None:
             logger.warn("Received malformed message during connection.")
-            raise ValueError
+            raise ProtocolError("Received a malformed message while trying to authenticate.")
 
-        return auth_res.status
+        if auth_res.status != AuthStatus.Success:
+            logger.warn("Authentication failed!")
+            raise AuthError(auth_res.status)
