@@ -4,7 +4,8 @@ import ssl
 
 from typing import Optional, Union
 
-from moatt_clients.client import Client, ProtocolError, SimRequestError
+from moatt_clients.client import Client, ProtocolError
+from moatt_clients.errors import SimRequestError
 from moatt_clients.streams import RawStream, ApduStream
 from moatt_types.connect import (ConnectRequest, ConnectResponse, Imsi, Iccid,
                              ConnectStatus, SessionToken)

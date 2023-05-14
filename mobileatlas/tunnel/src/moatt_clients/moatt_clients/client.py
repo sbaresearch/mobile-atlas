@@ -4,36 +4,13 @@ import logging
 import requests
 import ssl
 
-from typing import Optional, Union
+from typing import Optional
 
-from moatt_types.connect import (AuthRequest, AuthResponse, AuthStatus, Token, SessionToken,
-                                 ConnectStatus, Imsi, Iccid)
+from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, Token, SessionToken
 from moatt_clients.streams import RawStream
+from moatt_clients.errors import AuthError, ProtocolError
 
 logger = logging.getLogger(__name__)
-
-class SimRequestError(Exception):
-    def __init__(self, status: ConnectStatus, id: Union[Imsi, Iccid]):
-        self.status = status
-        self.id = id
-
-    def __str__(self):
-        return f"Connection with SIM card {self.id} could not be established. ({self.status})"
-
-class AuthError(Exception):
-    def __init__(self, status: AuthStatus):
-        self.status = status
-
-    def __str__(self):
-        return f"Authentication failed with error: {self.status}"
-
-class ProtocolError(Exception):
-    def __init__(self, msg=None):
-        self.msg = msg
-
-    def __str__(self):
-        return "Received an invalid message." + \
-            f" ({self.msg})" if self.msg is not None else ""
 
 def deregister(api_url: str, session_token: SessionToken) -> bool:
     cookies = dict(session_token=session_token.as_base64())

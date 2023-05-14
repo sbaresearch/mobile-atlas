@@ -3,7 +3,7 @@ import logging
 
 from typing import Optional
 
-from moatt_clients.client import ProtocolError
+from moatt_clients.errors import ProtocolError
 from moatt_types.connect import ApduPacket, ApduOp
 
 logger = logging.getLogger(__name__)

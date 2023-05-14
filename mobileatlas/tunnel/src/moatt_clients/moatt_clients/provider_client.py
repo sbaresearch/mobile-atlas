@@ -5,7 +5,8 @@ import logging
 
 from typing import Optional, Callable, Union, List, Tuple
 
-from moatt_clients.client import Client, ProtocolError, SimRequestError
+from moatt_clients.client import Client, ProtocolError
+from moatt_clients.errors import SimRequestError
 from moatt_clients.streams import ApduStream, RawStream
 from moatt_types.connect import (ConnectRequest, ConnectResponse, ConnectStatus,
                                    IdentifierType, Imsi, Iccid, SessionToken)
