@@ -20,7 +20,7 @@ async def start_server(args):
     logging.basicConfig(level=logging.DEBUG)
 
     tls_ctx = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-    tls_ctx.load_cert_chain(args.cacert, args.cakey)
+    tls_ctx.load_cert_chain(args.cert, args.cert_key)
 
     async_session = get_async_session_factory()
 
@@ -37,8 +37,8 @@ async def start_server(args):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--cacert", default="./server.crt")
-    parser.add_argument("--cakey", default="./server.key")
+    parser.add_argument("--cert", default="./server.crt")
+    parser.add_argument("--cert-key", default="./server.key")
     args = parser.parse_args()
 
     asyncio.run(start_server(args))

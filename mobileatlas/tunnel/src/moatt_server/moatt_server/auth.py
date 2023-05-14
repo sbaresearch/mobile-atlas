@@ -154,7 +154,7 @@ def sync_get_session_token(
     if dbsess is None or (dbsess.expires is not None and dbsess.expires < time):
         return None
 
-    if dbsess.last_access < time: # TODO isolation level
+    if dbsess.last_access < time:
         dbsess.last_access = time
         session.commit()
 
@@ -225,7 +225,7 @@ async def get_sim(
                     .options(selectinload(dbm.Sim.provider))
             sim = await session.scalar(stmt)
 
-            if sim is None or sim.provider_id is None:
+            if sim is None:
                 return None
 
             session.add(token)
@@ -241,7 +241,7 @@ async def get_sim(
                     .options(selectinload(dbm.Sim.provider))
             sim = await session.scalar(stmt)
 
-            if sim is None or sim.provider_id is None:
+            if sim is None:
                 return None
 
             session.add(token)

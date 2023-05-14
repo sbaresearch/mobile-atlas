@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import traceback
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 import moatt_server.tunnel.connection_queue as connection_queue
@@ -17,10 +18,13 @@ class ProbeHandler(Handler):
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             await self._handle(reader, writer)
-        except Exception as e:
-            logger.warn(f"Exception occurred while handling connection: {e}")
-            writer.close()
-            await writer.wait_closed()
+        except (EOFError, ConnectionResetError):
+            logger.info("Client closed connection unexpectedly.")
+        except Exception:
+            if not writer.is_closing():
+                writer.close()
+
+            logger.error(traceback.format_exc())
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         session_token = await self._handle_auth_req(reader, writer)
@@ -53,6 +57,13 @@ class ProbeHandler(Handler):
         if sim is None:
             logger.debug("Probe requested unknown SIM. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.NotFound))
+            writer.close()
+            await writer.wait_closed()
+            return
+
+        if sim.provider is None:
+            logger.debug("Requested SIM is unavailable. Closing connection.")
+            await write_msg(writer, ConnectResponse(ConnectStatus.NotAvailable))
             writer.close()
             await writer.wait_closed()
             return

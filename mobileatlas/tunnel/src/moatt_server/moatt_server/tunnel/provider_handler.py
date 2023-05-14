@@ -73,8 +73,9 @@ class ProviderHandler(Handler):
             await self._handle(reader, writer)
         except Exception as e:
             logger.warn(f"Exception occurred while handling connection: {e}")
-            writer.close()
-            await writer.wait_closed()
+        finally:
+            if not writer.is_closing():
+                writer.close()
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         session_token = await self._handle_auth_req(reader, writer)
@@ -84,7 +85,7 @@ class ProviderHandler(Handler):
             return
 
         if session_token.provider is None:
-            logger.debug("Provider has not registered any Sim cards.")
+            logger.debug("Provider has not registered any SIM cards.")
             # TODO
             return
 
