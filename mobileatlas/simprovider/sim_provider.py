@@ -22,6 +22,7 @@ class SimInfo:
 class SimProvider(DeviceEvent):
     def __init__(self, bluetooth_mac=None):
         self.sims = []
+        self.device_change_callback = None
         if bluetooth_mac:
             sl = BluetoothSapSimLink(bluetooth_mac) #("80:5A:04:0E:90:F6")
             sim = SimProvider.query_sim_info("Bluetooth[rSAP]", sl)
@@ -30,13 +31,22 @@ class SimProvider(DeviceEvent):
         observer.add_observer(self)
         observer.start()
 
+    def set_device_change_callback(self, callback):
+        self.device_change_callback = callback
+
     def device_added(self, device_type, device):
         device_name = f"{device_type}[{device}]"
         self.prepare_sim_interface(device_name, device_type, device)
 
+        if self.device_change_callback != None:
+            self.device_change_callback()
+
     def device_removed(self, device_type, device):
         device_name = f"{device_type}[{device}]"
         self.sims = [e for e in self.sims if e.device_name != device_name]
+
+        if self.device_change_callback != None:
+            self.device_change_callback()
     
     def prepare_sim_interface(self, device_name, device_type, device):
         try:

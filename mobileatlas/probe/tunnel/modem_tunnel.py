@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import logging
-import socket
-import struct
 import time
 import threading
 
@@ -10,7 +8,11 @@ import pexpect
 import serial
 import RPi.GPIO as GPIO
 from pySim.transport.virtual_sim import VirtualSim
-from pySim.utils import b2h, h2b
+from pySim.utils import b2h
+
+from moatt_clients.probe_client import ProbeClient
+from moatt_clients.client import register, deregister
+from moatt_types.connect import Imsi
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +56,23 @@ class ModemTunnel(VirtualSim):
             return  ModemTunnel.PINS_MODEM_POWER_M2
         return []
 
-    def __init__(self, modem_type, adapter_type, sim_server_ip, sim_server_port, sim_imsi, rst_pin=None, do_pps=True):
+    def __init__(self,
+                 modem_type,
+                 adapter_type,
+                 api_url,
+                 api_token,
+                 sim_server_ip,
+                 sim_server_port,
+                 sim_imsi,
+                 rst_pin=None,
+                 do_pps=True,
+                 tls_ctx=None,
+                 tls_server_name=None,
+                 ):
         self._modem_type = modem_type
         self._clock = ModemTunnel.get_modem_clk(modem_type)
+        self._api_url = api_url
+        self._api_token = api_token
         self._sim_server_ip = sim_server_ip
         self._sim_server_port = sim_server_port
         self._sim_imsi = sim_imsi
@@ -66,6 +82,8 @@ class ModemTunnel(VirtualSim):
         self._power_pins = ModemTunnel.get_powerup_pins(adapter_type)
         self._s = None  # Initialize in __init__, set in setup_connection
         self._setup_gpios()
+        self._tls_ctx = tls_ctx
+        self._tls_server_name = tls_server_name
 
         # bugfix for strange bug at raspi, see https://www.raspberrypi.org/forums/viewtopic.php?t=270917
         # alternatively execute 'read -t 0.1 < /dev/ttyAMA1' after startup
@@ -92,12 +110,25 @@ class ModemTunnel(VirtualSim):
             GPIO.setup(pin, GPIO.OUT)
 
     def _setup_connection(self):
-        # create a socket object
-        self._s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # connection to hostname on the port.
-        self._s.connect((self._sim_server_ip, self._sim_server_port))
-        # select imsi
-        self._s.send(struct.pack('!Q', self._sim_imsi))
+        token = self._api_token
+        session_token = register(self._api_url, token)
+
+        if session_token is None:
+            raise Exception("Registration failed.")
+
+        self._session_token = session_token
+        self.client = ProbeClient(
+                session_token,
+                self._sim_server_ip,
+                self._sim_server_port,
+                tls_ctx=self._tls_ctx,
+                server_hostname=self._tls_server_name,
+                )
+        self.connection = self.client.connect(Imsi(str(self._sim_imsi)))
+
+        if self.connection is None:
+            deregister(self._api_url, session_token)
+            raise Exception("Connection failed.")
 
     def _setup_modem(self):
         """
@@ -135,11 +166,16 @@ class ModemTunnel(VirtualSim):
     # abstract method from virtual sim
     def handle_apdu(self, apdu):
         logger.info("forward apdu[" + str(len(apdu)) + "]: " + str(b2h(apdu)))
-        self._s.send(apdu)  # forward apdu to sim-bank
-        response = self._s.recv(65535)
-        logger.info("recieved answer: " + str(b2h(response)))
+        self.connection.send_apdu(apdu)  # forward apdu to sim-bank
+        response = self.connection.recv()
+
+        if response is None:
+            logger.info("peer closed connection.")
+            raise NotImplementedError # TODO
+
+        logger.debug("received answer: " + str(b2h(response.payload)))
         #self._f.write(b2h(apdu) + "- " + b2h(response) + "\n")
-        return response
+        return response.payload
 
     def setup(self):
         #self._f = open("apdu_trace_new.txt", "w")
@@ -148,7 +184,8 @@ class ModemTunnel(VirtualSim):
 
     def shutdown(self):
         # self._f.close()
-        self._s.shutdown(socket.SHUT_RDWR)
+        self.connection.close()
+        deregister(self._api_url, self._session_token)
         logger.info("shutdown -> stopping virtualsim")
         self.stop()
         logger.info("virtualsim stopped")

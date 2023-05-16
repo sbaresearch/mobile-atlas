@@ -4,9 +4,7 @@ from .measurement.test.test_args import TestParser
 
 
 class ProbeParser(TestParser):
-    # Since our only SIM Server is currently running on 10.0.0.3:8888
-    DEFAULT_SIM_SERVER_IP = "10.0.0.3"
-    DEFAULT_SIM_SERVER_PORT = 8888
+    DEFAULT_SIM_SERVER_PORT = 5555
     DEFAULT_TEST_TIMEOUT = 3600  # in seconds -> 60min
 
     CONFIG_SCHEMA_PROBE = {
@@ -18,14 +16,22 @@ class ProbeParser(TestParser):
     
     def add_arguments(self):
         super().add_arguments()
-        self.parser.add_argument('--host', default=ProbeParser.DEFAULT_SIM_SERVER_IP,
+        self.parser.add_argument('--host', required=True,
                             help='SIM server address (default: %(default)s)')
         self.parser.add_argument('--port', type=int, default=ProbeParser.DEFAULT_SIM_SERVER_PORT,
                             help='SIM server port (default: %(default)d)')
         self.parser.add_argument('--timeout', type=int, default=ProbeParser.DEFAULT_TEST_TIMEOUT,
                             help='Test timeout (default: %(default)d)')
         self.parser.add_argument('--no-namespace', dest='start_namespace', action='store_false',
-                            help='Do not start a separate measurement namespace (start test in native envorionment)')
+                            help='Do not start a separate measurement namespace (start test in native environment)')
+        self.parser.add_argument('--api-url', required=True,
+                            help='SIM server REST API URL')
+        self.parser.add_argument('--cafile',
+                            help='CA certificates used to verify SIM server certificate. (File of concatenated certificates in PEM format.)')
+        self.parser.add_argument('--capath',
+                            help='Path to find CA certificates used to verify SIM server certificate.')
+        self.parser.add_argument('--tls-server-name',
+                            help='SIM server name used in certificate verification. (defaults to the value of --host)')
         self.add_config_schema(ProbeParser.CONFIG_SCHEMA_PROBE)
         
     def parse(self):
@@ -38,6 +44,21 @@ class ProbeParser(TestParser):
 
     def get_port(self):
         return self.test_args.port
+
+    def get_api_url(self):
+        return self.test_args.api_url
+
+    def get_cafile(self):
+        return self.test_args.cafile
+
+    def get_capath(self):
+        return self.test_args.capath
+
+    def get_tls_server_name(self):
+        if self.test_args.tls_server_name is None:
+            return self.get_host()
+        else:
+            return self.test_args.tls_server_name
 
     def get_timeout(self):
         return self.test_args.timeout

@@ -37,7 +37,6 @@ class SimTunnel(threading.Thread):
             # self.sl.disconnect()
             logging.info("close connection")
             self.sl.disconnect()
-            self.connection.shutdown(socket.SHUT_RDWR)
             self.connection.close()
 
     def process_packet(self, retries = 5):
@@ -45,13 +44,15 @@ class SimTunnel(threading.Thread):
         Retrieve and process packets
         """
         # receive 5 header bytes (cla, ins, p1, p2, p3)
-        apdu = self.connection.recv(256)
-        if(len(apdu) < 5):
+        apdu = self.connection.recv()
+
+        if apdu == None:
             self.connected = False
-            logging.info("not enough bytes recieved -> disconnect")
+            logging.info("peer closed connection")
             return
-        logging.info(f"received apdu[{len(apdu)}]: {b2h(apdu)}")
-        data, sw = self.sl.send_apdu(b2h(apdu))
+
+        logging.info(f"received apdu[{len(apdu.payload)}]: {b2h(apdu.payload)}")
+        data, sw = self.sl.send_apdu(b2h(apdu.payload))
         resp = h2b(data + sw)
-        self.connection.send(resp)
+        self.connection.send_apdu(resp) # TODO
         logging.info(f"sent data: {resp}")
