@@ -1,31 +1,82 @@
+# Tested with Python 3.9.2
+
 # Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pysim
+-e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pySim
 # python3 port of kmod
 -e git+https://github.com/GGegenhuber/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
 
+moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients
+moatt-types @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
+pyserial @ git+https://github.com/GGegenhuber/pyserial.git@f251884cbcfd5c34ace7d31138d755b67c3db1a3
 
-pexpect
-RPi.GPIO
-psutil
-PyGObject
-python-benedict
-jsonschema
-python-json-logger
-requests
-urllib3
+aioquic==0.9.20
+anyio==3.7.0
+attrs==23.1.0
+beautifulsoup4==4.12.2
+bidict==0.22.1
+boto3==1.26.147
+botocore==1.29.147
+certifi==2023.5.7
+cffi==1.15.1
+charset-normalizer==3.1.0
+cmd2==1.5.0
+colorama==0.4.6
+construct==2.10.68
+cryptography==39.0.2
+Cython==0.29.35
+debugpy==1.3.0
+decorator==5.1.1
+dnspython==2.3.0
+exceptiongroup==1.1.1
+ftfy==6.1.1
+gitdb==4.0.10
+GitPython==3.1.31
+gsm0338==1.0.0
+h11==0.12.0
 httpcore==0.13.6
 httpx==0.19.0
-beautifulsoup4
-pycrypto
-aioquic==0.9.20
-wsproto
-debugpy==1.3.0
-jsonpickle
-jsons
-phonenumbers
-pytz
-gitpython
-boto3
-dnspython
-pyudev
-netifaces
+idna==3.4
+jmespath==1.0.1
+jsonpath-ng==1.5.3
+jsonpickle==3.0.1
+jsons==1.6.3
+jsonschema==4.17.3
+mailchecker==5.0.9
+netifaces==0.11.0
+pexpect==4.8.0
+phonenumbers==8.13.13
+ply==3.11
+psutil==5.9.5
+ptyprocess==0.7.0
+PyBluez==0.22
+pycairo==1.23.0
+pycparser==2.21
+pycrypto==2.6.1
+PyGObject==3.44.1
+pylsqpack==0.3.17
+pyOpenSSL==23.2.0
+pyperclip==1.8.2
+pyrsistent==0.19.3
+pyscard==2.0.7
+python-benedict==0.30.2
+python-dateutil==2.8.2
+python-fsutil==0.10.0
+python-json-logger==2.0.7
+python-slugify==8.0.1
+pytlv==0.71
+pytz==2023.3
+pyudev==0.24.1
+PyYAML==6.0
+requests==2.31.0
+rfc3986==1.5.0
+RPi.GPIO==0.7.1
+s3transfer==0.6.1
+six==1.16.0
+smmap==5.0.0
+sniffio==1.3.0
+soupsieve==2.4.1
+text-unidecode==1.3
+typish==1.9.3
+urllib3==1.26.16
+wcwidth==0.2.6
+wsproto==1.2.0
