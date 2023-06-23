@@ -6,6 +6,8 @@ SIM Server Script
 import os
 import sys
 import ssl
+import socket
+import struct
 import logging
 import argparse
 import base64
@@ -19,6 +21,28 @@ from moatt_types.connect import Token, ConnectStatus, Imsi, Iccid
 
 PORT_DEFAULT = 6666
 
+def init_server(host, port, tls_ctx):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    try:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_address = (host, port)
+
+        logging.info('starting up on {} port {}'.format(*server_address))
+        s.bind(server_address)
+        s.listen(1)
+    except Exception as e:
+        s.close()
+        raise e
+
+    return tls_ctx.wrap_socket(s, server_side=True)
+
+def accept_connection(s):
+    logging.info('waiting for a connection')
+    connection, client_address = s.accept()
+    logging.info('accept connection ' + str(client_address))
+    return connection
+
 def provides_sim(sim_provider, req):
     device = next((x for x in sim_provider.get_sims() if Imsi(x.imsi) == req.identifier or Iccid(x.iccid) == req.identifier), None)
 
@@ -30,22 +54,69 @@ def provides_sim(sim_provider, req):
 def get_sims(sim_provider):
     return [{"iccid": x.iccid, "imsi": x.imsi} for x in sim_provider.get_sims()]
 
+def direct_connection(host, port, sim_provider, tls_ctx):
+    srv = init_server(host, port, tls_ctx)
+
+    while True:
+        connection = accept_connection(srv)
+
+        # First 8 Byte is the IMSI
+        requested_imsi = struct.unpack('!Q', connection.recv(8))[0]
+
+        device = next((x for x in sim_provider.get_sims() if x.imsi == str(requested_imsi)), None)
+        if device:
+            logging.info(f"requested imsi {requested_imsi} is on device {device.device_name}")
+            # Start SimTunnel for connection to serial device
+            tunnel = SimTunnel(connection, device.sl, device.iccid, direct_connection=True)
+            tunnel.start()
+        else:
+            logging.info(f"requested imsi {requested_imsi} is currently not connected to the system")
+            connection.unwrap()
+            connection.shutdown(socket.SHUT_RDWR)
+            connection.close()
+
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(conflict_handler="resolve")
+
     parser.add_argument('-h', '--host', required=True, help="SIM server address")
-    parser.add_argument('-p', '--port', type=int, default=PORT_DEFAULT, help="SIM server port")
+    parser.add_argument('-p', '--port', type=int, default=PORT_DEFAULT, help="SIM server port (default: %(default)d)")
     parser.add_argument('-b', '--bluetooth-mac', type=str, required=False,
                         help='MAC address of the bluetooth device (rSAP)')
-    parser.add_argument('-a', '--api-url', required=True,
-                        help="MobileAtlas-tunnel-server REST API URL")
     parser.add_argument('--cafile', help='CA certificates used to verify SIM server certificate. \
 (File of concatenated certificates in PEM format.)')
     parser.add_argument('--capath', help='Path to find CA certificates used to verify SIM server \
 certificate.')
-    parser.add_argument('--tls-server-name', help='SIM server name used in certificate \
+
+    subparsers = parser.add_subparsers(title='subcommands', required=True, dest='subcommand')
+    server_subcmd = 'server'
+    server_parser = subparsers.add_parser(server_subcmd)
+    direct_subcmd = 'direct'
+    direct_parser = subparsers.add_parser(direct_subcmd)
+
+    server_parser.add_argument('-a', '--api-url', required=True,
+                        help="MobileAtlas-tunnel-server REST API URL")
+    server_parser.add_argument('--tls-server-name', help='SIM server name used in certificate \
 verification. (defaults to the value of --host)')
+
+    direct_parser.add_argument('--cert', required=True, help='Server Certificate')
+    direct_parser.add_argument('--key', required=True, help='Server Certificate Key')
     args = parser.parse_args()
+
+    if args.subcommand == direct_subcmd:
+        # TODO: implement client certificate verification
+        # SSLContext.wrap_socket does not support setting server_side=True and server_hostname
+        # sni_callback cannot be used to verify the peer cert because it is not available
+        # when the callback runs
+
+        sim_provider = SimProvider(args.bluetooth_mac)
+
+        tls_ctx = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=args.cafile, capath=args.capath)
+        tls_ctx.verify_mode = ssl.VerifyMode.CERT_REQUIRED
+        tls_ctx.load_cert_chain(args.cert, args.key)
+
+        direct_connection(args.host, args.port, sim_provider, tls_ctx)
+        return
 
     env_token = os.environ.get("API_TOKEN")
 
@@ -60,6 +131,7 @@ verification. (defaults to the value of --host)')
         return
 
     sim_provider = SimProvider(args.bluetooth_mac)
+
     sims = get_sims(sim_provider)
     session_token = register(args.api_url, token)
 
