@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 # TODO move this info into the cloud :)
 
 class TestConfig:

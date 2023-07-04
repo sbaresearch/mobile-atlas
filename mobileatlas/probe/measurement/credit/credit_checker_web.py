@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
 
 from mobileatlas.probe.measurement.utils.request_utils import get_requests_retry_session
 from mobileatlas.probe.measurement.mediator.mobile_atlas_mediator import MobileAtlasMediator

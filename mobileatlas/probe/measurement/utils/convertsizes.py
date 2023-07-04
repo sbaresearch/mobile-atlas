@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 # from https://stackoverflow.com/questions/44307480/convert-size-notation-with-units-100kb-32mb-to-number-of-bytes-in-python/44307481
 # for the other way arround: https://stackoverflow.com/questions/5194057/better-way-to-convert-file-sizes-in-python/14822210
 

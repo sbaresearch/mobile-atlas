@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 #https://stackoverflow.com/a/63185592
 # mock /etc/hosts
 # lock it in multithreading or use multiprocessing if an endpoint is bound to multiple IPs frequently

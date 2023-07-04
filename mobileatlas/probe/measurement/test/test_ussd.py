@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
 
 from mobileatlas.probe.measurement.payload.payload_ussd import PayloadUssd
 from mobileatlas.probe.measurement.test.test_base import TestBase

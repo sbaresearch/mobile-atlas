@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 # enums:
 # basically dumped from here:
 # https://lazka.github.io/pgi-docs/index.html#NM-1.0/enums.html (accessed 2021-06.14, NM 1.0 (1.30.0))
