@@ -1,7 +1,6 @@
 from flask import jsonify, request
-from app import app, redis_client
-from app.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
-from app import db, token_auth
+from moatt_server.management import app, redis_client, db, token_auth
+from moatt_server.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
 from datetime import datetime, timedelta
 from json import dumps
 import time

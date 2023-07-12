@@ -1,6 +1,6 @@
 from flask import render_template, jsonify
-from app import db, app, redis_client, basic_auth
-from app.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
+from moatt_server.management import db, app, redis_client, basic_auth
+from moatt_server.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
 from datetime import timedelta, datetime
 
 

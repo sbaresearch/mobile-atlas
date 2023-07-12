@@ -1,5 +1,5 @@
-from app import app, db, basic_auth, Config
-from app.models import WireguardConfig, WireguardConfigAttempt
+from moatt_server.management import app, db, basic_auth, Config
+from moatt_server.models import WireguardConfig, WireguardConfigAttempt
 from flask import request, render_template, jsonify
 
 import base64
