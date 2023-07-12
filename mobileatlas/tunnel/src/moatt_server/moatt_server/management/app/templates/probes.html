@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+    {% block content %}
+    <h2>Probes</h2>
+    <table>
+        <tr>
+            <th class="hidden">ID</th>
+            <th>Name</th>
+            <th>MAC</th>
+            <th>Last Service Startup</th>
+            <th class="hidden">Last Poll</th>
+            <th>Polled last interval</th>
+            <th>Status</th>
+            <th>Token Active</th>
+            <th>Head</th>
+        </tr>
+        {% for p in probes %}
+        <tr>
+            <td class="hidden">{{p.id}}</td>
+            <td>{{p.name if p.name}}</td>
+            <td class="center"><a href="/probe/{{p.id}}">{{p.mac}}</a></td>
+            <td class="center">{{startups[p.id].timestamp.strftime('%Y-%m-%d %H:%M:%S') if startups[p.id]}}{%if startups[p.id] %}{%endif%}</td>
+            <td class="hidden">{{p.token_last_access.strftime('%Y-%m-%d %H:%M:%S') if p.token_last_access}}</td>
+            <td class="center">{{'✅' if p.is_polling() else ('❌' if p.token_last_access)}}</td>
+            <td class="center">{%if status[p.id] and status[p.id].status.name=="online"%}🟢 online{%elif status[p.id] and status[p.id].status.name=="offline"%}🟥 offline{%endif%}{%if status[p.id] %} {{status[p.id].duration().__str__().split(",")[0]}}{%endif%}</td>
+            <td class="center">{{'✅' if p.is_activated() else ('❌' if p.token)}}</td>
+            <td class="center">{{psis[p.id].head() if p.id in psis and psis[p.id]}}</td>
+        </tr>
+        {%endfor%}
+    </table>
+
+    <h2>Actions</h2>
+    <div>
+        MAC: <input id="register-probe-mac" type="text"/>
+        <button id="register-probe">📝 Register Probe</button><br><br>
+        Probe: <select id="probe-id">{% for p in probes %}<option value="{{p.id}}">{{p.name+' ' if p.name}}({{p.mac}})</option>{%endfor%}</select> :
+        <button class="execute-probe" data-command="system_information">ℹ️ Update SysInfo</button>
+        <button class="execute-probe" data-command="exit">⏹️ Kill Service</button>
+        <button class="execute-probe" data-command="git_pull">⏩ Git pull</button> |
+        <button id="activate-probe">🔑 Activate</button>
+        <button id="deactivate-probe">❌ Deactivate</button> |
+        <input id="change-probe-name-text" type="text"/><button id="change-probe-name">🆔 ChangeName</button>
+    </div>
+    {% endblock %}

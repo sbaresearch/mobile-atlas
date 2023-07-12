@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+    {% block content %}
+    <h2>ProbeStatus for {{p.name if p.name}} - {{p.mac}}</h2>
+
+    <h3>Summary</h3>
+    <table>
+        <tr>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Percent</th>
+        </tr>
+        {% for st, duration in durations.items() %}
+        <tr>
+            <td>{%if st.name=="online"%}🟢 online{%elif st.name=="offline"%}🟥 offline{%endif%}</td>
+            <td class="right">{{duration}}</td>
+            <td class="right">{{percentages[st]|round(2)}}%</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h3>Details</h3>
+    <table>
+        <tr>
+            <th class="hidden">ID</th>
+            <th>Status</th>
+            <th>Begin</th>
+            <th>End</th>
+            <th>Duration</th>
+            <th>Active</th>
+        </tr>
+        {% for s in status %}
+        <tr>
+            <td class="hidden">{{s.id}}</td>
+            <td>{%if s.status.name=="online"%}🟢 online{%elif s.status.name=="offline"%}🟥 offline{%endif%}</td>
+            <td>{{s.begin.strftime('%Y-%m-%d %H:%M:%S') if s.begin }}</td>
+            <td>{{s.end.strftime('%Y-%m-%d %H:%M:%S') if s.end }}</td>
+            <td class="right">{{s.duration()}}</td>
+            <td class="center">{{'✅' if s.active else '❌'}}</td>
+        </tr>
+        {%endfor%}
+    </table>
+    {% endblock %}

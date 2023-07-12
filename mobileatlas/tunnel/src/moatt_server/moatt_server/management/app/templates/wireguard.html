@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>WireguardConfig</h2>
+    <table>
+        <tr>
+            <th class="hidden">ID</th>
+            <th>MAC</th>
+            <th>Publickey</th>
+            <th>Timestamp</th>
+            <th>Allow Registration</th>
+            <th>Wireguard IP</th>
+        </tr>
+        {% for wg in wgs %}
+        <tr>
+            <td class="hidden">{{wg.id}}</td>
+            <td>{{wg.mac}}</td>
+            <td>{{wg.publickey}}</td>
+            <td>{{wg.register_time.strftime('%Y-%m-%d %H:%M:%S')}}</td>
+            <td class="center">{{'✅' if wg.allow_registration else '❌'}}</td>
+            <td>{{wg.ip}}</td>
+        </tr>
+        {%endfor%}
+    </table>
+
+    <h2>WireguardConfigAttempts</h2>
+    <table>
+        <tr>
+            <th class="hidden">ID</th>
+            <th>MAC</th>
+            <th>Publickey</th>
+            <th>Timestamp</th>
+            <th>IP</th>
+            <th>Successful</th>
+        </tr>
+        {% for wga in wgas %}
+        <tr>
+            <td class="hidden">{{wga.id}}</td>
+            <td>{{wga.mac}}</td>
+            <td>{{wga.publickey}}</td>
+            <td>{{wga.register_time.strftime('%Y-%m-%d %H:%M:%S')}}</td>
+            <td>{{wga.ip}}</td>
+            <td class="center">{{'✅' if wga.successful else '❌'}}</td>
+        </tr>
+        {%endfor%}
+    </table>
+
+    <h2>Actions</h2>
+    <div>
+        MAC: <input id="allow-wireguard-mac" type="text"/>
+        IP: <input id="allow-wireguard-ip" type="text"/>
+        <button id="allow-wireguard">Allow MAC/IP for Wireguard</button>
+        <button id="disallow-wireguard">Disallow MAC for Wireguard</button>
+    </div>
+
+    <h2>Current Wireguard Configuration (wg showconfig wg0)</h2>
+    <pre>{{config}}</pre>
+
+    <h2>Wireguard Status (wg show wg0)</h2>
+    <pre>{{status}}</pre>
+{% endblock %}
