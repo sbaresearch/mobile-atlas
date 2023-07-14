@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
 
 from mobileatlas.probe.measurement.mediator.mm_definitions import ModemManagerSms, ModemManagerCall
 from mobileatlas.probe.measurement.mediator.mobile_atlas_mediator import MobileAtlasMediator

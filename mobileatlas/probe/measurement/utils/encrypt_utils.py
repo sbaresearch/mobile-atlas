@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 import base64
 from Crypto.Hash import SHA
 from Crypto.Cipher import PKCS1_OAEP

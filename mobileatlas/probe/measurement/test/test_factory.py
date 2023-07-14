@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 from mobileatlas.probe.measurement.test.test_network_billing import TestNetworkBilling
 from mobileatlas.probe.measurement.test.test_network_base import TestNetworkBase
 from mobileatlas.probe.measurement.test.test_network_billing_dns import TestNetworkBillingDns, TestNetworkBillingDnsEc2Relay

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
+
 from mobileatlas.probe.measurement.utils.format_logging import format_extra
 from mobileatlas.probe.measurement.test.test_args import TestParser
 import os

@@ -1,4 +1,6 @@
-
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: GPL-3.0-only
 
 from mobileatlas.probe.measurement.payload.payload_network_web import PayloadNetworkWebControlTraffic
 from mobileatlas.probe.measurement.payload.payload_network_wehe import PayloadNetworkWehe
