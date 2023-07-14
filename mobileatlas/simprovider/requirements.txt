@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 # Forked PySim:
 -e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pysim
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2014 Aleksander Morgado <aleksander@aleksander.es>
+# SPDX-FileCopyrightText: 2014 Aleksander Morgado <aleksander@aleksander.es>
 # SPDX-FileCopyrightText: 2023 MobileAtlas <https://www.mobileatlas.eu/>
 #
 # SPDX-License-Identifier: GPL-3.0-only
