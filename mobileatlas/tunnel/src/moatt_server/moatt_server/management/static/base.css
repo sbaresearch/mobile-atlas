@@ -34,3 +34,15 @@ td.right {
   border: none;
   padding: .2em;
 }
+
+details > summary {
+  list-style: none;
+}
+
+details[open] > summary > h2::after {
+  content: " ▼";
+}
+
+details > summary > h2::after {
+  content: " ◀";
+}

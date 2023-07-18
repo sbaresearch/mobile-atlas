@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>WireguardConfig</h2>
+    <details open>
+    <summary><h2>WireguardConfig</h2></summary>
     <table>
         <tr>
             <th class="hidden">ID</th>
-            <th>MAC</th>
+            <th>Token</th>
             <th>Publickey</th>
             <th>Timestamp</th>
             <th>Allow Registration</th>
@@ -14,7 +15,7 @@
         {% for wg in wgs %}
         <tr>
             <td class="hidden">{{wg.id}}</td>
-            <td>{{wg.mac}}</td>
+            <td>{{wg.token.token}}</td>
             <td>{{wg.publickey}}</td>
             <td>{{wg.register_time.strftime('%Y-%m-%d %H:%M:%S')}}</td>
             <td class="center">{{'✅' if wg.allow_registration else '❌'}}</td>
@@ -22,11 +23,33 @@
         </tr>
         {%endfor%}
     </table>
+    </details>
 
-    <h2>WireguardConfigAttempts</h2>
+    <details open>
+    <summary><h2>Active Wireguard Tokens</h2></summary>
     <table>
         <tr>
             <th class="hidden">ID</th>
+            <th>Token</th>
+            <th>MAC</th>
+        </tr>
+        {% for token in active_tokens %}
+        <tr>
+            <td class="hidden">{{token.id}}</td>
+            <td>{{token.token}}</td>
+            <td>{{token.mac}}</td>
+            <td><button class="disallow-wireguard-token" value="{{token.token}}">❌</button></td>
+        </tr>
+        {%endfor%}
+    </table>
+    </details>
+
+    <details open>
+    <summary><h2>WireguardConfigAttempts</h2></summary>
+    <table>
+        <tr>
+            <th class="hidden">ID</th>
+            <th>Token</th>
             <th>MAC</th>
             <th>Publickey</th>
             <th>Timestamp</th>
@@ -36,6 +59,7 @@
         {% for wga in wgas %}
         <tr>
             <td class="hidden">{{wga.id}}</td>
+            <td>{{wga.token}}</td>
             <td>{{wga.mac}}</td>
             <td>{{wga.publickey}}</td>
             <td>{{wga.register_time.strftime('%Y-%m-%d %H:%M:%S')}}</td>
@@ -44,13 +68,38 @@
         </tr>
         {%endfor%}
     </table>
+    </details>
+
+    <details open>
+    <summary><h2>Wireguard Token Activation Requests</h2></summary>
+    <table>
+        <tr>
+            <th class="hidden">ID</th>
+            <th>Token</th>
+            <th>MAC</th>
+        </tr>
+        {% for token in token_reqs %}
+        <tr>
+            <td class="hidden">{{token.id}}</td>
+            <td>{{token.token_candidate}}</td>
+            <td>{{token.mac}}</td>
+            <td>
+                <button class="allow-wireguard-token" value="{{token.token_candidate}}">✅</button>
+            </td>
+            <td>
+                <button class="disallow-wireguard-token" value="{{token.token_candidate}}">❌</button>
+            </td>
+        </tr>
+        {%endfor%}
+    </table>
+    </details>
 
     <h2>Actions</h2>
     <div>
-        MAC: <input id="allow-wireguard-mac" type="text"/>
+        Token: <input id="allow-wireguard-token" type="text"/>
         IP: <input id="allow-wireguard-ip" type="text"/>
-        <button id="allow-wireguard">Allow MAC/IP for Wireguard</button>
-        <button id="disallow-wireguard">Disallow MAC for Wireguard</button>
+        <button id="allow-wireguard">Add and activate wg token</button>
+        <!--<button id="disallow-wireguard">Disallow MAC for Wireguard</button>-->
     </div>
 
     <h2>Current Wireguard Configuration (wg showconfig wg0)</h2>

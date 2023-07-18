@@ -1,18 +1,19 @@
 import os
 
-#basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.dirname(__file__))
+print(basedir)
 
-class Config(object):
+class MamConfig(object):
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'REDACTED'
     #SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///../app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    REDIS_URL = os.environ.get('REDIS_URL') or "redis://localhost:REDACTED/0"
+    REDIS_URL = os.environ.get('REDIS_URL') or "redis://localhost:6379/0"
 
-    LONG_POLLING_INTERVAL = os.environ.get('LONG_POLLING_INTERVAL') or 60
+    LONG_POLLING_INTERVAL = int(os.environ.get('LONG_POLLING_INTERVAL') or 60)
 
-    BASIC_AUTH_USERNAME = os.environ.get('BASIC_AUTH_USERNAME') or 'REDACTED'
-    BASIC_AUTH_PASSWORD = os.environ.get('BASIC_AUTH_PASSWORD') or 'REDACTED'
+    BASIC_AUTH_USERNAME = os.environ.get('BASIC_AUTH_USERNAME') or 'admin'
+    BASIC_AUTH_PASSWORD = os.environ.get('BASIC_AUTH_PASSWORD') or 'ioqfbasdf'
 
     # current config on mobileatlas legacy
     WIREGUARD_DIR = os.environ.get('WIREGUARD_DIR') or '/tmp/wireguard'

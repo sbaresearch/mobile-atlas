@@ -1,8 +1,8 @@
 from flask import render_template, jsonify
+from sqlalchemy import select
 from moatt_server.management import db, app, redis_client, basic_auth
 from moatt_server.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
 from datetime import timedelta, datetime
-
 
 @app.route('/')
 @basic_auth.required
@@ -19,16 +19,17 @@ def probes():
     """
     Show all probes
     """
-    all_probes = Probe.query.all()
+    all_probes = db.session.scalars(select(Probe))
     startups = {}
     status = {}
     psis = {}
     for probe in all_probes:
-        startups[probe.id] = ProbeServiceStartupLog.query.filter_by(mac=probe.mac)\
-            .order_by(ProbeServiceStartupLog.timestamp.desc()).first()
-        status[probe.id] = ProbeStatus.query.filter_by(probe_id=probe.id, active=True).first()
-        psis[probe.id] = ProbeSystemInformation.query.filter_by(probe_id=probe.id)\
-            .order_by(ProbeSystemInformation.timestamp.desc()).first()
+        startups[probe.id] = db.session.scalar(select(ProbeServiceStartupLog).filter_by(mac=probe.mac)\
+            .order_by(ProbeServiceStartupLog.timestamp.desc()))
+
+        status[probe.id] = db.session.scalar(select(ProbeStatus).filter_by(probe_id=probe.id, active=True))
+        psis[probe.id] = db.session.scalar(select(ProbeSystemInformation).filter_by(probe_id=probe.id)\
+            .order_by(ProbeSystemInformation.timestamp.desc()))
     return render_template("probes.html", probes=all_probes, startups=startups, status=status, psis=psis)
 
 
@@ -40,9 +41,10 @@ def status_check():
     This is to be called by a cronjob - See status_check_cron.py
     :return: JSON of newly offline Probes
     """
-    online_statuses = ProbeStatus.query.filter_by(active=True).all()
+    #online_statuses = ProbeStatus.query.filter_by(active=True).all()
+    online_statuses = db.session.scalars(select(ProbeStatus).filter_by(active=True))
     # When end datetime is due + interval, close active one and create new offline
-    interval = timedelta(seconds=app.config.get("LONG_POLLING_INTERVAL"))
+    interval = timedelta(seconds=app.config["LONG_POLLING_INTERVAL"])
     now = datetime.utcnow()
 
     offline_for = timedelta(minutes=30)
@@ -62,7 +64,7 @@ def status_check():
             ps.end = now
             offline_duration_after = ps.duration()
             if offline_duration_before < offline_for <= offline_duration_after:
-                notification.append(Probe.query.filter_by(id=ps.probe_id).first().to_dict())
+                notification.append(ps.probe.to_dict())
 
         db.session.add(ps)
         db.session.commit()
@@ -76,10 +78,10 @@ def probe_details(id):
     """
     Show details of probe
     """
-    p = Probe.query.get_or_404(id)
-    startups = ProbeServiceStartupLog.query.filter_by(mac=p.mac).order_by(ProbeServiceStartupLog.timestamp.desc()).all()
-    status = ProbeStatus.query.filter_by(probe_id=p.id).order_by(ProbeStatus.begin.desc()).all()
-    psi = ProbeSystemInformation.query.filter_by(probe_id=p.id).order_by(ProbeSystemInformation.timestamp.desc()).all()
+    p = db.get_or_404(Probe, id)
+    startups = db.session.scalars(select(ProbeServiceStartupLog).filter_by(mac=p.mac).order_by(ProbeServiceStartupLog.timestamp.desc()))
+    status = db.session.scalars(select(ProbeStatus).filter_by(probe_id=p.id).order_by(ProbeStatus.begin.desc()))
+    psi = db.session.scalars(select(ProbeSystemInformation).filter_by(probe_id=p.id).order_by(ProbeSystemInformation.timestamp.desc()))
     _, percentages = get_status_statistics(status)
     return render_template("probe.html", p=p, startups=startups, status=status, percentages=percentages, psi=psi)
 
@@ -90,8 +92,8 @@ def probe_systeminformations(id):
     """
     Show all service systeminformations for one probe
     """
-    p = Probe.query.get_or_404(id)
-    psi = ProbeSystemInformation.query.filter_by(probe_id=p.id).order_by(ProbeSystemInformation.timestamp.desc()).all()
+    p = db.get_or_404(Probe, id)
+    psi = db.session.scalars(select(ProbeSystemInformation).filter_by(probe_id=p.id).order_by(ProbeSystemInformation.timestamp.desc()))
 
     return render_template("probe_systeminformations.html", p=p, psi=psi)
 
@@ -102,8 +104,9 @@ def probe_startups(id):
     """
     Show all service startups for one probe
     """
-    p = Probe.query.get_or_404(id)
-    startups = ProbeServiceStartupLog.query.filter_by(mac=p.mac).order_by(ProbeServiceStartupLog.timestamp.desc()).all()
+    p = db.get_or_404(Probe, id)
+    #startups = ProbeServiceStartupLog.query.filter_by(mac=p.mac).order_by(ProbeServiceStartupLog.timestamp.desc()).all()
+    startups = db.session.scalars(select(ProbeServiceStartupLog).filter_by(mac=p.mac).order_by(ProbeServiceStartupLog.timestamp.desc()))
 
     return render_template("probe_startups.html", p=p, startups=startups)
 
@@ -114,8 +117,8 @@ def probe_status(id):
     """
     Show all status for one probe
     """
-    p = Probe.query.get_or_404(id)
-    status = ProbeStatus.query.filter_by(probe_id=p.id).order_by(ProbeStatus.begin.desc()).all()
+    p = db.get_or_404(Probe, id)
+    status = db.session.scalars(select(ProbeStatus).filter_by(probe_id=p.id).order_by(ProbeStatus.begin.desc()))
     durations, percentages = get_status_statistics(status)
 
     return render_template("probe_status.html", p=p, status=status, durations=durations, percentages=percentages)
@@ -136,23 +139,23 @@ def get_status_statistics(status):
 @app.route('/probe/<int:id>/activate', methods=['POST'])
 @basic_auth.required
 def activate_probe(id):
-    p = Probe.query.get_or_404(id)
-    p.activate()
+    p = db.get_or_404(Probe, id)
+    p.activate(db.session)
     return "", 200
 
 
 @app.route('/probe/<int:id>/deactivate', methods=['POST'])
 @basic_auth.required
 def deactivate_probe(id):
-    p = Probe.query.get_or_404(id)
-    p.revoke_token()
+    p = db.get_or_404(Probe, id)
+    p.revoke_token(db.session)
     return "", 200
 
 
 @app.route('/probe/<int:id>/change_name/<name>', methods=['POST'])
 @basic_auth.required
 def change_probe_name(id, name):
-    p = Probe.query.get_or_404(id)
+    p = db.get_or_404(Probe, id)
     p.name = name
     db.session.add(p)
     db.session.commit()
@@ -162,10 +165,9 @@ def change_probe_name(id, name):
 @app.route('/probe/<int:id>/execute/<command>', methods=['POST'])
 @basic_auth.required
 def execute_probe(id, command):
-    Probe.query.get_or_404(id)
+    db.get_or_404(Probe, id)
     if command not in ["exit", "system_information", "git_pull"]:
         return "", 400
 
     redis_client.publish(f"probe:{id}", command)
-
     return "", 200

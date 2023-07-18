@@ -1,4 +1,5 @@
 from flask import jsonify, request
+from sqlalchemy import select
 from moatt_server.management import app, redis_client, db, token_auth
 from moatt_server.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
 from datetime import datetime, timedelta
@@ -9,7 +10,6 @@ import re
 """
 Endpoints called from the Measurement Probe are listed in this file
 """
-
 
 @app.route('/probe/startup', methods=['POST'])
 @app.route('/probe/reboot', methods=['POST'])  # TODO delete me after client update
@@ -27,8 +27,9 @@ def startup_log():
         return "", 400
 
     # Check if mac is known in Probe List, otherwise deny
-    query = db.session.query(Probe.mac.distinct().label("mac"))
-    macs = [row.mac for row in query.all()]
+    macs = db.session.scalars(select(Probe.mac).distinct()) # TODO: test
+    #query = db.session.query(Probe.mac.distinct().label("mac"))
+    #macs = [row.mac for row in query.all()]
 
     if mac not in macs:
         return "", 400
@@ -75,7 +76,7 @@ def register_probe():
     if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
         return "mac invalid", 400
 
-    probe = Probe.query.filter(Probe.mac == mac).first()
+    probe = db.session.scalar(select(Probe).filter(Probe.mac == mac))
 
     if probe:  # If there is a probe, update
         token_candidate = probe.generate_token_candidate()
@@ -116,8 +117,9 @@ def probe_poll():
     #     (2a) Expired - Finish old status - create new status
     #     (2b) Active - Prolong active status
     # Todo move this functionality
-    ps = ProbeStatus.query.filter_by(probe_id=probe.id, active=True).first()
-    interval = timedelta(seconds=app.config.get("LONG_POLLING_INTERVAL"))
+    #ps = ProbeStatus.query.filter_by(probe_id=probe.id, active=True).first()
+    ps = db.session.scalar(select(ProbeStatus).filter_by(probe_id=probe.id, active=True))
+    interval = timedelta(seconds=app.config["LONG_POLLING_INTERVAL"])
     now = datetime.utcnow()
 
     if ps:
@@ -152,7 +154,7 @@ def probe_poll():
     # This is because pubsub.listen() does not hava a timeout
     # and get_message consumes the subscribe message as well
     # https://github.com/andymccurdy/redis-py/issues/733
-    stoptime = time.time() + app.config.get("LONG_POLLING_INTERVAL")
+    stoptime = time.time() + app.config["LONG_POLLING_INTERVAL"]
     while time.time() < stoptime:
         msg = pubsub.get_message(timeout=stoptime - time.time())
         if msg:

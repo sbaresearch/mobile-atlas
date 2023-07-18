@@ -67,12 +67,12 @@ $(document).ready(function(){
         });
     });
 
-    $('#allow-wireguard').click(function(){
-        var mac = $("#allow-wireguard-mac").val();
-        var ip = $("#allow-wireguard-ip").val();
+    $('.disallow-wireguard-token').click(function(ev){
+        const token = $(ev.delegateTarget).val();
+        console.log($(ev.delegateTarget))
         $.ajax({
-            url: '/wireguard/allow',
-            data: {'mac': mac, 'ip': ip},
+            url: '/wireguard/token/deactivate',
+            data: {'token': token},
             type: 'post',
             success: function(result){
                 location.reload();
@@ -83,11 +83,12 @@ $(document).ready(function(){
         });
     });
 
-    $('#disallow-wireguard').click(function(){
-        var mac = $("#allow-wireguard-mac").val();
+    $('.allow-wireguard-token').click(function(ev){
+        const token = $(ev.delegateTarget).val();
+        const ip = prompt("IP");
         $.ajax({
-            url: '/wireguard/disallow',
-            data: {'mac': mac},
+            url: '/wireguard/token/activate',
+            data: {'token_candidate': token, 'ip': ip},
             type: 'post',
             success: function(result){
                 location.reload();
@@ -98,4 +99,20 @@ $(document).ready(function(){
         });
     });
 
+    $('#allow-wireguard').click(function(ev){
+        const token = $('#allow-wireguard-token').val();
+        const ip = $('#allow-wireguard-ip').val();
+
+        $.ajax({
+            url: '/wireguard/token/activate',
+            data: {'token_candidate': token, 'ip': ip},
+            type: 'post',
+            success: function(result){
+                location.reload();
+            },
+            error: function(result){
+                alert(result.status + ' ' + result.responseText);
+            }
+        });
+    });
 });

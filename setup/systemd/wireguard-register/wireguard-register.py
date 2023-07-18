@@ -3,17 +3,16 @@
 """This script automatically configures wireguard after startup"""
 
 import requests
+import secrets
+import base64
 import subprocess
 from os import path
 
 WIREGUARD_DIR = "/etc/wireguard"
-REGISTER_URL = "https://mam.mobileatlas.eu/wireguard/register"
+API_ENDPOINT = "https://mam.mobileatlas.eu"
+TOKEN_REG_URL = f"{API_ENDPOINT}/wireguard/token/register"
+REGISTER_URL = f"{API_ENDPOINT}/wireguard/register"
 NET_INTERFACE = "eth0"
-
-# WIREGUARD_DIR = "/tmp/wireguard"
-# REGISTER_URL = "http://localhost:5000/wireguard/register"
-# NET_INTERFACE = "wlp2s0"
-
 
 def get_mac_addr():
     """
@@ -22,6 +21,20 @@ def get_mac_addr():
     with open("/sys/class/net/"+NET_INTERFACE+"/address") as f:
         return f.readline().rstrip()
 
+def get_or_create_wireguard_token():
+    token_path = WIREGUARD_DIR + "/token"
+
+    if not path.exists(token_path):
+        print("Creating a new WireGuard token")
+        token = base64.b64encode(secrets.token_bytes(32)).decode()
+
+        with open(token_path, "x") as f:
+            f.write(token)
+
+        return token
+    else:
+        with open(token_path) as f:
+            return f.readline()
 
 def get_or_create_wireguard_key():
     """
@@ -64,26 +77,34 @@ def main():
 
     # TODO check if wireguard is installed
 
+    token = get_or_create_wireguard_token()
+    res = requests.post(TOKEN_REG_URL, data={"token_candidate": token, "mac": mac})
+
+    if res.status_code != 200:
+        print("Error", res.status_code, res.text)
+        return
+
     keys = get_or_create_wireguard_key()
     print(f"Got publickey {keys['public']}")
 
-    res = requests.post(REGISTER_URL, data={'mac': mac, 'publickey': keys['public']})
-    if res.status_code == 200:
-        j = res.json()
-        ip = j['ip']
-        endpoint = j['endpoint']
-        endpoint_publickey = j['endpoint_publickey']
-        allowed_ips = j['allowed_ips']
-        dns = j['dns']
+    res = requests.post(REGISTER_URL, data={'token': token, 'publickey': keys['public'], "mac": mac})
 
-        # TODO check values: ip/endpoint/endpoint_publickey/allowed_ips
-        print("Registered")
-
-        save_wireguard_config(keys['private'], ip, endpoint, endpoint_publickey, allowed_ips, dns)
-        print("Stored config")
-
-    else:
+    if res.status_code != 200:
         print("Error", res.status_code, res.text)
+        return
+
+    j = res.json()
+    ip = j['ip']
+    endpoint = j['endpoint']
+    endpoint_publickey = j['endpoint_publickey']
+    allowed_ips = j['allowed_ips']
+    dns = j['dns']
+
+    # TODO check values: ip/endpoint/endpoint_publickey/allowed_ips
+    print("Registered")
+
+    save_wireguard_config(keys['private'], ip, endpoint, endpoint_publickey, allowed_ips, dns)
+    print("Stored config")
 
 
 if __name__ == '__main__':
