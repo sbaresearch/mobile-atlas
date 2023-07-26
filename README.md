@@ -71,7 +71,7 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 
 Acknowledgments
 ---------------------------------------
-MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) by 
+MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) and [University of Vienna](https://sec.cs.univie.ac.at/) by 
 [Gabriel K. Gegenhuber](https://www.sba-research.org/team/gabriel-k-gegenhuber/),
 [Wilfried Mayer](https://www.sba-research.org/team/wilfried-mayer/),
 [Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/), and
