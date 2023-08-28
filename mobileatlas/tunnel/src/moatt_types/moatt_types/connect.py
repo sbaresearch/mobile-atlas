@@ -58,11 +58,12 @@ class IdentifierType(enum.Enum):
     Iccid = 0
     Imsi = 1
 
+# TODO: add a status for expired creds?
 @enum.unique
 class AuthStatus(enum.Enum):
     Success = 0
-    InvalidToken = 1
-    NotRegistered = 2
+    Unauthorized = 1
+    ProviderNotRegistered = 3
 
 @enum.unique
 class ConnectStatus(enum.Enum):
@@ -70,6 +71,7 @@ class ConnectStatus(enum.Enum):
     NotFound = 1
     Forbidden = 2
     NotAvailable = 3
+    ProviderTimedOut = 4
 
 @enum.unique
 class ApduOp(enum.Enum):

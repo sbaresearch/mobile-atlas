@@ -13,7 +13,9 @@ class ApduStream:
         self.sim = sim
         self.reader = reader
         self.writer = writer
-        self.background_tasks = set()
+
+        self._send_queue: Optional[asyncio.Queue[ApduPacket]] = None
+        self._send_task = None
 
     async def recv(self) -> Optional[ApduPacket]:
         buf = await self.reader.read(n=6)
@@ -43,10 +45,16 @@ class ApduStream:
         await self.writer.drain()
 
     def send_background(self, apdu: ApduPacket):
-        send_task = asyncio.create_task(self.send(apdu))
-        self.background_tasks.add(send_task)
-        # Callback is also invoked when the task is already done
-        send_task.add_done_callback(self.background_tasks.discard)
+        if self._send_queue is None:
+            self._send_queue = asyncio.Queue()
+            self._send_task = asyncio.create_task(self._send_bg_task())
+
+        # Does not throw an exception because the queue is unbounded
+        self._send_queue.put_nowait(apdu)
+
+    async def wait_bg_sends(self):
+        if self._send_queue is not None:
+            await self._send_queue.join()
 
     async def close(self):
         self.writer.close()
@@ -62,3 +70,11 @@ class ApduStream:
             return (6 + plen) - len(msg)
         else:
             return 0
+
+    async def _send_bg_task(self):
+        assert self._send_queue is not None
+
+        while True:
+            apdu = await self._send_queue.get()
+            await self.send(apdu)
+            self._send_queue.task_done()

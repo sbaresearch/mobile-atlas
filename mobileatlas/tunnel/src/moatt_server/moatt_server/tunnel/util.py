@@ -45,3 +45,8 @@ async def read_con_req(reader: asyncio.StreamReader) -> Optional[ConnectRequest]
 
     return ConnectRequest.decode(buf)
 
+async def poll_eof(writer: asyncio.StreamWriter, interval=10) -> None:
+    while True:
+        if writer.is_closing():
+            return
+        await asyncio.sleep(interval)

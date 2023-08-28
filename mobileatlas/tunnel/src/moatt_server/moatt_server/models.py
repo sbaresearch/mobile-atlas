@@ -6,9 +6,10 @@ from typing import Optional, List
 from moatt_types.connect import ApduOp
 import moatt_types.connect as con_types
 from sqlalchemy import (
-        String, DateTime, Boolean, Integer, ForeignKey, Text, Enum, LargeBinary, TypeDecorator
+        String, DateTime, Boolean, Integer, ForeignKey, Text, LargeBinary, TypeDecorator
         )
 from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
+from sqlalchemy.ext.asyncio import AsyncAttrs
 
 # https://docs.sqlalchemy.org/en/20/core/custom_types.html#store-timezone-aware-timestamps-as-timezone-naive-utc
 class TZDateTime(TypeDecorator):
@@ -27,7 +28,7 @@ class TZDateTime(TypeDecorator):
             value = value.replace(tzinfo=datetime.timezone.utc)
         return value
 
-class Base(DeclarativeBase):
+class Base(AsyncAttrs, DeclarativeBase):
     pass
 
 class Token(Base):
@@ -37,8 +38,16 @@ class Token(Base):
     created: Mapped[datetime.datetime] = mapped_column(TZDateTime)
     expires: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
     last_access: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
-    active: Mapped[bool] = mapped_column(Boolean)
+    active: Mapped[bool]
     sessions: Mapped[List["SessionToken"]] = relationship("SessionToken", back_populates="token")
+
+    def is_valid(self):
+        return self.active and not self.is_expired()
+
+    def is_expired(self):
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        return self.expires is not None and self.expires < now
 
 class SessionToken(Base):
     __tablename__ = "sessiontokens"
@@ -48,6 +57,7 @@ class SessionToken(Base):
             TZDateTime,
             default=datetime.datetime.now(datetime.timezone.utc),
             )
+
     expires: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
     last_access: Mapped[datetime.datetime] = mapped_column(
             TZDateTime,
@@ -60,24 +70,32 @@ class SessionToken(Base):
     def to_con_type(self) -> con_types.SessionToken:
         return con_types.SessionToken(base64.b64decode(self.value, validate=True))
 
+    def is_valid(self):
+        return self.token.is_valid() and not self.is_expired()
+
+    def is_expired(self):
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        return self.expires is not None and self.expires < now
+
 class Imsi(Base):
     __tablename__ = "imsis"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    imsi: Mapped[str] = mapped_column(String)
+    imsi: Mapped[str] = mapped_column(String(20))
     registered: Mapped[datetime.datetime] = mapped_column(
             TZDateTime,
             default=datetime.datetime.now(datetime.timezone.utc),
             )
-    sim_iccid: Mapped[str] = mapped_column(String, ForeignKey("sims.iccid"))
+    sim_iccid: Mapped[str] = mapped_column(String(20), ForeignKey("sims.iccid"))
     sim: Mapped["Sim"] = relationship("Sim", back_populates="imsi")
 
 class Sim(Base):
     __tablename__ = "sims"
 
-    iccid: Mapped[str] = mapped_column(String, primary_key=True)
+    iccid: Mapped[str] = mapped_column(String(20), primary_key=True)
     imsi: Mapped[List["Imsi"]] = relationship("Imsi", back_populates="sim")
-    available: Mapped[bool] = mapped_column(Boolean) # TODO: currently unused
+    available: Mapped[bool] # TODO: currently unused
     provider_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("providers.id"))
     provider: Mapped[Optional["Provider"]] = relationship("Provider", back_populates="sims")
 
@@ -112,8 +130,8 @@ class ApduLog(Base):
             TZDateTime,
             default=datetime.datetime.now(datetime.timezone.utc),
             )
-    sim_id: Mapped[str] = mapped_column(String, ForeignKey("sims.iccid"))
+    sim_id: Mapped[str] = mapped_column(String(20), ForeignKey("sims.iccid"))
     sim: Mapped[Sim] = relationship("Sim")
-    command: Mapped[Enum] = mapped_column(Enum(ApduOp))
+    command: Mapped[ApduOp]
     payload: Mapped[Optional[bytes]] = mapped_column(LargeBinary)
-    sender: Mapped[Enum] = mapped_column(Enum(Sender))
+    sender: Mapped[Sender]

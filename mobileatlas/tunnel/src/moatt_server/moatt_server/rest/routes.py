@@ -40,7 +40,7 @@ def parse_sims(sims) -> dict[Iccid, Sim]:
 
     return parsed_sims
 
-# TODO: limit the number of clients that can simultaneously use the same token
+# TODO: endpoint to request new session token to replace expiring s. token
 @app.route("/register", methods=["POST"])
 @flask_http_auth.required
 def register():
@@ -68,6 +68,7 @@ def deregister():
 
     return Response(status=200)
 
+# TODO: return already registered sims on error
 @app.route("/provider/sims", methods=["PUT"])
 @protected
 def provider_register():

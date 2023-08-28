@@ -1,9 +1,11 @@
 import logging
 import secrets
 import datetime
+import enum
 
 from typing import Optional
-from moatt_types.connect import Imsi, Iccid, Token, IdentifierType, SessionToken, ApduPacket
+from moatt_types.connect import (Imsi, Iccid, Token, IdentifierType, SessionToken, ApduPacket,
+                                 AuthStatus)
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -11,7 +13,22 @@ import moatt_server.models as dbm
 
 logger = logging.getLogger(__name__)
 
-# TODO: look into the possibility of timing attacks
+# TODO: update token access information
+
+@enum.unique
+class TokenErrorType(enum.Enum):
+    Invalid = 0,
+    Expired = 1,
+
+class TokenError(Exception):
+    def __init__(self, etype: TokenErrorType) -> None:
+        self.etype = etype
+
+    def to_auth_status(self) -> AuthStatus:
+        if self.etype in [TokenErrorType.Invalid, AuthStatus.Unauthorized]:
+            return AuthStatus.Unauthorized
+        else:
+            raise NotImplementedError
 
 class Sim:
     def __init__(self, iccid: Iccid, imsi: Imsi):
@@ -24,15 +41,17 @@ def now() -> datetime.datetime:
 def generate_session_token() -> SessionToken:
     return SessionToken(secrets.token_bytes(25))
 
-def insert_new_session_token(session: Session, token_id) -> SessionToken:
+def insert_new_session_token(session: Session, token_id, expires: Optional[datetime.timedelta]=None) -> SessionToken:
     logger.debug("Creating new session token.")
     stoken = generate_session_token()
+    n = now()
 
     session.add(dbm.SessionToken(
         value=stoken.as_base64(),
-        created=now(),
+        created=n,
         last_access=now(),
         token_id=token_id,
+        expires=n + expires if expires is not None else None,
         ))
     session.commit()
 
@@ -57,7 +76,7 @@ def register_provider(session: Session, session_token: SessionToken, sims: dict[
 
     if stoken is None:
         #return False
-        raise Exception()
+        raise Exception() # TODO
 
     if stoken.provider is None:
         provider = dbm.Provider(
@@ -93,9 +112,11 @@ def register_provider(session: Session, session_token: SessionToken, sims: dict[
             if sim.provider.id == provider.id:
                 continue
 
-            if sim.provider.allow_reregistration is False:
+            if sim.provider.session_token.is_expired():
+                deregister_session(session, sim.provider.session_token.to_con_type())
+            elif sim.provider.allow_reregistration is False:
                 #return Response(status=403)
-                raise AuthError
+                raise AuthError # TODO
 
         sim.provider = provider
         session.add(dbm.Imsi(imsi=imsi,registered=n,sim=sim))
@@ -122,27 +143,7 @@ def sync_valid(session: Session, token: Token) -> bool:
     if result is None:
         return False
 
-    return token_is_valid(result)
-
-def token_is_valid(token: dbm.Token) -> bool:
-    assert type(token) == dbm.Token
-
-    return token.active and not token_is_expired(token)
-
-def token_is_expired(token: dbm.Token) -> bool:
-    assert type(token) == dbm.Token
-
-    return not (token.expires is None or token.expires > now())
-
-def sessiontoken_is_valid(token: dbm.SessionToken) -> bool:
-    assert type(token) == dbm.SessionToken
-
-    return token_is_valid(token.token) and not sessiontoken_is_expired(token)
-
-def sessiontoken_is_expired(token: dbm.SessionToken) -> bool:
-    assert type(token) == dbm.SessionToken
-
-    return not (token.expires is None or token.expires > now())
+    return result.is_valid()
 
 def sync_get_session_token(
         session: Session,
@@ -179,11 +180,10 @@ async def log_apdu(
                         )
                     )
 
-
 async def get_sessiontoken(
         async_session: async_sessionmaker[AsyncSession],
         session_token: SessionToken
-        ) -> Optional[dbm.SessionToken]:
+        ) -> dbm.SessionToken:
     assert type(session_token) == SessionToken
 
     stmt = select(dbm.SessionToken)\
@@ -194,22 +194,24 @@ async def get_sessiontoken(
         st = await session.scalar(stmt)
 
         if st is None:
-            return None
+            raise TokenError(TokenErrorType.Invalid)
 
         st.last_access = now()
         await session.commit()
 
-    if sessiontoken_is_valid(st):
+    if st.is_valid():
         return st
+    elif st.is_expired():
+        raise TokenError(TokenErrorType.Expired)
     else:
-        return None
+        raise TokenError(TokenErrorType.Invalid)
 
 async def get_sim(
         async_session: async_sessionmaker[AsyncSession],
         session_token: dbm.SessionToken,
         identifier: Imsi | Iccid
         ) -> Optional[dbm.Sim]:
-    if not sessiontoken_is_valid(session_token):
+    if not session_token.is_valid():
         raise AuthError
 
     token = session_token.token

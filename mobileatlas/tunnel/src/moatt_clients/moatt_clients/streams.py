@@ -1,5 +1,7 @@
 import struct
 import logging
+import ssl
+import socket
 
 from typing import Optional
 
@@ -52,6 +54,9 @@ class RawStream:
 
     def close(self) -> None:
         self.buf = b""
+        if isinstance(self.socket, ssl.SSLSocket):
+            self.socket.unwrap()
+        self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
 class ApduStream:

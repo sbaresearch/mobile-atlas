@@ -6,10 +6,12 @@ import binascii
 from typing import Optional
 
 import moatt_server.models as dbm
-from moatt_server.auth import get_sessiontoken
+from moatt_server.auth import get_sessiontoken, TokenError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, SessionToken
+from moatt_types.connect import AuthRequest, AuthResponse, SessionToken
 from moatt_server.tunnel.util import write_msg
+
+import moatt_server.config as config
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,8 @@ class Handler:
             writer: asyncio.StreamWriter
             ) -> Optional[dbm.SessionToken]:
         logger.debug("Waiting for authorisation message.")
-        auth_req = AuthRequest.decode(await reader.readexactly(AuthRequest.LENGTH))
+        async with asyncio.timeout(config.AUTHMSG_TIMEOUT):
+            auth_req = AuthRequest.decode(await reader.readexactly(AuthRequest.LENGTH))
         logger.debug(f"Received authorisation message: {auth_req}")
 
         if auth_req is None:
@@ -33,10 +36,11 @@ class Handler:
             await writer.wait_closed()
             return None
 
-        session_token = await get_sessiontoken(self.async_session, auth_req.session_token)
-        if session_token is None:
-            logger.debug("Received an invalid session token. Closing connection.")
-            await write_msg(writer, AuthResponse(AuthStatus.NotRegistered))
+        try:
+            session_token = await get_sessiontoken(self.async_session, auth_req.session_token)
+        except TokenError as e:
+            logger.debug(f"Received an invalid session token. Closing connection. (Reason: {e.etype})")
+            await write_msg(writer, AuthResponse(e.to_auth_status()))
             writer.close()
             await writer.wait_closed()
             return None
