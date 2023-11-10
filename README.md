@@ -34,6 +34,11 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [[GLOBECOM22] Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
 * [[USENIX Security '23] MobileAtlas: Geographically Decoupled Measurements in Cellular Networks for Security and Privacy Research](https://mobileatlas.eu/papers/23_USENIX_SECURITY_MobileAtlas_Geographically_Decoupled_Measurements_in_Cellular_Networks.pdf)
 
+### Presentations
+* [USENIX Security '23] MobileAtlas: Geographically Decoupled Measurements in Cellular Networks for Security and Privacy Research: [Info](https://www.usenix.org/conference/usenixsecurity23/presentation/gegenhuber), [Slides](https://www.usenix.org/system/files/sec23_slides_gegenhuber-gabriel.pdf)
+* [DEF CON 31] Cellular Carriers Hate this Trick: Using SIM Tunneling to Travel at Light Speed: [Info](https://info.defcon.org/event/?id=50791), [Recording](https://www.youtube.com/watch?v=MYfeNyZIzBE), [Slides](https://media.defcon.org/DEF%20CON%2031/DEF%20CON%2031%20presentations/Adrian%20atrox%20Dabrowski%20Gabriel%20K.%20Gegenhuber%20-%20Cellular%20carriers%20hate%20this%20trick%20Using%20SIM%20tunneling%20to%20travel%20at%20light%20speed.pdf)
+* [GSMA FASG#27] An Open-Source Framework for Rapid Distributed Security Testing and Measurements Based on SIM Tunneling
+
 ### Geographical Decoupling of SIM Card and Modem
 Physically moving devices and SIM cards between countries to enable measurements in a roaming environment is costly and does not scale well.
 Therefore, we introduce an approach to geographically detach the SIM card from the modem by tunneling the SIM card's protocol over the Internet and emulating its signal on the LTE modem.
