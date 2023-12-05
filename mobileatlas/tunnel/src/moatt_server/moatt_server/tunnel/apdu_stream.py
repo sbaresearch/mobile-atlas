@@ -1,15 +1,19 @@
 import asyncio
 import logging
 import struct
-
 from typing import Optional
+
 from moatt_types.connect import ApduPacket
-import moatt_server.models as dbm
+
+from .. import models as dbm
 
 logger = logging.getLogger(__name__)
 
+
 class ApduStream:
-    def __init__(self, sim: dbm.Sim, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    def __init__(
+        self, sim: dbm.Sim, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ):
         self.sim = sim
         self.reader = reader
         self.writer = writer
@@ -65,7 +69,7 @@ class ApduStream:
         if len(msg) < 6:
             return 6 - len(msg)
 
-        plen, = struct.unpack("!I", msg[2:6])
+        (plen,) = struct.unpack("!I", msg[2:6])
         if len(msg) < 6 + plen:
             return (6 + plen) - len(msg)
         else:

@@ -1,14 +1,16 @@
 import asyncio
 import logging
-
 from typing import Optional
-from moatt_types.connect import ConnectRequest, IdentifierType, Imsi, Iccid
+
+from moatt_types.connect import ConnectRequest, Iccid, IdentifierType, Imsi
 
 logger = logging.getLogger(__name__)
+
 
 async def write_msg(writer: asyncio.StreamWriter, msg):
     writer.write(msg.encode())
     await writer.drain()
+
 
 def _con_req_missing(b: bytes) -> int:
     if len(b) < 2:
@@ -27,6 +29,7 @@ def _con_req_missing(b: bytes) -> int:
         logger.warn(f"ValueError: {e}")
         return 0
 
+
 async def read_con_req(reader: asyncio.StreamReader) -> Optional[ConnectRequest]:
     buf = await reader.read(n=ConnectRequest.MIN_LENGTH)
 
@@ -44,6 +47,7 @@ async def read_con_req(reader: asyncio.StreamReader) -> Optional[ConnectRequest]
         missing = _con_req_missing(buf)
 
     return ConnectRequest.decode(buf)
+
 
 async def poll_eof(writer: asyncio.StreamWriter, interval=10) -> None:
     while True:

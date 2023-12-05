@@ -1,19 +1,19 @@
 import asyncio
-import logging
 import base64
 import binascii
-
+import logging
 from typing import Optional
 
-import moatt_server.models as dbm
-from moatt_server.auth import get_sessiontoken, TokenError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from moatt_types.connect import AuthRequest, AuthResponse, SessionToken
-from moatt_server.tunnel.util import write_msg
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import moatt_server.config as config
+from .. import config
+from .. import models as dbm
+from ..auth import TokenError, get_sessiontoken
+from .util import write_msg
 
 logger = logging.getLogger(__name__)
+
 
 class Handler:
     def __init__(self, async_session: async_sessionmaker[AsyncSession], timeout):
@@ -21,10 +21,8 @@ class Handler:
         self.timeout = timeout
 
     async def _handle_auth_req(
-            self,
-            reader: asyncio.StreamReader,
-            writer: asyncio.StreamWriter
-            ) -> Optional[dbm.SessionToken]:
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> Optional[dbm.SessionToken]:
         logger.debug("Waiting for authorisation message.")
         async with asyncio.timeout(config.AUTHMSG_TIMEOUT):
             auth_req = AuthRequest.decode(await reader.readexactly(AuthRequest.LENGTH))
@@ -37,9 +35,13 @@ class Handler:
             return None
 
         try:
-            session_token = await get_sessiontoken(self.async_session, auth_req.session_token)
+            session_token = await get_sessiontoken(
+                self.async_session, auth_req.session_token
+            )
         except TokenError as e:
-            logger.debug(f"Received an invalid session token. Closing connection. (Reason: {e.etype})")
+            logger.debug(
+                f"Received an invalid session token. Closing connection. (Reason: {e.etype})"
+            )
             await write_msg(writer, AuthResponse(e.to_auth_status()))
             writer.close()
             await writer.wait_closed()

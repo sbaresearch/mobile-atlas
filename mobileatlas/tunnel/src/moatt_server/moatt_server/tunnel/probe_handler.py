@@ -1,22 +1,25 @@
 import asyncio
 import logging
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-import moatt_server.tunnel.connection_queue as connection_queue
-from moatt_types.connect import ConnectStatus, ConnectResponse, AuthResponse, AuthStatus
-from moatt_server.tunnel.util import read_con_req, write_msg
-from moatt_server.auth import get_sim, AuthError
-from moatt_server.tunnel.handler import Handler
+from moatt_types.connect import AuthResponse, AuthStatus, ConnectResponse, ConnectStatus
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import moatt_server.config as config
+from .. import config
+from ..auth import AuthError, get_sim
+from . import connection_queue
+from .handler import Handler
+from .util import read_con_req, write_msg
 
 logger = logging.getLogger(__name__)
+
 
 class ProbeHandler(Handler):
     def __init__(self, async_session: async_sessionmaker[AsyncSession], timeout=0):
         super().__init__(async_session, timeout)
 
-    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def handle(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         def cleanup():
             if not writer.is_closing():
                 writer.close()
@@ -33,7 +36,9 @@ class ProbeHandler(Handler):
             logger.warn(f"Exception occurred while handling connection.\n{e}")
             cleanup()
 
-    async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    async def _handle(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         async def close():
             writer.close()
             await writer.wait_closed()
@@ -52,14 +57,18 @@ class ProbeHandler(Handler):
         logger.debug(f"got probe connect request {con_req}")
 
         if con_req is None:
-            logger.warn("Received malformed connection request message. Closing connection.")
+            logger.warn(
+                "Received malformed connection request message. Closing connection."
+            )
             await close()
             return
 
         try:
             sim = await get_sim(self.async_session, session_token, con_req.identifier)
         except AuthError:
-            logger.debug("Received disallowed SIM request from probe. Closing connection.")
+            logger.debug(
+                "Received disallowed SIM request from probe. Closing connection."
+            )
             await write_msg(writer, ConnectResponse(ConnectStatus.Forbidden))
             await close()
             return
@@ -77,4 +86,6 @@ class ProbeHandler(Handler):
             return
 
         logger.debug("Sending stream to provider handler")
-        await connection_queue.put(sim.provider.id, connection_queue.QueueEntry(sim, con_req, reader, writer))
+        await connection_queue.put(
+            sim.provider.id, connection_queue.QueueEntry(sim, con_req, reader, writer)
+        )

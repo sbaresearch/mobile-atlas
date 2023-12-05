@@ -1,16 +1,16 @@
-import logging
 import base64
+import logging
 
-from flask import Response, request, jsonify, g
-from moatt_server.rest import app, flask_http_auth, db
-from moatt_server import auth
-from moatt_server.auth import Sim
-from moatt_server.rest.auth import protected
-from moatt_types.connect import SessionToken
+from flask import Response, g, jsonify, request
+from moatt_types.connect import Iccid, Imsi, SessionToken
 
-from moatt_types.connect import Imsi, Iccid
+from .. import auth
+from ..auth import Sim
+from . import app, db, flask_http_auth
+from .auth import protected
 
 logger = logging.getLogger(__name__)
+
 
 def parse_sim(sim) -> Sim:
     if type(sim) != dict or len(sim) != 2:
@@ -23,6 +23,7 @@ def parse_sim(sim) -> Sim:
         raise ValueError
 
     return Sim(Iccid(iccid), Imsi(imsi))
+
 
 def parse_sims(sims) -> dict[Iccid, Sim]:
     if type(sims) != list:
@@ -40,6 +41,7 @@ def parse_sims(sims) -> dict[Iccid, Sim]:
 
     return parsed_sims
 
+
 # TODO: endpoint to request new session token to replace expiring s. token
 @app.route("/register", methods=["POST"])
 @flask_http_auth.required
@@ -51,6 +53,7 @@ def register():
     resp.set_cookie("session_token", session_token.as_base64())
 
     return resp
+
 
 @app.route("/deregister", methods=["DELETE"])
 def deregister():
@@ -67,6 +70,7 @@ def deregister():
     auth.deregister_session(db.session, session_token)
 
     return Response(status=200)
+
 
 # TODO: return already registered sims on error
 @app.route("/provider/sims", methods=["PUT"])

@@ -1,33 +1,34 @@
 import asyncio
-import time
-import logging
 import collections
-
-from typing import Optional, Callable
+import logging
+import time
 from collections.abc import Awaitable
+from typing import Callable, Optional
 
-import moatt_server.models as dbm
 from moatt_types.connect import ConnectRequest, ConnectResponse, ConnectStatus
 
-import moatt_server.config as config
+from .. import config
+from .. import models as dbm
 
 logger = logging.getLogger(__name__)
 
 queues: dict[int, "Queue"] = {}
 
+
 class QueueEntry:
     def __init__(
-            self,
-            sim: dbm.Sim,
-            con_req: ConnectRequest,
-            reader: asyncio.StreamReader,
-            writer: asyncio.StreamWriter,
-            ):
+        self,
+        sim: dbm.Sim,
+        con_req: ConnectRequest,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+    ):
         self.sim = sim
         self.con_req = con_req
         self.reader = reader
         self.writer = writer
-        #self.liveness_check_task = liveness_check_task
+        # self.liveness_check_task = liveness_check_task
+
 
 class Queue(asyncio.Queue):
     # overridable methods from asyncio.Queue
@@ -77,7 +78,9 @@ class Queue(asyncio.Queue):
             while True:
                 writer = self.get_nowait().writer
                 try:
-                    writer.write(ConnectResponse(ConnectStatus.ProviderTimedOut).encode())
+                    writer.write(
+                        ConnectResponse(ConnectStatus.ProviderTimedOut).encode()
+                    )
                 except:
                     pass
                 writer.close()
@@ -98,11 +101,14 @@ class Queue(asyncio.Queue):
             await asyncio.sleep(config.QUEUE_GC_INTERVAL)
 
             if len(self._queue) != 0:
-                logger.debug("queue GC") # TODO
+                logger.debug("queue GC")  # TODO
                 size = len(self._queue)
                 self._queue = collections.deque(filter(lambda x: f(x), self._queue))
                 if len(self._queue) < size:
-                    logger.info(f"Removed {size - len(self._queue)} closed probe connection(s).")
+                    logger.info(
+                        f"Removed {size - len(self._queue)} closed probe connection(s)."
+                    )
+
 
 # TODO: update db
 def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
@@ -122,8 +128,12 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
                 qs_removed += 1
                 conns_closed += await q._cleanup()
 
-        logger.info(f"Finished removal of old connection requests. (Removed {qs_removed} queues; closed {conns_closed} connections)")
+        logger.info(
+            f"Finished removal of old connection requests. (Removed {qs_removed} queues; closed {conns_closed} connections)"
+        )
+
     return f
+
 
 def _get_queue(id: int) -> Queue:
     q = queues.get(id)
@@ -132,13 +142,16 @@ def _get_queue(id: int) -> Queue:
         queues[id] = q
     return q
 
+
 async def put(id: int, qe: QueueEntry) -> None:
     q = _get_queue(id)
     await q.put(qe)
 
+
 async def get(id: int) -> QueueEntry:
     q = _get_queue(id)
     return await q.get()
+
 
 def task_done(id: int):
     q = _get_queue(id)

@@ -1,17 +1,16 @@
-from flask import request, Response, g
-from types import SimpleNamespace
 import base64
-from functools import wraps
-import datetime
 import binascii
+import datetime
+from functools import wraps
+from types import SimpleNamespace
 
+from flask import Response, g, request
 from moatt_types.connect import SessionToken, Token
 
-from moatt_server.auth import sync_get_session_token
+from .. import models as dbm
+from ..auth import sync_get_session_token
+from . import db
 
-from moatt_server.rest import db
-
-import moatt_server.models as dbm
 
 def protected(f):
     @wraps(f)
@@ -19,24 +18,27 @@ def protected(f):
         session_token = request.cookies.get("session_token")
 
         if session_token is None:
-            return Response(status=401) # TODO: add www-authenticate header
+            return Response(status=401)  # TODO: add www-authenticate header
 
         try:
             session_token = SessionToken(base64.b64decode(session_token, validate=True))
         except (binascii.Error, ValueError):
-            return Response(status=401) # TODO: add www-authenticate header
+            return Response(status=401)  # TODO: add www-authenticate header
 
-        #provider = sync_get_registration(db.session, session_token)
+        # provider = sync_get_registration(db.session, session_token)
         sess = sync_get_session_token(db.session, session_token)
 
-        if sess is None or\
-                type(sess) != dbm.SessionToken or\
-                sess.value != session_token.as_base64():
+        if (
+            sess is None
+            or type(sess) != dbm.SessionToken
+            or sess.value != session_token.as_base64()
+        ):
             return Response(status=403)
 
         now = datetime.datetime.now(tz=datetime.timezone.utc)
-        if sess.token.active is False or\
-                (sess.token.expires is not None and sess.token.expires < now):
+        if sess.token.active is False or (
+            sess.token.expires is not None and sess.token.expires < now
+        ):
             return Response(status=403)
 
         try:
