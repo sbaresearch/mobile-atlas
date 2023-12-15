@@ -1,57 +1,118 @@
+import dataclasses
+import logging
 import socket
 import ssl
-import requests
-import logging
+from typing import Callable, Optional
 
-from typing import Optional, Callable, Union, List, Tuple
+import requests
+from moatt_types.connect import (
+    ConnectRequest,
+    ConnectResponse,
+    ConnectStatus,
+    Iccid,
+    IdentifierType,
+    Imsi,
+    SessionToken,
+)
 
 from moatt_clients.client import Client, ProtocolError
 from moatt_clients.errors import SimRequestError
 from moatt_clients.streams import ApduStream, RawStream
-from moatt_types.connect import (ConnectRequest, ConnectResponse, ConnectStatus,
-                                   IdentifierType, Imsi, Iccid, SessionToken)
 
 logger = logging.getLogger(__name__)
 
+
+@dataclasses.dataclass
+class SIM:
+    iccid: Iccid
+    imsi: Imsi
+
+    def _to_dict(self):
+        return {"iccid": self.iccid.iccid, "imsi": self.imsi.imsi}
+
+
 def register_sims(
-        api_url: str,
-        session_token: SessionToken,
-        sims: List[dict],
-        ) -> Optional[SessionToken]:
-    if session_token is None:
-        return None
+    api_url: str,
+    session_token: SessionToken,
+    sims: list[SIM],
+) -> Optional[SessionToken]:
+    """Register SIM cards with the tunnel server.
 
+    Parameters
+    ----------
+    api_url
+        API base URL (e.g., 'https://example.com/api/v1')
+    session_token
+        The session to use.
+    sims
+        SIM cards to register.
+
+    Raises
+    ------
+    requests.HTTPError
+        If registration is not successful.
+    """
     cookies = dict(session_token=session_token.as_base64())
-    r = requests.put(f"{api_url}/provider/sims", json=sims, cookies=cookies)
+    r = requests.put(
+        f"{api_url}/provider/sims",
+        json=list(map(lambda s: s._to_dict(), sims)),
+        cookies=cookies,
+    )
 
-    if r.status_code != requests.codes.ok:
-        logger.error(f"Registration failed. Received {r.status_code} status from server.")
-        return None
-
-    return session_token
+    try:
+        r.raise_for_status()
+    except requests.HTTPError:
+        logger.error(
+            f"Registration failed. Received {r.status_code} status from server."
+        )
+        raise
 
 
 class ProviderClient(Client):
     def __init__(
-            self,
-            session_token: SessionToken,
-            host,
-            port: int,
-            cb: Callable[[ConnectRequest], ConnectStatus],
-            tls_ctx: Optional[ssl.SSLContext] = None,
-            server_hostname = None,
-            ):
+        self,
+        session_token: SessionToken,
+        host: str,
+        port: int,
+        cb: Callable[[ConnectRequest], ConnectStatus],
+        tls_ctx: Optional[ssl.SSLContext] = None,
+        server_hostname=None,
+    ):
+        """
+        Parameters
+        ----------
+        session_token
+            Session token to use
+        host
+            Server hostname
+        port
+            Port of the provider tunnel service.
+        cb
+            Callback deciding whether requested SIM card is available.
+        tls_ctx
+            Optional TLS configuration to use.
+        server_hostname
+            TLS server hostname.
+        """
         self.cb = cb
-        super().__init__(session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname)
+        super().__init__(
+            session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname
+        )
 
-    def wait_for_connection(self) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
+    def wait_for_connection(self) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
+        """Wait for a probe to request a connection.
+
+        Returns
+        -------
+        ICCID or IMSI of the requested SIM card and apdu stream to be used.
+        """
         logger.debug("Opening connection.")
         stream = RawStream(
-                self.tls_ctx.wrap_socket(
-                    socket.create_connection((self.host, self.port)),
-                    server_hostname=self.server_hostname,
-                    )
-                )
+            self.tls_ctx.wrap_socket(
+                socket.create_connection((self.host, self.port)),
+                server_hostname=self.server_hostname,
+            )
+        )
 
         try:
             apdu_stream = self._wait_for_connection(stream)
@@ -67,9 +128,9 @@ class ProviderClient(Client):
         return apdu_stream
 
     def _wait_for_connection(
-            self,
-            stream: RawStream,
-            ) -> Optional[Tuple[Union[Imsi, Iccid], ApduStream]]:
+        self,
+        stream: RawStream,
+    ) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
         self._authenticate(stream)
 
         logging.debug("Waiting for connection request.")
@@ -87,7 +148,9 @@ class ProviderClient(Client):
         stream.write_all(ConnectResponse(status).encode())
 
         if status != ConnectStatus.Success:
-            logger.info(f"Rejected request for SIM '{conn_req.identifier}' with '{status}'")
+            logger.info(
+                f"Rejected request for SIM '{conn_req.identifier}' with '{status}'"
+            )
             raise SimRequestError(status, conn_req.identifier)
 
         return (conn_req.identifier, ApduStream(stream))

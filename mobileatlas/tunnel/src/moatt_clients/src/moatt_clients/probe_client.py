@@ -1,44 +1,70 @@
 import logging
 import socket
 import ssl
-import time
+from typing import Optional
 
-from typing import Optional, Union
+from moatt_types.connect import (
+    ConnectRequest,
+    ConnectResponse,
+    ConnectStatus,
+    Iccid,
+    Imsi,
+    SessionToken,
+)
 
 from moatt_clients.client import Client, ProtocolError
 from moatt_clients.errors import SimRequestError
-from moatt_clients.streams import RawStream, ApduStream
-from moatt_types.connect import (ConnectRequest, ConnectResponse, Imsi, Iccid,
-                             ConnectStatus, SessionToken)
+from moatt_clients.streams import ApduStream, RawStream
 
 logger = logging.getLogger(__name__)
 
-class ProbeClient(Client):
-    def __init__(
-            self,
-            session_token: SessionToken,
-            host,
-            port,
-            tls_ctx: Optional[ssl.SSLContext] = None,
-            server_hostname = None,
-            ):
-        super().__init__(
-                session_token,
-                host,
-                port,
-                tls_ctx=tls_ctx,
-                server_hostname=server_hostname
-                )
 
-    def connect(self, sim_id) -> Optional[ApduStream]:
+class ProbeClient(Client):
+    """Client able to establish connections with SIM providers."""
+
+    def __init__(
+        self,
+        session_token: SessionToken,
+        host: str,
+        port: str | int,
+        tls_ctx: Optional[ssl.SSLContext] = None,
+        server_hostname: Optional[str] = None,
+    ):
+        """
+
+        Parameters
+        ----------
+        session_token
+            Session token to use for this connection.
+        host
+            Server host.
+        port
+            Server port.
+        tls_ctx
+            Optional TLS configuration.
+        server_hostname
+            TLS server hostname.
+        """
+        super().__init__(
+            session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname
+        )
+
+    def connect(self, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
+        """Establish a connection with a SIM provider.
+
+        Parameters
+        ----------
+        sim_id
+            The SIM card to request the connection for.
+        """
         logger.debug("Opening connection.")
 
         stream = RawStream(
-                self.tls_ctx.wrap_socket(
-                    socket.create_connection((self.host, self.port)),
-                    server_hostname=self.server_hostname,
-                    )
-                )
+            self.tls_ctx.wrap_socket(
+                socket.create_connection((self.host, self.port)),
+                server_hostname=self.server_hostname,
+            )
+        )
 
         try:
             apdu_stream = self._connect(stream, sim_id)
@@ -52,7 +78,7 @@ class ProbeClient(Client):
 
         return apdu_stream
 
-    def _connect(self, stream: RawStream, sim_id: Union[Imsi, Iccid]) -> Optional[ApduStream]:
+    def _connect(self, stream: RawStream, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
         self._authenticate(stream)
 
         logger.debug(f"Sending connection request ({sim_id})")
@@ -70,6 +96,7 @@ class ProbeClient(Client):
             raise SimRequestError(conn_res.status, sim_id)
 
         return ApduStream(stream)
+
 
 def fmt_error(e) -> str:
     s = str(e)

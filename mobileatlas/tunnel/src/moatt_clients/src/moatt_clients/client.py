@@ -1,19 +1,38 @@
 import base64
 import binascii
 import logging
-import requests
 import ssl
-import time
-
 from typing import Optional
 
-from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, Token, SessionToken
-from moatt_clients.streams import RawStream
+import requests
+from moatt_types.connect import (
+    AuthRequest,
+    AuthResponse,
+    AuthStatus,
+    SessionToken,
+    Token,
+)
+
 from moatt_clients.errors import AuthError, ProtocolError
+from moatt_clients.streams import RawStream
 
 logger = logging.getLogger(__name__)
 
+
 def deregister(api_url: str, session_token: SessionToken) -> bool:
+    """Deregister a session token.
+
+    Parameters
+    ----------
+    api_url
+        API base URL (e.g., 'https://example.com/api/v1')
+    session_token
+        Session token to deregister.
+
+    Returns
+    -------
+    Whether deregistration was successful.
+    """
     cookies = dict(session_token=session_token.as_base64())
     r = requests.delete(f"{api_url}/deregister", cookies=cookies)
 
@@ -22,36 +41,62 @@ def deregister(api_url: str, session_token: SessionToken) -> bool:
     else:
         return True
 
-def register(api_url: str, token: Token) -> Optional[SessionToken]:
+
+def register(api_url: str, token: Token) -> SessionToken:
+    """Try to register a client using a valid token.
+
+    Parameters
+    ----------
+    api_url
+        API base URL (e.g., 'https://example.com/api/v1')
+    token
+        API access token
+
+    Returns
+    -------
+    The session token returned by the server or None if registration failed.
+
+    Raises
+    ------
+    requests.HTTPError
+        If the server responds with an HTTP error code.
+    ValueError
+        If the server's response is malformed.
+    """
     headers = {"Authorization": f"Bearer {token.as_base64()}"}
     r = requests.post(f"{api_url}/register", headers=headers)
 
-    if r.status_code != requests.codes.ok:
-        logger.error(f"Registration failed. Received {r.status_code} status from server.")
-        return None
+    try:
+        r.raise_for_status()
+    except requests.HTTPError:
+        logger.error(
+            f"Registration failed. Received {r.status_code} status from server."
+        )
+        raise
 
     session_token = r.json()
 
-    if type(session_token) != str:
-        return None
+    if not isinstance(session_token, str):
+        raise ValueError
 
     try:
         session_token = SessionToken(base64.b64decode(session_token, validate=True))
     except (binascii.Error, ValueError):
         logger.error("Received a malformed session_token")
-        return None
+        raise ValueError from None
 
     return session_token
 
+
 class Client:
     def __init__(
-            self,
-            session_token: SessionToken,
-            host,
-            port,
-            tls_ctx: Optional[ssl.SSLContext] = None,
-            server_hostname = None,
-            ):
+        self,
+        session_token: SessionToken,
+        host,
+        port,
+        tls_ctx: Optional[ssl.SSLContext] = None,
+        server_hostname=None,
+    ):
         self.session_token = session_token
         self.host = host
         self.port = port
@@ -66,7 +111,9 @@ class Client:
 
         if auth_res is None:
             logger.warn("Received malformed message during connection.")
-            raise ProtocolError("Received a malformed message while trying to authenticate.")
+            raise ProtocolError(
+                "Received a malformed message while trying to authenticate."
+            )
 
         if auth_res.status != AuthStatus.Success:
             logger.warn("Authentication failed!")

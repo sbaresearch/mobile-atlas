@@ -1,14 +1,15 @@
-import struct
 import logging
-import ssl
 import socket
-
+import ssl
+import struct
 from typing import Optional
 
+from moatt_types.connect import ApduOp, ApduPacket
+
 from moatt_clients.errors import ProtocolError
-from moatt_types.connect import ApduPacket, ApduOp
 
 logger = logging.getLogger(__name__)
+
 
 class RawStream:
     def __init__(self, socket):
@@ -59,6 +60,7 @@ class RawStream:
         self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
+
 class ApduStream:
     def __init__(self, stream: RawStream):
         self.stream = stream
@@ -67,15 +69,41 @@ class ApduStream:
         return self.stream.getpeername()
 
     def send_apdu(self, payload: bytes) -> None:
+        """Wraps payload in an APDU packet and sends it.
+
+        Parameters
+        ----------
+        payload
+            Payload to send.
+        """
         self.send(ApduPacket(ApduOp.Apdu, payload))
 
     def send_reset(self) -> None:
+        """Sends a reset signal."""
         self.send(ApduPacket(ApduOp.Reset, b""))
 
     def send(self, packet: ApduPacket) -> None:
+        """Sends an ApduPacket.
+
+        Parameters
+        ----------
+        packet
+            APDU to send.
+        """
         self.stream.write_all(packet.encode())
 
     def recv(self) -> Optional[ApduPacket]:
+        """Receive an APDU. Blocks until an APDU is received.
+
+        Returns
+        -------
+        An APDU or None on EOF
+
+        Raises
+        ------
+        EOFError
+            If a partial APDU was received before EOF of the underlying stream.
+        """
         buf = self.stream.read(n=6)
 
         if len(buf) == 0:
@@ -101,6 +129,7 @@ class ApduStream:
         return p
 
     def close(self) -> None:
+        """Close the stream."""
         self.stream.close()
 
     @staticmethod
@@ -108,7 +137,7 @@ class ApduStream:
         if len(msg) < 6:
             return 6 - len(msg)
 
-        plen, = struct.unpack("!I", msg[2:6])
+        (plen,) = struct.unpack("!I", msg[2:6])
         if len(msg) < 6 + plen:
             return (6 + plen) - len(msg)
         else:
