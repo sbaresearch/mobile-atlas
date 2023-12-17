@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_sim(sim) -> Sim:
-    if type(sim) != dict or len(sim) != 2:
+    if not isinstance(sim, dict) or len(sim) != 2:
         raise ValueError
 
     try:
@@ -26,7 +26,7 @@ def parse_sim(sim) -> Sim:
 
 
 def parse_sims(sims) -> dict[Iccid, Sim]:
-    if type(sims) != list:
+    if not isinstance(sims, list):
         raise ValueError
 
     parsed_sims = {}

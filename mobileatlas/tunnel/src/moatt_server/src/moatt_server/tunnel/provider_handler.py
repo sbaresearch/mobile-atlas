@@ -80,8 +80,8 @@ class ProviderHandler(Handler):
             await self._handle(reader, writer)
         except (EOFError, ConnectionResetError):
             logger.warn("Client closed connection unexpectedly.")
-        except TimeoutError as e:
-            logger.warn(f"Connection timed out.")
+        except TimeoutError:
+            logger.warn("Connection timed out.")
         except Exception as e:
             logger.warn(f"Exception occurred while handling connection: {e}")
         finally:
@@ -121,7 +121,9 @@ class ProviderHandler(Handler):
             if q_task in done and eof_task not in done:
                 eof_task.cancel()
                 qe = q_task.result()
-                asyncio.current_task().add_done_callback(lambda _: connection_queue.task_done(provider_id))  # type: ignore
+                asyncio.current_task().add_done_callback(  # pyright: ignore[reportOptionalMemberAccess]
+                    lambda _: connection_queue.task_done(provider_id)
+                )
             else:
                 if q_task in done:
                     await connection_queue.put(provider_id, q_task.result())

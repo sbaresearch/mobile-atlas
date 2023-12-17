@@ -6,7 +6,7 @@ def _load_toml_config():
     try:
         with open("config.toml", "rb") as f:
             return tomllib.load(f)
-    except:
+    except OSError:
         return {}
 
 

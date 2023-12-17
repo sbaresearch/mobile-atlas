@@ -209,7 +209,7 @@ async def log_apdu(
 async def get_sessiontoken(
     async_session: async_sessionmaker[AsyncSession], session_token: SessionToken
 ) -> dbm.SessionToken:
-    assert type(session_token) == SessionToken
+    assert isinstance(session_token, SessionToken)
 
     stmt = (
         select(dbm.SessionToken)

@@ -14,6 +14,5 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"isolation_level": "SERIALIZABLE"}
 app.config["SECRET_KEY"] = secrets.token_hex()
 
 db = SQLAlchemy(app)
-# http_auth = HttpAuth(app)
 
 from . import routes

@@ -81,7 +81,7 @@ class Queue(asyncio.Queue):
                     writer.write(
                         ConnectResponse(ConnectStatus.ProviderTimedOut).encode()
                     )
-                except:
+                except Exception:
                     pass
                 writer.close()
                 await writer.wait_closed()
@@ -118,7 +118,7 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
         now = time.monotonic_ns()
         timeout_ns = timeout * 10**9
 
-        logger.info(f"Starting removal of old connection requests")
+        logger.info("Starting removal of old connection requests")
 
         # TODO: test whether list is needed
         for id, q in list(queues.items()):
@@ -129,7 +129,8 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
                 conns_closed += await q._cleanup()
 
         logger.info(
-            f"Finished removal of old connection requests. (Removed {qs_removed} queues; closed {conns_closed} connections)"
+            "Finished removal of old connection requests. "
+            f"(Removed {qs_removed} queues; closed {conns_closed} connections)"
         )
 
     return f

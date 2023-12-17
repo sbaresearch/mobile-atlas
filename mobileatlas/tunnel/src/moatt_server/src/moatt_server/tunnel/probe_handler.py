@@ -30,7 +30,7 @@ class ProbeHandler(Handler):
             logger.warn("Client closed connection unexpectedly.")
             cleanup()
         except TimeoutError:
-            logger.warn(f"Connection timed out")
+            logger.warn("Connection timed out.")
             cleanup()
         except Exception as e:
             logger.warn(f"Exception occurred while handling connection.\n{e}")

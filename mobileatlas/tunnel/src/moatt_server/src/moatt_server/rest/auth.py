@@ -29,8 +29,7 @@ def protected(f):
         sess = sync_get_session_token(db.session, session_token)
 
         if (
-            sess is None
-            or type(sess) != dbm.SessionToken
+            not isinstance(sess, dbm.SessionToken)
             or sess.value != session_token.as_base64()
         ):
             return Response(status=403)
