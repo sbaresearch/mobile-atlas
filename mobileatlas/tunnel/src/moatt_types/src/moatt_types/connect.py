@@ -2,10 +2,10 @@ import base64
 import enum
 import logging
 import struct
-
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
 
 class Token:
     def __init__(self, token: bytes):
@@ -16,7 +16,7 @@ class Token:
         return f"Token({self.token})"
 
     def __eq__(self, other):
-        if type(other) != Token:
+        if not isinstance(other, Token):
             return NotImplemented
 
         return self.token == other.token
@@ -29,6 +29,7 @@ class Token:
 
     def as_base64(self) -> str:
         return base64.b64encode(self.token).decode()
+
 
 class SessionToken:
     def __init__(self, token: bytes):
@@ -39,7 +40,7 @@ class SessionToken:
         return f"Token({self.token})"
 
     def __eq__(self, other):
-        if type(other) != Token:
+        if not isinstance(other, Token):
             return NotImplemented
 
         return self.token == other.token
@@ -53,10 +54,12 @@ class SessionToken:
     def as_base64(self) -> str:
         return base64.b64encode(self.token).decode()
 
+
 @enum.unique
 class IdentifierType(enum.Enum):
     Iccid = 0
     Imsi = 1
+
 
 # TODO: add a status for expired creds?
 @enum.unique
@@ -64,6 +67,7 @@ class AuthStatus(enum.Enum):
     Success = 0
     Unauthorized = 1
     ProviderNotRegistered = 3
+
 
 @enum.unique
 class ConnectStatus(enum.Enum):
@@ -73,10 +77,12 @@ class ConnectStatus(enum.Enum):
     NotAvailable = 3
     ProviderTimedOut = 4
 
+
 @enum.unique
 class ApduOp(enum.Enum):
     Apdu = 0
     Reset = 1
+
 
 class ApduPacket:
     def __init__(self, op: ApduOp, payload: bytes):
@@ -97,7 +103,7 @@ class ApduPacket:
         except ValueError:
             return None
 
-        plen, = struct.unpack("!I", msg[2:6])
+        (plen,) = struct.unpack("!I", msg[2:6])
 
         if len(msg) != 6 + plen:
             return None
@@ -107,11 +113,13 @@ class ApduPacket:
     def encode(self) -> bytes:
         return struct.pack("!BBI", 1, self.op.value, len(self.payload)) + self.payload
 
+
 def _only_digits(msg: bytes) -> bool:
     def _is_digit(x: int):
-        return x >= ord(b'0') and x <= ord(b'9')
+        return x >= ord(b"0") and x <= ord(b"9")
 
     return all(map(_is_digit, msg))
+
 
 class Imsi:
     LENGTH = 15
@@ -123,10 +131,10 @@ class Imsi:
         self.imsi = imsi
 
     def __repr__(self):
-        return f"Imsi(\"{self.imsi}\")"
+        return f'Imsi("{self.imsi}")'
 
     def __eq__(self, other):
-        if type(other) != Imsi:
+        if isinstance(other, Imsi):
             return NotImplemented
 
         return self.imsi == other.imsi
@@ -142,7 +150,7 @@ class Imsi:
         if len(msg) != Imsi.LENGTH:
             return None
 
-        msg = msg.rstrip(b'\x00')
+        msg = msg.rstrip(b"\x00")
 
         if not _only_digits(msg) or len(msg) < 5 or len(msg) > 15:
             return None
@@ -150,7 +158,8 @@ class Imsi:
         return Imsi(msg.decode())
 
     def encode(self) -> bytes:
-        return self.imsi.encode() + b'\x00' * (Imsi.LENGTH - len(self.imsi))
+        return self.imsi.encode() + b"\x00" * (Imsi.LENGTH - len(self.imsi))
+
 
 class Iccid:
     LENGTH = 20
@@ -162,10 +171,10 @@ class Iccid:
         self.iccid = iccid
 
     def __repr__(self):
-        return f"Iccid(\"{self.iccid}\")"
+        return f'Iccid("{self.iccid}")'
 
     def __eq__(self, other):
-        if type(other) != Iccid:
+        if isinstance(other, Iccid):
             return NotImplemented
 
         return self.iccid == other.iccid
@@ -181,7 +190,7 @@ class Iccid:
         if len(msg) != Iccid.LENGTH:
             return None
 
-        msg = msg.rstrip(b'\x00')
+        msg = msg.rstrip(b"\x00")
 
         if not _only_digits(msg) or len(msg) < 5 or len(msg) > 20:
             return None
@@ -189,7 +198,8 @@ class Iccid:
         return Iccid(msg.decode())
 
     def encode(self) -> bytes:
-        return self.iccid.encode() + b'\x00' * (Iccid.LENGTH - len(self.iccid))
+        return self.iccid.encode() + b"\x00" * (Iccid.LENGTH - len(self.iccid))
+
 
 class AuthRequest:
     LENGTH = 26
@@ -208,7 +218,8 @@ class AuthRequest:
             return None
 
     def encode(self) -> bytes:
-        return b'\x01' + self.session_token.as_bytes()
+        return b"\x01" + self.session_token.as_bytes()
+
 
 class AuthResponse:
     LENGTH = 2
@@ -228,6 +239,7 @@ class AuthResponse:
 
     def encode(self) -> bytes:
         return struct.pack("!BB", 1, self.status.value)
+
 
 class ConnectRequest:
     MIN_LENGTH = 17
@@ -267,13 +279,16 @@ class ConnectRequest:
             return ConnectRequest(iccid)
 
     def encode(self) -> bytes:
-        return struct.pack("!BB", 1, self.identifier.identifier_type().value)\
-                + self.identifier.encode()
+        return (
+            struct.pack("!BB", 1, self.identifier.identifier_type().value)
+            + self.identifier.encode()
+        )
+
 
 class ConnectResponse:
     LENGTH = 2
 
-    def __init__(self, status: ConnectStatus): 
+    def __init__(self, status: ConnectStatus):
         self.status = status
 
     @staticmethod
