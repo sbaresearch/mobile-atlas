@@ -1,24 +1,26 @@
 import argparse
 import asyncio
 import logging
-import ssl
 import socket
+import ssl
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from moatt_server.tunnel.probe_handler import ProbeHandler
-from moatt_server.tunnel.provider_handler import ProviderHandler
-from moatt_server.gc import gc
-from moatt_server.tunnel.connection_queue import queue_gc_coro_factory
-import moatt_server.config as config
+from . import config
+from .gc import gc
+from .tunnel.connection_queue import queue_gc_coro_factory
+from .tunnel.probe_handler import ProbeHandler
+from .tunnel.provider_handler import ProviderHandler
 
 logger = logging.getLogger(__name__)
+
 
 def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
     url = "sqlite+aiosqlite:///app.db"
 
     engine = create_async_engine(url)
     return async_sessionmaker(engine, expire_on_commit=False)
+
 
 async def start_server(args):
     logging.basicConfig(level=logging.DEBUG)
@@ -30,8 +32,12 @@ async def start_server(args):
 
     probe_handler = ProbeHandler(async_session)
     provider_handler = ProviderHandler(async_session)
-    probe_server = await asyncio.start_server(probe_handler.handle, ['0.0.0.0', '::'], 5555, ssl=tls_ctx)
-    provider_server = await asyncio.start_server(provider_handler.handle, ['0.0.0.0', '::'], 6666, ssl=tls_ctx)
+    probe_server = await asyncio.start_server(
+        probe_handler.handle, ["0.0.0.0", "::"], 5555, ssl=tls_ctx
+    )
+    provider_server = await asyncio.start_server(
+        provider_handler.handle, ["0.0.0.0", "::"], 6666, ssl=tls_ctx
+    )
 
     for s in probe_server.sockets:
         set_keepalive_opts(s)
@@ -42,13 +48,17 @@ async def start_server(args):
     async with asyncio.TaskGroup() as tg:
         tg.create_task(probe_server.serve_forever())
         tg.create_task(provider_server.serve_forever())
-        tg.create_task(gc([queue_gc_coro_factory(config.QUEUE_GC_INTERVAL)], config.GC_INTERVAL))
+        tg.create_task(
+            gc([queue_gc_coro_factory(config.QUEUE_GC_INTERVAL)], config.GC_INTERVAL)
+        )
+
 
 def set_keepalive_opts(sock):
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, config.TCP_KEEPIDLE)
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, config.TCP_KEEPINTVL)
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, config.TCP_KEEPCNT)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -58,6 +68,7 @@ def main():
     args = parser.parse_args()
 
     asyncio.run(start_server(args))
+
 
 if __name__ == "__main__":
     main()

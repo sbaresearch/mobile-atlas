@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moatt_server"
+version = "0.0.1"
+
+dependencies = [
+  "alembic"
+  "flask"
+  "flask-sqlalchemy"
+  "SQLAlchemy"
+  "aiosqlite"
+  "git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types"
+]
