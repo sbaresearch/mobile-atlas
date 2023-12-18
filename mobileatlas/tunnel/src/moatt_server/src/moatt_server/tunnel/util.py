@@ -4,7 +4,7 @@ from typing import Optional
 
 from moatt_types.connect import ConnectRequest, Iccid, IdentifierType, Imsi
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 async def write_msg(writer: asyncio.StreamWriter, msg):
@@ -23,10 +23,10 @@ def _con_req_missing(b: bytes) -> int:
         elif ident_type == IdentifierType.Iccid:
             return (2 + Iccid.LENGTH) - len(b)
         else:
-            logger.warn("NotImplemented")
+            LOGGER.warn("NotImplemented")
             raise NotImplementedError
     except ValueError as e:
-        logger.warn(f"ValueError: {e}")
+        LOGGER.warn(f"ValueError: {e}")
         return 0
 
 

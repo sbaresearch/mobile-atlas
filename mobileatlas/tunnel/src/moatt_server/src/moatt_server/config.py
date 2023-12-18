@@ -1,35 +1,111 @@
+import dataclasses
+import functools
+import logging
+import os
 import tomllib
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 
-
-def _load_toml_config():
-    try:
-        with open("config.toml", "rb") as f:
-            return tomllib.load(f)
-    except OSError:
-        return {}
-
-
-_config = _load_toml_config()
-
-
-def _get_optional(name) -> Optional[Any]:
-    v = _config.get(name)
-
-    if v == "":
-        return None
-    else:
-        return v
+LOGGER = logging.getLogger(__name__)
 
 
 # TODO: find sensible defaults
+@dataclass(kw_only=True, frozen=True)
+class Config:
+    AUTHMSG_TIMEOUT: int = 10
+    PROVIDER_RESPONSE_TIMEOUT: int = 10
+    PROBE_REQUEST_TIMEOUT: int = 10
+    TCP_KEEPIDLE: int = 10
+    TCP_KEEPINTVL: int = 10
+    TCP_KEEPCNT: int = 10
 
-# Time (in seconds) that the Server waits for an auth message before terminating the connection
-AUTHMSG_TIMEOUT: int = int(_get_optional("authmsg_timeout") or 10)
-PROVIDER_RESPONSE_TIMEOUT: int = int(_get_optional("provider_response_timeout") or 10)
-PROBE_REQUEST_TIMEOUT: int = int(_get_optional("probe_request_timeout") or 10)
-QUEUE_GC_INTERVAL: int = int(_get_optional("gc_interval") or 60)
-GC_INTERVAL: int = int(_get_optional("gc_interval") or 60)
-TCP_KEEPIDLE: int = int(_get_optional("tcp_keepidle") or 10)
-TCP_KEEPINTVL: int = int(_get_optional("tcp_keepintvl") or 10)
-TCP_KEEPCNT: int = int(_get_optional("tcp_keepcnt") or 10)
+    GC_INTERVAL: int = 60
+    QUEUE_GC_INTERVAL: int = 60
+
+    DB_HOST: str = "localhost"
+    DB_PORT: int = 5432
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_NAME: str
+
+    def db_url(self) -> str:
+        return (
+            f"postgresql+psycopg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        )
+
+
+class ConfigError(Exception):
+    """TODO"""
+
+
+def _load_toml_config(path: Path) -> Optional[dict[str, Any]]:
+    def _set(d: dict[str, Any], name: str, value: Optional[Any]):
+        if value is not None:
+            d[name] = value
+
+    try:
+        with open(path, "") as f:
+            cfg = tomllib.load(f)
+    except FileNotFoundError:
+        return None
+
+    res = {}
+
+    if isinstance(db := cfg.get("DB"), dict):
+        _set(res, "DB_HOST", db.get("host"))
+        _set(res, "DB_PORT", db.get("port"))
+        _set(res, "DB_USER", db.get("user"))
+        _set(res, "DB_NAME", db.get("name"))
+
+    if isinstance(db := cfg.get("timeouts"), dict):
+        _set(res, "AUTHMSG_TIMEOUT", db.get("authmsg"))
+        _set(res, "PROVIDER_RESPONSE_TIMEOUT", db.get("provider_response"))
+        _set(res, "PROBE_REQUEST_TIMEOUT", db.get("probe_request"))
+        _set(res, "TCP_KEEPIDLE", db.get("keepidle"))
+        _set(res, "TCP_KEEPINTVL", db.get("keepintvl"))
+        _set(res, "TCP_KEEPCNT", db.get("keepcnt"))
+
+    if isinstance(db := cfg.get("gc"), dict):
+        _set(res, "GC_INTERVAL", db.get("interval"))
+        _set(res, "QUEUE_GC_INTERVAL", db.get("queues_interval"))
+
+    _check_config(res)
+    return res
+
+
+def _load_env_config() -> dict[str, Any]:
+    res = {}
+
+    for f in dataclasses.fields(Config):
+        val = os.environ.get(f.name)
+        if val is not None:
+            res[f.name] = f.type(val)
+
+    return res
+
+
+def _check_config(cfg: dict[str, Any]):
+    for f in dataclasses.fields(Config):
+        val = cfg.get(f.name)
+        if val is not None and not isinstance(val, f.type):
+            LOGGER.error(
+                f"Invalid configuration value for {f.name}: '{val}' expected {f.type}"
+            )
+            raise ConfigError
+
+
+@functools.cache
+def get_config() -> Config:
+    conf = _load_toml_config(Path("config.toml"))
+
+    if conf is None:
+        conf = {}
+
+    conf.update(_load_env_config())
+
+    try:
+        return Config(**conf)
+    except TypeError as e:
+        raise ConfigError from e

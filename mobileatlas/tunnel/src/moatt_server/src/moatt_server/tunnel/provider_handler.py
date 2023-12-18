@@ -11,7 +11,8 @@ from .apdu_stream import ApduStream
 from .handler import Handler
 from .util import poll_eof, write_msg
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+CONFIG = config.get_config()
 
 
 class ProviderHandler(Handler):
@@ -36,18 +37,18 @@ class ProviderHandler(Handler):
                     try:
                         r = t.result()
                     except asyncio.IncompleteReadError as e:
-                        logger.warn(
+                        LOGGER.warn(
                             f"Unexpected EOF while trying to read from {t.get_name()} "
                             f"connection. (expected at least {e.expected} more bytes.)"
                         )
 
                         return
                     except ValueError:
-                        logger.warn("Received a malformed packet. Closing connections.")
+                        LOGGER.warn("Received a malformed packet. Closing connections.")
                         return
 
                     if r is None:
-                        logger.info(f"{t.get_name()} closed the connection.")
+                        LOGGER.info(f"{t.get_name()} closed the connection.")
                         return
 
                     await auth.log_apdu(
@@ -79,11 +80,11 @@ class ProviderHandler(Handler):
         try:
             await self._handle(reader, writer)
         except (EOFError, ConnectionResetError):
-            logger.warn("Client closed connection unexpectedly.")
+            LOGGER.warn("Client closed connection unexpectedly.")
         except TimeoutError:
-            logger.warn("Connection timed out.")
+            LOGGER.warn("Connection timed out.")
         except Exception as e:
-            logger.warn(f"Exception occurred while handling connection: {e}")
+            LOGGER.warn(f"Exception occurred while handling connection: {e}")
         finally:
             if not writer.is_closing():
                 writer.close()
@@ -96,7 +97,7 @@ class ProviderHandler(Handler):
         assert session_token is not None
 
         if session_token.provider is None:
-            logger.debug("Session token was not used to register a provider.")
+            LOGGER.debug("Session token was not used to register a provider.")
             await write_msg(writer, AuthResponse(AuthStatus.ProviderNotRegistered))
             writer.close()
             await writer.wait_closed()
@@ -106,7 +107,7 @@ class ProviderHandler(Handler):
 
         provider_id = session_token.provider.id
         while True:
-            logger.debug("waiting for connection request.")
+            LOGGER.debug("waiting for connection request.")
             q_task = asyncio.create_task(connection_queue.get(provider_id), name="q")
 
             # poll whether the provider is still connected
@@ -130,7 +131,7 @@ class ProviderHandler(Handler):
                 else:
                     q_task.cancel()
                 eof_task.result()
-                logger.info("Provider disconnected.")
+                LOGGER.info("Provider disconnected.")
 
                 if q_task in done:
                     connection_queue.task_done(provider_id)
@@ -138,33 +139,33 @@ class ProviderHandler(Handler):
                 return
 
             if qe.writer.is_closing():
-                logger.warn("Probe disconnected early. Waiting for new request.")
+                LOGGER.warn("Probe disconnected early. Waiting for new request.")
                 qe.writer.close()
                 await qe.writer.wait_closed()
                 continue
             else:
                 break
 
-        logger.debug(f"Received a connection request: {qe.con_req}")
+        LOGGER.debug(f"Received a connection request: {qe.con_req}")
 
         try:
             await write_msg(writer, qe.con_req)
         except Exception as e:
-            logger.warn(f"Provider disconnected. {e}")
+            LOGGER.warn(f"Provider disconnected. {e}")
             await connection_queue.put(session_token.provider.id, qe)
             raise e
 
-        logger.debug("Waiting for provider to accept connection request.")
+        LOGGER.debug("Waiting for provider to accept connection request.")
         async with asyncio.timeout(
-            config.PROVIDER_RESPONSE_TIMEOUT
+            CONFIG.PROVIDER_RESPONSE_TIMEOUT
         ):  # TODO: timeout status
             con_res = ConnectResponse.decode(
                 await reader.readexactly(ConnectResponse.LENGTH)
             )
-        logger.debug(f"Received a response for a connection request: {con_res}")
+        LOGGER.debug(f"Received a response for a connection request: {con_res}")
 
         if con_res is None:
-            logger.warn(
+            LOGGER.warn(
                 "Received malformed connection request status. Closing connections."
             )
             writer.close()
@@ -173,11 +174,11 @@ class ProviderHandler(Handler):
             await qe.writer.wait_closed()
             return
 
-        logger.debug("Forwarding connection request status to probe.")
+        LOGGER.debug("Forwarding connection request status to probe.")
         await write_msg(qe.writer, con_res)
 
         if con_res.status != ConnectStatus.Success:
-            logger.debug(
+            LOGGER.debug(
                 "Received unsuccessful connection status response. Closing connections."
             )
             writer.close()

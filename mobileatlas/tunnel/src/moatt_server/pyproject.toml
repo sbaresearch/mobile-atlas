@@ -7,10 +7,10 @@ name = "moatt_server"
 version = "0.0.1"
 
 dependencies = [
-  "alembic"
-  "flask"
-  "flask-sqlalchemy"
-  "SQLAlchemy"
-  "aiosqlite"
-  "git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types"
+  "alembic",
+  "flask",
+  "flask-sqlalchemy",
+  "SQLAlchemy[asyncio]",
+  "psycopg",
+  "git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types",
 ]

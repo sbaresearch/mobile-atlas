@@ -10,7 +10,8 @@ from moatt_types.connect import ConnectRequest, ConnectResponse, ConnectStatus
 from .. import config
 from .. import models as dbm
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+CONFIG = config.get_config()
 
 queues: dict[int, "Queue"] = {}
 
@@ -98,14 +99,14 @@ class Queue(asyncio.Queue):
                 return True
 
         while True:
-            await asyncio.sleep(config.QUEUE_GC_INTERVAL)
+            await asyncio.sleep(CONFIG.QUEUE_GC_INTERVAL)
 
             if len(self._queue) != 0:
-                logger.debug("queue GC")  # TODO
+                LOGGER.debug("queue GC")  # TODO
                 size = len(self._queue)
                 self._queue = collections.deque(filter(lambda x: f(x), self._queue))
                 if len(self._queue) < size:
-                    logger.info(
+                    LOGGER.info(
                         f"Removed {size - len(self._queue)} closed probe connection(s)."
                     )
 
@@ -118,7 +119,7 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
         now = time.monotonic_ns()
         timeout_ns = timeout * 10**9
 
-        logger.info("Starting removal of old connection requests")
+        LOGGER.info("Starting removal of old connection requests")
 
         # TODO: test whether list is needed
         for id, q in list(queues.items()):
@@ -128,7 +129,7 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
                 qs_removed += 1
                 conns_closed += await q._cleanup()
 
-        logger.info(
+        LOGGER.info(
             "Finished removal of old connection requests. "
             f"(Removed {qs_removed} queues; closed {conns_closed} connections)"
         )

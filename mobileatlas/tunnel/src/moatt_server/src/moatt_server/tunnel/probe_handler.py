@@ -10,7 +10,8 @@ from . import connection_queue
 from .handler import Handler
 from .util import read_con_req, write_msg
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+CONFIG = config.get_config()
 
 
 class ProbeHandler(Handler):
@@ -27,13 +28,13 @@ class ProbeHandler(Handler):
         try:
             await self._handle(reader, writer)
         except (EOFError, ConnectionResetError):
-            logger.warn("Client closed connection unexpectedly.")
+            LOGGER.warn("Client closed connection unexpectedly.")
             cleanup()
         except TimeoutError:
-            logger.warn("Connection timed out.")
+            LOGGER.warn("Connection timed out.")
             cleanup()
         except Exception as e:
-            logger.warn(f"Exception occurred while handling connection.\n{e}")
+            LOGGER.warn(f"Exception occurred while handling connection.\n{e}")
             cleanup()
 
     async def _handle(
@@ -48,16 +49,16 @@ class ProbeHandler(Handler):
         if session_token is None:
             return
 
-        logger.debug("Sending successful authorisation message.")
+        LOGGER.debug("Sending successful authorisation message.")
         await write_msg(writer, AuthResponse(AuthStatus.Success))
 
-        logger.debug("waiting for probe connect request")
-        async with asyncio.timeout(config.PROBE_REQUEST_TIMEOUT):
+        LOGGER.debug("waiting for probe connect request")
+        async with asyncio.timeout(CONFIG.PROBE_REQUEST_TIMEOUT):
             con_req = await read_con_req(reader)
-        logger.debug(f"got probe connect request {con_req}")
+        LOGGER.debug(f"got probe connect request {con_req}")
 
         if con_req is None:
-            logger.warn(
+            LOGGER.warn(
                 "Received malformed connection request message. Closing connection."
             )
             await close()
@@ -66,7 +67,7 @@ class ProbeHandler(Handler):
         try:
             sim = await get_sim(self.async_session, session_token, con_req.identifier)
         except AuthError:
-            logger.debug(
+            LOGGER.debug(
                 "Received disallowed SIM request from probe. Closing connection."
             )
             await write_msg(writer, ConnectResponse(ConnectStatus.Forbidden))
@@ -74,18 +75,18 @@ class ProbeHandler(Handler):
             return
 
         if sim is None:
-            logger.debug("Probe requested unknown SIM. Closing connection.")
+            LOGGER.debug("Probe requested unknown SIM. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.NotFound))
             await close()
             return
 
         if sim.provider is None:
-            logger.debug("Requested SIM is unavailable. Closing connection.")
+            LOGGER.debug("Requested SIM is unavailable. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.NotAvailable))
             await close()
             return
 
-        logger.debug("Sending stream to provider handler")
+        LOGGER.debug("Sending stream to provider handler")
         await connection_queue.put(
             sim.provider.id, connection_queue.QueueEntry(sim, con_req, reader, writer)
         )

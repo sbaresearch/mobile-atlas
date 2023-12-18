@@ -12,7 +12,8 @@ from .tunnel.connection_queue import queue_gc_coro_factory
 from .tunnel.probe_handler import ProbeHandler
 from .tunnel.provider_handler import ProviderHandler
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+CONFIG = config.get_config()
 
 
 def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
@@ -22,7 +23,7 @@ def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def start_server(args):
+async def start_server(args: argparse.Namespace):
     logging.basicConfig(level=logging.DEBUG)
 
     tls_ctx = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
@@ -44,20 +45,20 @@ async def start_server(args):
     for s in provider_server.sockets:
         set_keepalive_opts(s)
 
-    logger.debug("Starting Server...")
+    LOGGER.debug("Starting Server...")
     async with asyncio.TaskGroup() as tg:
         tg.create_task(probe_server.serve_forever())
         tg.create_task(provider_server.serve_forever())
         tg.create_task(
-            gc([queue_gc_coro_factory(config.QUEUE_GC_INTERVAL)], config.GC_INTERVAL)
+            gc([queue_gc_coro_factory(CONFIG.QUEUE_GC_INTERVAL)], CONFIG.GC_INTERVAL)
         )
 
 
-def set_keepalive_opts(sock):
+def set_keepalive_opts(sock: socket.socket):
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, CONFIG.TCP_KEEPIDLE)
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, CONFIG.TCP_KEEPINTVL)
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, CONFIG.TCP_KEEPCNT)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, config.TCP_KEEPIDLE)
-    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, config.TCP_KEEPINTVL)
-    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, config.TCP_KEEPCNT)
 
 
 def main():

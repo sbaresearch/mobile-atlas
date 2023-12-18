@@ -9,7 +9,7 @@ from ..auth import Sim
 from . import app, db, flask_http_auth
 from .auth import protected
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def parse_sim(sim) -> Sim:

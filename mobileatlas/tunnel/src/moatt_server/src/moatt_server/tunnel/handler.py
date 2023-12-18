@@ -12,7 +12,8 @@ from .. import models as dbm
 from ..auth import TokenError, get_sessiontoken
 from .util import write_msg
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+CONFIG = config.get_config()
 
 
 class Handler:
@@ -23,13 +24,13 @@ class Handler:
     async def _handle_auth_req(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> Optional[dbm.SessionToken]:
-        logger.debug("Waiting for authorisation message.")
-        async with asyncio.timeout(config.AUTHMSG_TIMEOUT):
+        LOGGER.debug("Waiting for authorisation message.")
+        async with asyncio.timeout(CONFIG.AUTHMSG_TIMEOUT):
             auth_req = AuthRequest.decode(await reader.readexactly(AuthRequest.LENGTH))
-        logger.debug(f"Received authorisation message: {auth_req}")
+        LOGGER.debug(f"Received authorisation message: {auth_req}")
 
         if auth_req is None:
-            logger.warn("Received malformed authorisation message. Closing connection.")
+            LOGGER.warn("Received malformed authorisation message. Closing connection.")
             writer.close()
             await writer.wait_closed()
             return None
@@ -39,7 +40,7 @@ class Handler:
                 self.async_session, auth_req.session_token
             )
         except TokenError as e:
-            logger.debug(
+            LOGGER.debug(
                 f"Received an invalid session token. Closing connection. (Reason: {e.etype})"
             )
             await write_msg(writer, AuthResponse(e.to_auth_status()))
@@ -50,7 +51,7 @@ class Handler:
         try:
             SessionToken(base64.b64decode(session_token.value, validate=True))
         except (binascii.Error, ValueError):
-            logger.error("Database contains an invalid token value.")
+            LOGGER.error("Database contains an invalid token value.")
             raise AssertionError("Database contains an invalid token value.")
 
         return session_token
