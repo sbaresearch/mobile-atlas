@@ -140,7 +140,7 @@ class Probe(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(Text, unique=True)
     mac: Mapped[str] = mapped_column(Text, index=True, unique=True)
-    token: Mapped[int] = mapped_column(Integer, ForeignKey("tokens.value"))
+    token: Mapped[str] = mapped_column(ForeignKey("tokens.value"))
 
 
 @enum.unique
