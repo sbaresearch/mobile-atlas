@@ -46,18 +46,20 @@ def _load_toml_config(path: Path) -> Optional[dict[str, Any]]:
             d[name] = value
 
     try:
-        with open(path, "") as f:
+        with open(path, "rb") as f:
             cfg = tomllib.load(f)
     except FileNotFoundError:
+        LOGGER.info(f"Config file '{path.absolute()}' does not exist.")
         return None
 
     res = {}
 
-    if isinstance(db := cfg.get("DB"), dict):
+    if isinstance(db := cfg.get("db"), dict):
         _set(res, "DB_HOST", db.get("host"))
         _set(res, "DB_PORT", db.get("port"))
         _set(res, "DB_USER", db.get("user"))
         _set(res, "DB_NAME", db.get("name"))
+        _set(res, "DB_PASSWORD", db.get("password"))
 
     if isinstance(db := cfg.get("timeouts"), dict):
         _set(res, "AUTHMSG_TIMEOUT", db.get("authmsg"))

@@ -6,20 +6,18 @@ import ssl
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from . import config
-from .gc import gc
-from .tunnel.connection_queue import queue_gc_coro_factory
-from .tunnel.probe_handler import ProbeHandler
-from .tunnel.provider_handler import ProviderHandler
+from .. import config
+from ..gc import gc
+from .connection_queue import queue_gc_coro_factory
+from .probe_handler import ProbeHandler
+from .provider_handler import ProviderHandler
 
 LOGGER = logging.getLogger(__name__)
 CONFIG = config.get_config()
 
 
 def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
-    url = "sqlite+aiosqlite:///app.db"
-
-    engine = create_async_engine(url)
+    engine = create_async_engine(CONFIG.db_url())
     return async_sessionmaker(engine, expire_on_commit=False)
 
 

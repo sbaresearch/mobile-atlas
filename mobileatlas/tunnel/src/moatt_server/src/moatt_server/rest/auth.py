@@ -1,55 +1,61 @@
 import base64
 import binascii
-import datetime
-from functools import wraps
-from types import SimpleNamespace
+from typing import Annotated, Optional
 
-from flask import Response, g, request
+from fastapi import Depends, HTTPException
+from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 from moatt_types.connect import SessionToken, Token
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import models as dbm
-from ..auth import sync_get_session_token
-from . import db
+from ..auth import get_session_token, valid_token
+from .db import get_db
+
+_session_token_optional = APIKeyCookie(name="session_token", auto_error=False)
 
 
-def protected(f):
-    @wraps(f)
-    def auth(*args, **kwargs):
-        session_token = request.cookies.get("session_token")
+async def session_token_optional(
+    stoken: Annotated[str, Depends(_session_token_optional)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Optional[SessionToken]:
+    if stoken is None:
+        return None
 
-        if session_token is None:
-            return Response(status=401)  # TODO: add www-authenticate header
+    session_token = await get_session_token(session, _parse_session_token(stoken))
 
-        try:
-            session_token = SessionToken(base64.b64decode(session_token, validate=True))
-        except (binascii.Error, ValueError):
-            return Response(status=401)  # TODO: add www-authenticate header
+    return session_token.to_con_type()
 
-        # provider = sync_get_registration(db.session, session_token)
-        sess = sync_get_session_token(db.session, session_token)
 
-        if (
-            not isinstance(sess, dbm.SessionToken)
-            or sess.value != session_token.as_base64()
-        ):
-            return Response(status=403)
+async def session_token(
+    stoken: Annotated[Optional[SessionToken], Depends(session_token_optional)]
+) -> SessionToken:
+    if stoken is None:
+        raise HTTPException(status_code=401)
 
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
-        if sess.token.active is False or (
-            sess.token.expires is not None and sess.token.expires < now
-        ):
-            return Response(status=403)
+    return stoken
 
-        try:
-            token = Token(base64.b64decode(sess.token.value, validate=True))
-        except (binascii.Error, ValueError):
-            return Response(status=500)
 
-        g._session_token_auth = SimpleNamespace()
-        g._session_token_auth.session_token = session_token
-        g._session_token_auth.session = sess
-        g._session_token_auth.token = token
+def _parse_session_token(stoken: str) -> SessionToken:
+    try:
+        session_token = SessionToken(base64.b64decode(stoken, validate=True))
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=401)  # TODO: add appropriate header
 
-        return f(*args, **kwargs)
+    return session_token
 
-    return auth
+
+_token = HTTPBearer()
+
+
+async def token(
+    tok: Annotated[HTTPAuthorizationCredentials, Depends(_token)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Token:
+    try:
+        token = Token(base64.b64decode(tok.credentials, validate=True))
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=401)  # TODO: add appropriate header
+
+    if await valid_token(session, token):
+        return token
+    else:
+        raise HTTPException(status_code=403)

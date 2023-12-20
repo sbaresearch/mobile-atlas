@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .. import config
 from .. import models as dbm
-from ..auth import TokenError, get_sessiontoken
+from ..auth import TokenError, get_session_token_sessionmaker
 from .util import write_msg
 
 LOGGER = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class Handler:
             return None
 
         try:
-            session_token = await get_sessiontoken(
+            session_token = await get_session_token_sessionmaker(
                 self.async_session, auth_req.session_token
             )
         except TokenError as e:
