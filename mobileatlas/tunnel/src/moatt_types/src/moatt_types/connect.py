@@ -128,22 +128,26 @@ class Imsi:
         if not _only_digits(imsi.encode()) or len(imsi) < 5 or len(imsi) > 15:
             raise ValueError
 
-        self.imsi = imsi
+        self._imsi = imsi
 
     def __repr__(self):
-        return f'Imsi("{self.imsi}")'
+        return f'Imsi("{self._imsi}")'
 
     def __eq__(self, other):
-        if isinstance(other, Imsi):
+        if not isinstance(other, Imsi):
             return NotImplemented
 
-        return self.imsi == other.imsi
+        return self._imsi == other._imsi
 
     def __hash__(self):
-        return hash(self.imsi)
+        return hash(self._imsi)
 
     def identifier_type(self):
         return IdentifierType.Imsi
+
+    @property
+    def imsi(self) -> str:
+        return self._imsi
 
     @staticmethod
     def decode(msg: bytes) -> Optional["Imsi"]:
@@ -158,7 +162,7 @@ class Imsi:
         return Imsi(msg.decode())
 
     def encode(self) -> bytes:
-        return self.imsi.encode() + b"\x00" * (Imsi.LENGTH - len(self.imsi))
+        return self._imsi.encode() + b"\x00" * (Imsi.LENGTH - len(self._imsi))
 
 
 class Iccid:
@@ -168,19 +172,23 @@ class Iccid:
         if not _only_digits(iccid.encode()) or len(iccid) < 5 or len(iccid) > 20:
             raise ValueError
 
-        self.iccid = iccid
+        self._iccid = iccid
 
     def __repr__(self):
-        return f'Iccid("{self.iccid}")'
+        return f'Iccid("{self._iccid}")'
 
     def __eq__(self, other):
-        if isinstance(other, Iccid):
+        if not isinstance(other, Iccid):
             return NotImplemented
 
-        return self.iccid == other.iccid
+        return self._iccid == other._iccid
 
     def __hash__(self):
-        return hash(self.iccid)
+        return hash(self._iccid)
+
+    @property
+    def iccid(self) -> str:
+        return self._iccid
 
     def identifier_type(self):
         return IdentifierType.Iccid
@@ -198,7 +206,7 @@ class Iccid:
         return Iccid(msg.decode())
 
     def encode(self) -> bytes:
-        return self.iccid.encode() + b"\x00" * (Iccid.LENGTH - len(self.iccid))
+        return self._iccid.encode() + b"\x00" * (Iccid.LENGTH - len(self._iccid))
 
 
 class AuthRequest:
