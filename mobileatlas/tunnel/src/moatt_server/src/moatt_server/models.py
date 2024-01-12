@@ -6,35 +6,17 @@ from typing import List, Optional
 import moatt_types.connect as con_types
 from moatt_types.connect import ApduOp
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
-    DateTime,
     ForeignKey,
     Integer,
     LargeBinary,
     String,
     Text,
-    TypeDecorator,
+    func,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-
-
-# https://docs.sqlalchemy.org/en/20/core/custom_types.html#store-timezone-aware-timestamps-as-timezone-naive-utc
-class TZDateTime(TypeDecorator):
-    impl = DateTime
-    cache_ok = True
-
-    def process_bind_param(self, value, _):
-        if value is not None:
-            if not value.tzinfo:
-                raise TypeError("tzinfo is required")
-            value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-        return value
-
-    def process_result_value(self, value, _):
-        if value is not None:
-            value = value.replace(tzinfo=datetime.timezone.utc)
-        return value
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -45,9 +27,13 @@ class Token(Base):
     __tablename__ = "tokens"
 
     value: Mapped[str] = mapped_column(String(36), primary_key=True)
-    created: Mapped[datetime.datetime] = mapped_column(TZDateTime)
-    expires: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
-    last_access: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
+    created: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True))
+    expires: Mapped[Optional[datetime.datetime]] = mapped_column(
+        TIMESTAMP(timezone=True)
+    )
+    last_access: Mapped[Optional[datetime.datetime]] = mapped_column(
+        TIMESTAMP(timezone=True)
+    )
     active: Mapped[bool]
     sessions: Mapped[List["SessionToken"]] = relationship(
         "SessionToken", back_populates="token"
@@ -67,14 +53,16 @@ class SessionToken(Base):
 
     value: Mapped[str] = mapped_column(String(36), primary_key=True)
     created: Mapped[datetime.datetime] = mapped_column(
-        TZDateTime,
-        default=datetime.datetime.now(datetime.timezone.utc),
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
     )
 
-    expires: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
+    expires: Mapped[Optional[datetime.datetime]] = mapped_column(
+        TIMESTAMP(timezone=True)
+    )
     last_access: Mapped[datetime.datetime] = mapped_column(
-        TZDateTime,
-        default=datetime.datetime.now(datetime.timezone.utc),
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
     )
     token_id: Mapped[str] = mapped_column(String(36), ForeignKey("tokens.value"))
     token: Mapped[Token] = relationship(back_populates="sessions")
@@ -100,8 +88,8 @@ class Imsi(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     imsi: Mapped[str] = mapped_column(String(20))
     registered: Mapped[datetime.datetime] = mapped_column(
-        TZDateTime,
-        default=datetime.datetime.now(datetime.timezone.utc),
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
     )
     sim_iccid: Mapped[str] = mapped_column(String(20), ForeignKey("sims.iccid"))
     sim: Mapped["Sim"] = relationship("Sim", back_populates="imsi")
@@ -112,7 +100,7 @@ class Sim(Base):
 
     iccid: Mapped[str] = mapped_column(String(20), primary_key=True)
     imsi: Mapped[List["Imsi"]] = relationship("Imsi", back_populates="sim")
-    available: Mapped[bool]  # TODO: currently unused
+    in_use: Mapped[bool] = mapped_column(server_default="FALSE")
     provider_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("providers.id")
     )
@@ -129,7 +117,8 @@ class Provider(Base):
         String(36), ForeignKey("sessiontokens.value")
     )
     session_token: Mapped[SessionToken] = relationship(back_populates="provider")
-    allow_reregistration: Mapped[bool] = mapped_column(Boolean, default=True)
+    allow_reregistration: Mapped[bool] = mapped_column(Boolean, server_default="TRUE")
+    available: Mapped[int] = mapped_column(server_default="0")
 
     sims: Mapped[List["Sim"]] = relationship("Sim", back_populates="provider")
 
@@ -154,8 +143,8 @@ class ApduLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     timestamp: Mapped[datetime.datetime] = mapped_column(
-        TZDateTime,
-        default=datetime.datetime.now(datetime.timezone.utc),
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
     )
     sim_id: Mapped[str] = mapped_column(String(20), ForeignKey("sims.iccid"))
     sim: Mapped[Sim] = relationship("Sim")
