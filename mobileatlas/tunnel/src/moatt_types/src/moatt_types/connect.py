@@ -241,15 +241,24 @@ class AuthResponse:
         return struct.pack("!BB", 1, self.status.value)
 
 
-class ConnectRequest:
-    MIN_LENGTH = 17
+@enum.verify(enum.NAMED_FLAGS)
+class ConnectionRequestFlags(enum.Flag):
+    DEFAULT = 0
+    NO_WAIT = 1
 
-    def __init__(self, identifier):
+
+class ConnectRequest:
+    MIN_LENGTH = 3 + min(Iccid.LENGTH, Imsi.LENGTH)
+
+    def __init__(
+        self, identifier, flags: ConnectionRequestFlags = ConnectionRequestFlags.DEFAULT
+    ):
+        self.flags = flags
         self.identifier = identifier
 
     @staticmethod
     def decode(msg: bytes) -> Optional["ConnectRequest"]:
-        if len(msg) < 17 or msg[0] != 1:
+        if len(msg) < ConnectRequest.MIN_LENGTH or msg[0] != 1:
             return None
 
         try:
@@ -258,20 +267,20 @@ class ConnectRequest:
             return None
 
         if ident_type == IdentifierType.Imsi:
-            if len(msg) != 2 + Imsi.LENGTH:
+            if len(msg) != 3 + Imsi.LENGTH:
                 return None
 
-            imsi = Imsi.decode(msg[2:])
+            imsi = Imsi.decode(msg[3:])
 
             if imsi is None:
                 return None
 
             return ConnectRequest(imsi)
         elif ident_type == IdentifierType.Iccid:
-            if len(msg) != 2 + Iccid.LENGTH:
+            if len(msg) != 3 + Iccid.LENGTH:
                 return None
 
-            iccid = Iccid.decode(msg[2:])
+            iccid = Iccid.decode(msg[3:])
 
             if iccid is None:
                 return None
@@ -280,7 +289,9 @@ class ConnectRequest:
 
     def encode(self) -> bytes:
         return (
-            struct.pack("!BB", 1, self.identifier.identifier_type().value)
+            struct.pack(
+                "!BBB", 1, self.flags.value, self.identifier.identifier_type().value
+            )
             + self.identifier.encode()
         )
 

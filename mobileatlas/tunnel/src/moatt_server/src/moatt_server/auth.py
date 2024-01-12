@@ -41,7 +41,7 @@ class TokenError(Exception):
 
 
 class Sim:
-    def __init__(self, iccid: Iccid, imsi: Imsi):
+    def __init__(self, iccid: Iccid, imsi: Imsi | None):
         self.iccid = iccid
         self.imsi = imsi
 
@@ -137,7 +137,10 @@ async def register_provider(
     new_iccids = set(iccids).difference(set([sim.iccid for sim in existing_sims]))
 
     for sim in existing_sims:
-        imsi = sims[Iccid(sim.iccid)].imsi.imsi
+        if (i := sims[Iccid(sim.iccid)].imsi) is not None:
+            imsi = i.imsi
+        else:
+            imsi = None
 
         if sim.provider is not None:
             if sim.provider.id == provider.id:
@@ -154,10 +157,15 @@ async def register_provider(
         session.add(dbm.Imsi(imsi=imsi, registered=time, sim=sim))
 
     for iccid in new_iccids:
+        if (i := sims[Iccid(iccid)].imsi) is not None:
+            imsi = i.imsi
+        else:
+            imsi = None
+
         sim = dbm.Sim(
             iccid=iccid,
-            imsi=[dbm.Imsi(imsi=sims[Iccid(iccid)].imsi.imsi, registered=time)],
-            available=True,
+            imsi=[dbm.Imsi(imsi=imsi, registered=time)] if imsi else [],
+            in_use=False,
             provider=provider,
         )
         session.add(sim)

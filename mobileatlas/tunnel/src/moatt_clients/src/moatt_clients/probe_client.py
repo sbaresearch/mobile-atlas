@@ -4,6 +4,7 @@ import ssl
 from typing import Optional
 
 from moatt_types.connect import (
+    ConnectionRequestFlags,
     ConnectRequest,
     ConnectResponse,
     ConnectStatus,
@@ -29,6 +30,7 @@ class ProbeClient(Client):
         port: str | int,
         tls_ctx: Optional[ssl.SSLContext] = None,
         server_hostname: Optional[str] = None,
+        no_wait: bool = False,
     ):
         """
 
@@ -48,6 +50,7 @@ class ProbeClient(Client):
         super().__init__(
             session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname
         )
+        self.no_wait = no_wait
 
     def connect(self, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
         """Establish a connection with a SIM provider.
@@ -71,7 +74,7 @@ class ProbeClient(Client):
         except Exception as e:
             logger.error(f"Connection failed ({fmt_error(e)}). Closing connection.")
             stream.close()
-            raise e
+            raise
 
         if apdu_stream is None:
             stream.close()
@@ -82,7 +85,12 @@ class ProbeClient(Client):
         self._authenticate(stream)
 
         logger.debug(f"Sending connection request ({sim_id})")
-        stream.write_all(ConnectRequest(sim_id).encode())
+
+        flags = ConnectionRequestFlags.DEFAULT
+        if self.no_wait:
+            flags |= ConnectionRequestFlags.NO_WAIT
+
+        stream.write_all(ConnectRequest(sim_id, flags=flags).encode())
 
         logger.debug("Waiting for answer to connection request message.")
         conn_res = ConnectResponse.decode(stream.read_exactly(ConnectResponse.LENGTH))

@@ -4,6 +4,7 @@ import logging
 import socket
 import ssl
 
+import uvloop
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from .. import config
@@ -66,7 +67,7 @@ def main():
     parser.add_argument("--cert-key", default="ssl/server.key")
     args = parser.parse_args()
 
-    asyncio.run(start_server(args))
+    uvloop.run(start_server(args))
 
 
 if __name__ == "__main__":

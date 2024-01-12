@@ -23,19 +23,20 @@ class QueueEntry:
         con_req: ConnectRequest,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
+        immediate: bool = False,
     ):
         self.sim = sim
         self.con_req = con_req
         self.reader = reader
         self.writer = writer
-        # self.liveness_check_task = liveness_check_task
+        self.immediate = immediate
 
 
 class Queue(asyncio.Queue):
     # overridable methods from asyncio.Queue
 
     # called at the end of super().__init__
-    def _init(self, _):
+    def _init(self, maxsize):
         self._queue = collections.deque()
         self._last_active: int = time.monotonic_ns()
         self._active: int = 0
@@ -48,8 +49,8 @@ class Queue(asyncio.Queue):
         finally:
             self._release()
 
-    def _put(self, qe: QueueEntry):
-        self._queue.append(qe)
+    def _put(self, item: QueueEntry):
+        self._queue.append(item)
 
     # end of overridable methods
 
@@ -102,7 +103,7 @@ class Queue(asyncio.Queue):
             await asyncio.sleep(CONFIG.QUEUE_GC_INTERVAL)
 
             if len(self._queue) != 0:
-                LOGGER.debug("queue GC")  # TODO
+                LOGGER.debug("Queue GC starting.")
                 size = len(self._queue)
                 self._queue = collections.deque(filter(lambda x: f(x), self._queue))
                 if len(self._queue) < size:
@@ -111,7 +112,6 @@ class Queue(asyncio.Queue):
                     )
 
 
-# TODO: update db
 def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
     async def f():
         conns_closed = 0
@@ -121,8 +121,7 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
 
         LOGGER.info("Starting removal of old connection requests")
 
-        # TODO: test whether list is needed
-        for id, q in list(queues.items()):
+        for id, q in queues.items():
             last_active = q.last_active()
             if last_active is not None and now - last_active > timeout_ns:
                 del queues[id]
@@ -140,14 +139,20 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
 def _get_queue(id: int) -> Queue:
     q = queues.get(id)
     if q is None:
-        q = Queue()
+        q = Queue(maxsize=CONFIG.MAX_QUEUE_SIZE)
         queues[id] = q
     return q
 
 
-async def put(id: int, qe: QueueEntry) -> None:
+def put_nowait(id: int, qe: QueueEntry) -> None:
     q = _get_queue(id)
-    await q.put(qe)
+    if qe.immediate and len(q._queue) >= len(q._getters):  # type: ignore
+        raise asyncio.QueueFull(qe)
+    try:
+        q.put_nowait(qe)
+    except asyncio.QueueFull as e:
+        e.args = (qe,)
+        raise
 
 
 async def get(id: int) -> QueueEntry:

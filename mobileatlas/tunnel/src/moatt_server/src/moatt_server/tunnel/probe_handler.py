@@ -1,7 +1,13 @@
 import asyncio
 import logging
 
-from moatt_types.connect import AuthResponse, AuthStatus, ConnectResponse, ConnectStatus
+from moatt_types.connect import (
+    AuthResponse,
+    AuthStatus,
+    ConnectionRequestFlags,
+    ConnectResponse,
+    ConnectStatus,
+)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .. import config
@@ -65,7 +71,8 @@ class ProbeHandler(Handler):
             return
 
         try:
-            sim = await get_sim(self.async_session, session_token, con_req.identifier)
+            async with self.async_session() as session, session.begin():
+                sim = await get_sim(session, session_token, con_req.identifier)
         except AuthError:
             LOGGER.debug(
                 "Received disallowed SIM request from probe. Closing connection."
@@ -81,12 +88,29 @@ class ProbeHandler(Handler):
             return
 
         if sim.provider is None:
-            LOGGER.debug("Requested SIM is unavailable. Closing connection.")
+            LOGGER.debug("Requested SIM is unknown. Closing connection.")
             await write_msg(writer, ConnectResponse(ConnectStatus.NotAvailable))
             await close()
             return
 
         LOGGER.debug("Sending stream to provider handler")
-        await connection_queue.put(
-            sim.provider.id, connection_queue.QueueEntry(sim, con_req, reader, writer)
-        )
+        try:
+            connection_queue.put_nowait(
+                sim.provider.id,
+                connection_queue.QueueEntry(
+                    sim,
+                    con_req,
+                    reader,
+                    writer,
+                    immediate=ConnectionRequestFlags.NO_WAIT in con_req.flags,
+                ),
+            )
+        except asyncio.QueueFull:
+            if ConnectionRequestFlags.NO_WAIT in con_req.flags:
+                LOGGER.info(
+                    f"Requested SIM card is not immediately available. {sim.iccid=}"
+                )
+            else:
+                LOGGER.warn(f"Queue for provider is full. {sim.provider.id=}")
+            await write_msg(writer, ConnectResponse(ConnectStatus.NotAvailable))
+            await close()

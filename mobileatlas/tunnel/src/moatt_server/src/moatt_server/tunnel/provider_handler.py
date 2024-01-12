@@ -1,10 +1,16 @@
 import asyncio
 import logging
 
-from moatt_types.connect import AuthResponse, AuthStatus, ConnectResponse, ConnectStatus
+from moatt_types.connect import (
+    AuthResponse,
+    AuthStatus,
+    ConnectResponse,
+    ConnectStatus,
+    Iccid,
+)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .. import auth, config
+from .. import auth, config, db
 from .. import models as dbm
 from . import connection_queue
 from .apdu_stream import ApduStream
@@ -51,14 +57,17 @@ class ProviderHandler(Handler):
                         LOGGER.info(f"{t.get_name()} closed the connection.")
                         return
 
-                    await auth.log_apdu(
-                        self.async_session,
-                        probe.sim.iccid,
-                        r,
-                        dbm.Sender.Probe
-                        if t.get_name() == "probe"
-                        else dbm.Sender.Provider,
-                    )
+                    async with self.async_session() as session, session.begin():
+                        await auth.log_apdu(
+                            session,
+                            probe.sim.iccid,
+                            r,
+                            (
+                                dbm.Sender.Probe
+                                if t.get_name() == "probe"
+                                else dbm.Sender.Provider
+                            ),
+                        )
 
                     if t.get_name() == "probe":
                         provider.send_background(r)
@@ -81,8 +90,17 @@ class ProviderHandler(Handler):
             await self._handle(reader, writer)
         except (EOFError, ConnectionResetError):
             LOGGER.warn("Client closed connection unexpectedly.")
-        except TimeoutError:
-            LOGGER.warn("Connection timed out.")
+        except asyncio.QueueFull as e:
+            LOGGER.warn(
+                "Failed to requeue connection request because either the queue"
+                "was full or because the client did not want to wait."
+            )
+            probe_writer = e.args[0].writer
+            await write_msg(
+                probe_writer, ConnectResponse(ConnectStatus.ProviderTimedOut)
+            )
+            probe_writer.close()
+            await probe_writer.wait_closed()
         except Exception as e:
             LOGGER.warn(f"Exception occurred while handling connection: {e}")
         finally:
@@ -106,45 +124,55 @@ class ProviderHandler(Handler):
         await write_msg(writer, AuthResponse(AuthStatus.Success))
 
         provider_id = session_token.provider.id
-        while True:
-            LOGGER.debug("waiting for connection request.")
-            q_task = asyncio.create_task(connection_queue.get(provider_id), name="q")
 
-            # poll whether the provider is still connected
-            # in order to prevent a buildup of tasks that
-            # cannot make progress but wait on a connection request to arrive regardless
-            eof_task = asyncio.create_task(poll_eof(writer), name="eof")
+        async with self.async_session() as session, session.begin():
+            await db.provider_available(session, provider_id)
 
-            done, _ = await asyncio.wait(
-                [q_task, eof_task], return_when=asyncio.FIRST_COMPLETED
-            )
-
-            if q_task in done and eof_task not in done:
-                eof_task.cancel()
-                qe = q_task.result()
-                asyncio.current_task().add_done_callback(  # pyright: ignore[reportOptionalMemberAccess]
-                    lambda _: connection_queue.task_done(provider_id)
+        try:
+            while True:
+                LOGGER.debug("waiting for connection request.")
+                q_task = asyncio.create_task(
+                    connection_queue.get(provider_id), name="q"
                 )
-            else:
-                if q_task in done:
-                    await connection_queue.put(provider_id, q_task.result())
+
+                # poll whether the provider is still connected
+                # in order to prevent a buildup of tasks that
+                # cannot make progress but wait on a connection request to arrive regardless
+                eof_task = asyncio.create_task(poll_eof(writer), name="eof")
+
+                done, _ = await asyncio.wait(
+                    [q_task, eof_task], return_when=asyncio.FIRST_COMPLETED
+                )
+
+                if q_task in done and eof_task not in done:
+                    eof_task.cancel()
+                    qe = q_task.result()
+                    asyncio.current_task().add_done_callback(  # pyright: ignore[reportOptionalMemberAccess]
+                        lambda _: connection_queue.task_done(provider_id)
+                    )
                 else:
-                    q_task.cancel()
-                eof_task.result()
-                LOGGER.info("Provider disconnected.")
+                    if q_task in done:
+                        connection_queue.put_nowait(provider_id, q_task.result())
+                    else:
+                        q_task.cancel()
+                    eof_task.result()
+                    LOGGER.info("Provider disconnected.")
 
-                if q_task in done:
-                    connection_queue.task_done(provider_id)
+                    if q_task in done:
+                        connection_queue.task_done(provider_id)
 
-                return
+                    return
 
-            if qe.writer.is_closing():
-                LOGGER.warn("Probe disconnected early. Waiting for new request.")
-                qe.writer.close()
-                await qe.writer.wait_closed()
-                continue
-            else:
-                break
+                if qe.writer.is_closing():
+                    LOGGER.warn("Probe disconnected early. Waiting for new request.")
+                    qe.writer.close()
+                    await qe.writer.wait_closed()
+                    continue
+                else:
+                    break
+        finally:
+            async with self.async_session() as session, session.begin():
+                await db.provider_unavailable(session, provider_id)
 
         LOGGER.debug(f"Received a connection request: {qe.con_req}")
 
@@ -152,16 +180,21 @@ class ProviderHandler(Handler):
             await write_msg(writer, qe.con_req)
         except Exception as e:
             LOGGER.warn(f"Provider disconnected. {e}")
-            await connection_queue.put(session_token.provider.id, qe)
-            raise e
+            connection_queue.put_nowait(session_token.provider.id, qe)
+            raise
 
         LOGGER.debug("Waiting for provider to accept connection request.")
-        async with asyncio.timeout(
-            CONFIG.PROVIDER_RESPONSE_TIMEOUT
-        ):  # TODO: timeout status
-            con_res = ConnectResponse.decode(
-                await reader.readexactly(ConnectResponse.LENGTH)
-            )
+        try:
+            async with asyncio.timeout(CONFIG.PROVIDER_RESPONSE_TIMEOUT):
+                con_res = ConnectResponse.decode(
+                    await reader.readexactly(ConnectResponse.LENGTH)
+                )
+        except TimeoutError:
+            LOGGER.info("Provider timed out.")
+            await write_msg(qe.writer, ConnectResponse(ConnectStatus.ProviderTimedOut))
+            qe.writer.close()
+            await qe.writer.wait_closed()
+            return
         LOGGER.debug(f"Received a response for a connection request: {con_res}")
 
         if con_res is None:
@@ -187,11 +220,22 @@ class ProviderHandler(Handler):
             await qe.writer.wait_closed()
             return
 
-        probe_stream = ApduStream(qe.sim, qe.reader, qe.writer)
-        provider_stream = ApduStream(qe.sim, reader, writer)
-
+        iccid = Iccid(qe.sim.iccid)
+        probe_stream = None
+        provider_stream = None
         try:
+            probe_stream = ApduStream(qe.sim, qe.reader, qe.writer)
+            provider_stream = ApduStream(qe.sim, reader, writer)
+
+            async with self.async_session() as session, session.begin():
+                await db.sim_used(session, session_token, iccid)
+
             await self.handle_established_connection(probe_stream, provider_stream)
         finally:
-            await provider_stream.close()
-            await probe_stream.close()
+            if provider_stream is not None:
+                await provider_stream.close()
+            if probe_stream is not None:
+                await probe_stream.close()
+
+            async with self.async_session() as session, session.begin():
+                await db.sim_unused(session, session_token, iccid)

@@ -1,6 +1,6 @@
-from typing import Annotated, Callable
+from typing import Annotated, Optional
 
-from pydantic import AfterValidator, BaseModel, RootModel
+from pydantic import AfterValidator, BaseModel, Field, RootModel
 
 
 def _digits(imsi: str) -> str:
@@ -8,17 +8,21 @@ def _digits(imsi: str) -> str:
     return imsi
 
 
-def _len(min: int, max: int) -> Callable[[str], str]:
-    def f(i: str):
-        assert len(i) >= min and len(i) <= max
-        return i
+class Iccid(RootModel):
+    root: Annotated[str, AfterValidator(_digits)] = Field(min_length=5, max_length=20)
 
-    return f
+
+class Imsi(RootModel):
+    root: Annotated[str, AfterValidator(_digits)] = Field(min_length=5, max_length=20)
 
 
 class Sim(BaseModel):
-    iccid: Annotated[str, AfterValidator(_digits), AfterValidator(_len(5, 20))]
-    imsi: Annotated[str, AfterValidator(_digits), AfterValidator(_len(5, 15))]
+    iccid: Iccid
+    imsi: Optional[Imsi]
+
+
+class SimIds(RootModel):
+    root: list[Iccid] = Field(min_length=1)
 
 
 class SimList(RootModel):

@@ -19,6 +19,7 @@ class Config:
     TCP_KEEPIDLE: int = 10
     TCP_KEEPINTVL: int = 10
     TCP_KEEPCNT: int = 10
+    MAX_QUEUE_SIZE: int = 10
 
     GC_INTERVAL: int = 60
     QUEUE_GC_INTERVAL: int = 60
@@ -68,6 +69,9 @@ def _load_toml_config(path: Path) -> Optional[dict[str, Any]]:
         _set(res, "TCP_KEEPIDLE", db.get("keepidle"))
         _set(res, "TCP_KEEPINTVL", db.get("keepintvl"))
         _set(res, "TCP_KEEPCNT", db.get("keepcnt"))
+
+    if isinstance(db := cfg.get("limits"), dict):
+        _set(res, "MAX_QUEUE_SIZE", db.get("max_queue_size"))
 
     if isinstance(db := cfg.get("gc"), dict):
         _set(res, "GC_INTERVAL", db.get("interval"))
