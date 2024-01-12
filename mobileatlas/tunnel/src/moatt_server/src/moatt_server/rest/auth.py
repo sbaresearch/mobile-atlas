@@ -1,5 +1,6 @@
 import base64
 import binascii
+import logging
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException
@@ -9,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_session_token, valid_token
 from .db import get_db
+
+LOGGER = logging.getLogger(__name__)
 
 _session_token_optional = APIKeyCookie(name="session_token", auto_error=False)
 
@@ -20,9 +23,9 @@ async def session_token_optional(
     if stoken is None:
         return None
 
-    session_token = await get_session_token(session, _parse_session_token(stoken))
-
-    return session_token.to_con_type()
+    async with session.begin():
+        session_token = await get_session_token(session, _parse_session_token(stoken))
+        return session_token.to_con_type()
 
 
 async def session_token(
@@ -38,7 +41,7 @@ def _parse_session_token(stoken: str) -> SessionToken:
     try:
         session_token = SessionToken(base64.b64decode(stoken, validate=True))
     except (binascii.Error, ValueError):
-        raise HTTPException(status_code=401)  # TODO: add appropriate header
+        raise HTTPException(status_code=401)
 
     return session_token
 
@@ -53,9 +56,12 @@ async def token(
     try:
         token = Token(base64.b64decode(tok.credentials, validate=True))
     except (binascii.Error, ValueError):
-        raise HTTPException(status_code=401)  # TODO: add appropriate header
+        raise HTTPException(status_code=401)
 
-    if await valid_token(session, token):
+    async with session.begin():
+        valid = await valid_token(session, token)
+
+    if valid:
         return token
     else:
         raise HTTPException(status_code=403)
