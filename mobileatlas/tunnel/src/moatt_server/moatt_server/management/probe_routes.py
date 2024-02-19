@@ -1,9 +1,18 @@
 from flask import jsonify, request
-from sqlalchemy import select
+from sqlalchemy import select, exc as sqlexc
 from moatt_server.management import app, redis_client, db, token_auth
-from moatt_server.models import Probe, ProbeServiceStartupLog, ProbeStatus, ProbeStatusType, ProbeSystemInformation
-from datetime import datetime, timedelta
+from moatt_server import utils
+from moatt_server.models import (
+        Probe,
+        ProbeServiceStartupLog,
+        ProbeStatus,
+        ProbeStatusType,
+        ProbeSystemInformation,
+        TokenScope,
+        )
+from datetime import timedelta
 from json import dumps
+from flask import g
 import time
 import re
 
@@ -12,103 +21,46 @@ Endpoints called from the Measurement Probe are listed in this file
 """
 
 @app.route('/probe/startup', methods=['POST'])
-@app.route('/probe/reboot', methods=['POST'])  # TODO delete me after client update
+@token_auth.require_token(TokenScope.Probe)
 def startup_log():
-    """
-    Unauthenticated startup log
-    Example command to execute:
-        curl --request POST --data "mac=`cat /sys/class/net/eth0/address`"  MAM/probe/startup
-    """
-    # Check if mac is valid  # todo deduplicate *mac
     if 'mac' not in request.values:
         return "", 400
+
     mac = request.values['mac']
     if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
         return "", 400
 
     # Check if mac is known in Probe List, otherwise deny
-    macs = db.session.scalars(select(Probe.mac).distinct()) # TODO: test
+    #probe = list(db.session.scalars(select(Probe).join(Probe.token).where(MamToken.mac == mac).distinct())) # TODO: test
+    #stmt = select(Probe).join(Probe.token).where(MamToken.mac == mac).distinct()
+    #print(stmt)
+    #macs = list(db.session.scalars(stmt))
+    #print(macs)
     #query = db.session.query(Probe.mac.distinct().label("mac"))
     #macs = [row.mac for row in query.all()]
-
-    if mac not in macs:
+    if g.token.mac != mac:
         return "", 400
 
     # Create a log entry
-    prl = ProbeServiceStartupLog(mac=mac, timestamp=datetime.utcnow())
+    prl = ProbeServiceStartupLog(
+            probe_id=g.token.probe[0].id,
+            mac=mac,
+            timestamp=utils.now())
     db.session.add(prl)
     db.session.commit()
 
     return "", 200
 
-
-@app.route('/probe/register', methods=['POST'])
-def register_probe():
-    """
-    Register a probe and do the token stuff
-    1a) Token included and authenticated -> Return Probe+Token
-    1b) Token included and still Token Candidate -> Return Probe+Token Candidate
-    2) Token not included or nonsense -> Generate new Token Candidate -> Return Probe+Token Candidate
-    """
-    # Case (1)
-    token = token_auth.get_token(request)
-    if token:
-        # Case (1a)
-        probe = Probe.check_token(token)
-        if probe:
-            pd = probe.to_dict()
-            pd['token'] = token
-            return jsonify(pd), 200
-
-        # Case (1b)
-        probe = Probe.check_token_candidate(token)
-        if probe:
-            pd = probe.to_dict()
-            pd['token_candidate'] = token
-            return jsonify(pd), 200
-
-    # Case (2)
-
-    # Check if mac is valid  # todo deduplicate *mac
-    if 'mac' not in request.values:
-        return "", 400
-    mac = request.values['mac']
-    if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
-        return "mac invalid", 400
-
-    probe = db.session.scalar(select(Probe).filter(Probe.mac == mac))
-
-    if probe:  # If there is a probe, update
-        token_candidate = probe.generate_token_candidate()
-    else:  # If there is non, create a new
-        probe = Probe()
-        probe.mac = mac
-        token_candidate = probe.generate_token_candidate()
-
-    db.session.add(probe)
-    db.session.commit()
-
-    pd = probe.to_dict()
-    pd['token_candidate'] = token_candidate
-
-    return jsonify(pd)
-
-
 @app.route('/probe/poll', methods=['POST'])
+@token_auth.require_token(TokenScope.Probe)
 def probe_poll():
     """
     The long poll endpoint for the probe
     """
-    token = token_auth.get_token(request)  # todo deduplicate *token
-    if not token:
+    if not g.token.probe:
         return "", 403
-
-    probe = Probe.check_token(token)
-    if not probe:
-        return "", 403
-
-    # Mark the Proben Token last access
-    probe.access()
+    probe = g.token.probe[0]
+    probe.last_poll = utils.now()
 
     # Include a status update
     #
@@ -118,9 +70,12 @@ def probe_poll():
     #     (2b) Active - Prolong active status
     # Todo move this functionality
     #ps = ProbeStatus.query.filter_by(probe_id=probe.id, active=True).first()
-    ps = db.session.scalar(select(ProbeStatus).filter_by(probe_id=probe.id, active=True))
+    ps = db.session.scalar(
+            select(ProbeStatus)
+            .where((ProbeStatus.probe_id == probe.id) & (ProbeStatus.active == True))
+            )
     interval = timedelta(seconds=app.config["LONG_POLLING_INTERVAL"])
-    now = datetime.utcnow()
+    now = utils.now()
 
     if ps:
         # Case (2b)
@@ -164,25 +119,58 @@ def probe_poll():
 
 
 @app.route('/probe/system_information', methods=['POST'])
+@token_auth.require_token(TokenScope.Probe)
 def probe_system_information():
     """
     Endpoint for Uploading ProbeSystemInformation
     """
-    token = token_auth.get_token(request)  # todo deduplicate *token
-    if not token:
+    if not g.token.probe:
         return "", 403
-
-    probe = Probe.check_token(token)
-    if not probe:
-        return "", 403
+    probe = g.token.probe[0]
 
     if not request.json:
         return "", 400
 
     psi = ProbeSystemInformation(probe_id=probe.id,
-                                 timestamp=datetime.utcnow(),
+                                 timestamp=utils.now(),
                                  information=dumps(request.json))
     db.session.add(psi)
     db.session.commit()
 
     return "", 200
+
+class ProbeTokenActivationHandler(token_auth.TokenActivationHandler):
+    @staticmethod
+    def active(scope):
+        return TokenScope.Probe in scope
+
+    def __init__(self):
+        self.name = None
+        self.token = None
+
+    def validate_request(self, request):
+        if "name" not in request.values:
+            return "name missing", 400
+
+        self.name = request.values["name"]
+
+    def after_token_activation(self, session, token):
+        assert self.name != None
+
+        self.token = token
+        session.add(Probe(
+            name=self.name,
+            token=token,
+            ))
+
+    def handle_activation_error(self, session, exc):
+        assert self.token != None
+
+        if isinstance(exc, sqlexc.IntegrityError):
+            duplicate_name = session.scalar(
+                    select(Probe)
+                    .where((Probe.name == self.name) & (Probe.token_id != self.token.id))
+                    )
+
+            if duplicate_name is not None:
+                return "Probe name is not unique", 400

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Active Tokens</h2>
+  <table>
+    <thead>
+      <tr>
+        <th class="hidden">ID</th>
+        <th>Token</th>
+        <th>MAC</th>
+        <th>Scope</th>
+        <th>Last Activity</th>
+        <th>IP</th>
+        <th>Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tokens %}
+      <tr>
+        <td class="hidden">{{t.id}}</td>
+        <td>{{t.token}}</td>
+        <td>{{t.mac}}</td>
+        <td>{{t.scope.pretty()}}</td>
+        <td>{{t.logs | map(attribute="time") | first}}</td>
+        <td>{{t.config | map(attribute="ip") | first}}</td>
+        <td>{{t.probe | map(attribute="name") | first}}</td>
+        <td>
+          <input class="token" type="hidden" value="{{t.token}}">
+          <input class="confirm-text" type="hidden" value="{{t.scope.pretty(compact=True)}}">
+          <button class="deactivate-token-btn">❌</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Token Activation Requests</h2>
+  <table>
+    <thead>
+      <tr>
+        <th class="hidden">ID</th>
+        <th>Token</th>
+        <th>MAC</th>
+        <th>Scope</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in token_reqs %}
+      <tr>
+        <td class="hidden">{{t.id}}</td>
+        <td>{{t.token_candidate}}</td>
+        <td>{{t.mac}}</td>
+        <td>{{t.scope.pretty()}}</td>
+        <td>{{t.logs | selectattr("action", "eq", TokenAction.Registered) | map(attribute="time") | first}}</td>
+        <td>
+          <input class="token" type="hidden" value="{{t.token_candidate}}">
+          <input class="token-scope" type="hidden" value="{{t.scope.value}}">
+          <button class="activate-token-btn">✅</button>
+        </td>
+        <td>
+          <input class="token" type="hidden" value="{{t.token_candidate}}">
+          <input class="confirm-text" type="hidden" value="{{t.scope.pretty(compact=True)}}">
+          <button class="deactivate-token-btn">❌</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Token Logs</h2>
+  <table>
+    <thead>
+      <tr>
+      </tr>
+    </thead>
+  </table>
+
+  <h2>Add Token</h2>
+  <div>
+    <label for="token">Token</label>
+    <input id="token" class="token" type="text">
+    <fieldset>
+      <legend>Token Scope</legend>
+      <div>
+        <input id="WgBox" class="scope-chbx" type="checkbox" value="1">
+        <label id="WgBoxLbl" for="WgBox">Wireguard</label>
+        <label id="ipInLbl" for="ipIn">IP: </label>
+        <input id="ipIn" type="text" 
+               placeholder="Wg peer address"
+               spellcheck="false">
+      </div>
+      <div>
+        <input id="PrBox" class="scope-chbx" type="checkbox" value="2">
+        <label for="PrBox">Probe</label>
+      </div>
+    </fieldset>
+    <button id="add-token">Submit</button>
+  </div>
+{% endblock %}

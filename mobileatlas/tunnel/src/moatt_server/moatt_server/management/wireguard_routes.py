@@ -1,8 +1,10 @@
 from moatt_server.management import app, db, basic_auth
-from moatt_server.models import WireguardConfig, WireguardConfigLogs, WireguardToken
+from moatt_server.models import (WireguardConfig, WireguardConfigLogs, MamToken,
+                                 TokenScope)
 from moatt_server.utils import now
-from flask import request, render_template, jsonify
-from sqlalchemy import select, delete
+from flask import request, render_template, jsonify, g
+from sqlalchemy import select, exc as sqlexc
+from moatt_server.management.token_auth import require_token, TokenActivationHandler
 
 import base64
 import re
@@ -17,65 +19,36 @@ def wireguard_index():
     wgs = db.session.scalars(select(WireguardConfig)).all()
     wgas = list(db.session.scalars(select(WireguardConfigLogs).order_by(WireguardConfigLogs.register_time.desc()).limit(10)))
     wgas.reverse()
-    active_tokens = db.session.scalars(select(WireguardToken).where(WireguardToken.token != None))
-    token_reqs = db.session.scalars(select(WireguardToken).where(WireguardToken.token == None))
+    #active_tokens = db.session.scalars(select(MamToken).where(MamToken.token != None))
+    token_reqs = db.session.scalars(select(MamToken).where(MamToken.token == None))
     #token_reqs = list(token_reqs)
     #print(token_reqs[0].token)
     return render_template("wireguard.html",
                            wgs=wgs,
                            wgas=wgas,
-                           active_tokens=active_tokens,
+                           #active_tokens=active_tokens,
                            token_reqs=token_reqs,
                            config=get_current_wireguard_config(),
                            status=get_current_wireguard_status())
 
-@app.route('/wireguard/token/register', methods=['POST'])
-def wireguard_token_register():
-    if 'token_candidate' not in request.values or 'mac' not in request.values:
-        return "token_candidate/mac missing", 400
-
-    token_candidate = request.values['token_candidate']
-    try:
-        if not token_candidate.isascii() or len(base64.b64decode(token_candidate, validate=True)) != 32:
-            return "token invalid", 400
-    except:
-        return "token invalid", 400
-
-    mac = request.values['mac']
-    if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
-        return "mac invalid, use 11:22:33:44:55:66", 400
-
-    add_token_candidate(token_candidate, mac)
-    db.session.commit()
-
-    return "", 200
-
 @app.route('/wireguard/register', methods=['POST'])
+@require_token(TokenScope.Wireguard)
 def wireguard_register():
     """
     Register the public key of a Probe for Wireguard
     Expects arguments "mac" and "publickey"
     """
-    if 'token' not in request.values or 'publickey' not in request.values or 'mac' not in request.values:
-        return "token/publickey missing", 400
+    if 'publickey' not in request.values or 'mac' not in request.values:
+        return "publickey/mac missing", 400
 
-    token = request.values['token']
-    try:
-        if not token.isascii() or len(base64.b64decode(token, validate=True)) != 32:
-            return "token invalid", 400
-    except:
-        return "token invalid", 400
+    token = g.token.token
+    assert token is not None
 
     mac = request.values['mac']
     if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
-        log_config_attempt(token)
+        log_config_attempt(g.token.token)
         return "mac invalid, use 11:22:33:44:55:66", 400
 
-    wgtoken = db.session.scalar(select(WireguardToken).where(WireguardToken.token == token))
-
-    if wgtoken is None:
-        log_config_attempt(token, mac=mac)
-        return "token invalid", 403
 
     publickey = request.values['publickey']
     try:
@@ -86,13 +59,13 @@ def wireguard_register():
         log_config_attempt(token, mac=mac)
         return "publickey invalid", 400
 
-    wg = wgtoken.config
+    wg = g.token.config
 
     if len(wg) != 1:
         # This should not happen: If wgtoken is active (wgtoken.token is not None)
         # then it should have a corresponding WireguardConfig
         log_config_attempt(token, publickey, mac=mac)
-        db.session.delete(wgtoken)
+        db.session.delete(g.token)
         db.session.commit()
         return "token invalid", 403
     else:  # If there is a probe, update
@@ -107,8 +80,8 @@ def wireguard_register():
             wg.allow_registration = False
             wg.register_time = now()
 
-            if wgtoken.mac is None:
-                wgtoken.mac = mac
+            if g.token.mac is None:
+                g.token.mac = mac
 
             # Log the successful attempt
             log_config_attempt(token, publickey, True, mac=mac)
@@ -123,71 +96,6 @@ def wireguard_register():
             config['dns'] = app.config.get("WIREGUARD_DNS")
 
             return jsonify(config)
-
-@app.route('/wireguard/token/activate', methods=['POST'])
-@basic_auth.required
-def activate_wireguard_token():
-    if 'token_candidate' not in request.values or 'ip' not in request.values:
-        return "token_candidate or ip missing", 400
-
-    token_candidate = request.values['token_candidate']
-    ip = request.values['ip']
-    try:
-        if not token_candidate.isascii() or len(base64.b64decode(token_candidate, validate=True)) != 32:
-            return "invalid token", 400
-    except:
-        return "invalid token", 400
-
-    try:
-        # use inet_ntoa to get rid of abbreviated addresses
-        # e.g. '127.1'
-        ip = socket.inet_ntoa(socket.inet_aton(ip))
-    except:
-        return "ip invalid", 400
-
-    token = db.session.scalar(select(WireguardToken).where(WireguardToken.token_candidate == token_candidate))
-
-    if token is None:
-        token = add_token_candidate(token_candidate)
-        
-        if token is None:
-            raise Exception("Failed to create new token candidate.")
-
-    token.activate(db.session, ip)
-    db.session.commit()
-
-    return "", 200
-
-@app.route('/wireguard/token/deactivate', methods=['POST'])
-@basic_auth.required
-def deactivate_wireguard_token():
-    if 'token' not in request.values:
-        return "missing token", 400
-
-    token = request.values['token']
-    try:
-        if not token.isascii() or len(base64.b64decode(token, validate=True)) != 32:
-            return "invalid token", 400
-    except:
-        return "invalid token", 400
-
-    # TODO: find a nice way to bulk delete tokens with the ORM
-    # that respects the cascade configuration
-    tids = db.session.scalars(
-            delete(WireguardToken)
-            .where((WireguardToken.token == token) |
-                   (WireguardToken.token_candidate == token)
-                  )
-            .returning(WireguardToken.id)
-            )
-    db.session.execute(
-            delete(WireguardConfig)
-            .where(WireguardConfig.token_id.in_(tids))
-            )
-
-    db.session.commit()
-
-    return "", 200
 
 def log_config_attempt(token, publickey='', successful=False, mac=None):
     wga = WireguardConfigLogs(token=token,
@@ -253,19 +161,51 @@ def get_current_wireguard_status():
     except subprocess.CalledProcessError as e:
         return e
 
-def add_token_candidate(token_candidate, mac=None):
-    tc = db.session.scalar(
-            select(WireguardToken)
-            .where(
-                    (WireguardToken.token_candidate == token_candidate) |
-                    (WireguardToken.token == token_candidate)
-                  )
-            )
+class WgTokenActivationHandler(TokenActivationHandler):
+    @staticmethod
+    def active(scope):
+        return TokenScope.Wireguard in scope
 
-    if tc is not None:
-        return
+    def __init__(self):
+        self.ip = None
+        self.token = None
 
-    t = WireguardToken(token_candidate=token_candidate, mac=mac)
-    db.session.add(t)
+    def validate_request(self, request):
+        if "ip" not in request.values:
+            return "ip missing", 400
 
-    return t
+        ip = request.values["ip"]
+        try:
+            # use inet_ntoa to get the canonical address representation
+            # e.g. `127.0.0.1` instead of `127.1`
+            self.ip = socket.inet_ntoa(socket.inet_aton(ip))
+        except:
+            return "ip invalid", 400
+
+    def after_token_activation(self, session, token):
+        assert self.ip is not None
+
+        self.token = token
+
+        if len(token.config) == 1:
+            token.config[0].ip = self.ip
+            token.config[0].allow_registration = True
+        else:
+            wgc = WireguardConfig(
+                    token=token,
+                    ip=self.ip,
+                    allow_registration=True,
+                    )
+            session.add(wgc)
+        session.add(token)
+
+    def handle_activation_error(self, session, exc):
+        assert self.token is not None
+
+        if isinstance(exc, sqlexc.IntegrityError):
+            duplicate_ip = session.scalar(
+                    select(WireguardConfig)
+                    .where((WireguardConfig.ip == self.ip) & (WireguardConfig.token_id != self.token.id))
+                    )
+            if duplicate_ip is not None:
+                return "ip is not unique", 400

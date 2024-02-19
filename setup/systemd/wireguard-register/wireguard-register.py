@@ -6,26 +6,35 @@ import requests
 import secrets
 import base64
 import subprocess
+import sys
 from os import path
 
+# TODO set correct path
+#PROBE_UTILITIES = "/home/pf/Documents/mobile-atlas-merge/setup/systemd/probe_utilities.py"
+PROBE_UTILITIES = "/home/pf/Documents/mobile-atlas-merge/setup/systemd/"
+sys.path.append(PROBE_UTILITIES)
+
+import probe_utilities as probe_util
+
 WIREGUARD_DIR = "/etc/wireguard"
-API_ENDPOINT = "https://mam.mobileatlas.eu"
-TOKEN_REG_URL = f"{API_ENDPOINT}/wireguard/token/register"
+#API_ENDPOINT = "https://mam.mobileatlas.eu"
+API_ENDPOINT = "http://localhost:5000"
+TOKEN_REG_URL = f"{API_ENDPOINT}/tokens/register"
 REGISTER_URL = f"{API_ENDPOINT}/wireguard/register"
 NET_INTERFACE = "eth0"
 
-def get_mac_addr():
-    """
-    Return the mac address from sys filesystem
-    """
-    with open("/sys/class/net/"+NET_INTERFACE+"/address") as f:
-        return f.readline().rstrip()
+# WIREGUARD_DIR = "/tmp/wireguard"
+# REGISTER_URL = "http://localhost:5000/wireguard/register"
+# NET_INTERFACE = "wlp2s0"
 
-def get_or_create_wireguard_token():
+def _get_or_create_wireguard_token():
+    return "vwMzQbmpvo0asJ0+GFtk6hC6Vd+T3LtnYYxFkCJkKRk="
+
+def get_or_create_mam_token():
     token_path = WIREGUARD_DIR + "/token"
 
     if not path.exists(token_path):
-        print("Creating a new WireGuard token")
+        print("Creating a new MAM token")
         token = base64.b64encode(secrets.token_bytes(32)).decode()
 
         with open(token_path, "x") as f:
@@ -37,6 +46,9 @@ def get_or_create_wireguard_token():
             return f.readline()
 
 def get_or_create_wireguard_key():
+    return {"public": "KJ+OCAwcvyz4rILS0tXMPrVYloE/S5SOWz+eujAYJHs=", "private": "wGHkux2e+A9BPPqDvKZUgYuppzCuL/L/J/yp84uHF3o="}
+
+def _get_or_create_wireguard_key():
     """
     Either read the keys or create new one with "wg genkey"
     """
@@ -55,7 +67,8 @@ def save_wireguard_config(private, ip, endpoint, publickey_endpoint, allowed_ips
     """
     Generate the config, however it will overwrite any existing wg0.conf
     """
-    with open(WIREGUARD_DIR + "/wg0.conf", "w") as cf:
+    with open("/dev/tty", "w") as cf:
+    #with open(WIREGUARD_DIR + "/wg0.conf", "w") as cf:
         cf.write(f"[Interface]\n")
         cf.write(f"Address = {ip}/32\n")
         cf.write(f"PrivateKey = {private}\n")
@@ -72,13 +85,14 @@ def save_wireguard_config(private, ip, endpoint, publickey_endpoint, allowed_ips
 def main():
     print("Startup Registering")
 
-    mac = get_mac_addr()
+    mac = probe_util.get_mac_addr(NET_INTERFACE)
     print(f"Got {mac} for {NET_INTERFACE}")
 
     # TODO check if wireguard is installed
 
-    token = get_or_create_wireguard_token()
-    res = requests.post(TOKEN_REG_URL, data={"token_candidate": token, "mac": mac})
+    token = probe_util.load_or_create_token()
+
+    res = probe_util.register_token(token, mac=mac)
 
     if res.status_code != 200:
         print("Error", res.status_code, res.text)
@@ -87,7 +101,11 @@ def main():
     keys = get_or_create_wireguard_key()
     print(f"Got publickey {keys['public']}")
 
-    res = requests.post(REGISTER_URL, data={'token': token, 'publickey': keys['public'], "mac": mac})
+    res = requests.post(
+            REGISTER_URL,
+            data={"publickey": keys["public"], "mac": mac},
+            headers={"Authorization": f"Bearer {token}"},
+            )
 
     if res.status_code != 200:
         print("Error", res.status_code, res.text)

@@ -1,16 +1,15 @@
 import datetime
 import enum
 import base64
-import random
-import string
 import json
 
 from typing import Optional, List
 from moatt_types.connect import ApduOp
 import moatt_types.connect as con_types
 from moatt_server.utils import now
+from moatt_server.config import MamConfig
 from sqlalchemy import (
-        String, DateTime, Boolean, Integer, ForeignKey, Text, Enum, LargeBinary, TypeDecorator
+        String, DateTime, Boolean, Integer, ForeignKey, Text, Enum, LargeBinary, TypeDecorator,
         )
 from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
 
@@ -95,14 +94,6 @@ class Provider(Base):
 
     sims: Mapped[List["Sim"]] = relationship("Sim", back_populates="provider")
 
-#class Probe(Base):
-#    __tablename__ = "probes"
-#
-#    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-#    name: Mapped[str] = mapped_column(Text, unique=True)
-#    mac: Mapped[str] = mapped_column(Text, index=True, unique=True)
-#    token: Mapped[int] = mapped_column(Integer, ForeignKey("tokens.value"))
-
 @enum.unique
 class Sender(enum.Enum):
     Probe = 1
@@ -133,41 +124,85 @@ class WireguardConfig(Base):
     #mac: Mapped[Optional[str]] = mapped_column(Text, index=True, unique=True)
     publickey: Mapped[Optional[str]] = mapped_column(Text, index=True)
     register_time: Mapped[datetime.datetime] = mapped_column(TZDateTime, insert_default=now)
-    ip: Mapped[str] = mapped_column(Text)
+    ip: Mapped[str] = mapped_column(Text, unique=True)
     allow_registration: Mapped[bool] = mapped_column(Boolean, default=False)
     token_id: Mapped[int] = mapped_column(
             Integer,
-            ForeignKey("wireguard_tokens.id"),
+            ForeignKey("mam_tokens.id"),
             unique=True,
             )
-    token: Mapped["WireguardToken"] = relationship(back_populates="config")
+    token: Mapped["MamToken"] = relationship(back_populates="config")
 
+@enum.verify(enum.NAMED_FLAGS)
+class TokenScope(enum.Flag):
+    Wireguard = 1
+    Probe = 2
+    Both = 3
 
-class WireguardToken(Base):
-    __tablename__ = "wireguard_tokens"
+    def pretty(self, compact=False):
+        joiner = " | " if not compact else "|"
+        return joiner.join([s.name for s in self]) or "none"
+
+class TokenScopeType(TypeDecorator):
+    impl = Integer
+    cache_ok = True
+
+    def process_bind_param(self, value, _):
+        return f"scope:{value.value}"
+
+    def process_result_value(self, value, _):
+        return TokenScope(int(value[6:]))
+
+@enum.unique
+class TokenAction(enum.Enum):
+    Registered = 1
+    Activated = 2
+    Access = 3
+    Deactivated = 4
+
+class MamToken(Base):
+    __tablename__ = "mam_tokens"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     token: Mapped[Optional[str]] = mapped_column(String, index=True, unique=True)
     token_candidate: Mapped[Optional[str]] = mapped_column(String, index=True, unique=True)
-    mac: Mapped[Optional[str]] = mapped_column(Text)
-    created: Mapped[datetime.datetime] = mapped_column(TZDateTime, insert_default=now)
-    config: Mapped[List[WireguardConfig]] = relationship(back_populates="token")
+    mac: Mapped[str] = mapped_column(Text)
+    logs: Mapped[List["MamTokenAccessLog"]] = relationship(back_populates="token", order_by="MamTokenAccessLog.time.desc()")
+    scope: Mapped[TokenScope] = mapped_column(TokenScopeType)
+    config: Mapped[List[WireguardConfig]] = relationship(back_populates="token", cascade="all, delete")
+    probe: Mapped[List["Probe"]] = relationship(back_populates="token", cascade="all, delete")
 
-    def activate(self, session, ip):
-        self.token = self.token_candidate
-        self.token_candidate = None
-
-        if len(self.config) == 1:
-            self.config[0].ip = ip
-            self.config[0].allow_registration = True
+    def token_value(self):
+        if self.token is None:
+            return self.token_candidate
         else:
-            wgc = WireguardConfig(
-                    token=self,
-                    ip=ip,
-                    allow_registration=True,
-                    )
-            session.add(wgc)
+            return self.token
+
+    def activate(self, session):
+        if self.token_candidate is not None:
+            self.token = self.token_candidate
+            self.token_candidate = None
+
+        l = MamTokenAccessLog(
+                token_id=self.id,
+                token_value=self.token,
+                scope=self.scope,
+                action=TokenAction.Activated,
+                )
+
         session.add(self)
+        session.add(l)
+
+class MamTokenAccessLog(Base):
+    __tablename__ = "mam_token_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("mam_tokens.id"))
+    token: Mapped[List[MamToken]] = relationship(back_populates="logs")
+    token_value: Mapped[str] = mapped_column(String)
+    scope: Mapped[TokenScope] = mapped_column(TokenScopeType)
+    time: Mapped[datetime.datetime] = mapped_column(TZDateTime, insert_default=now)
+    action: Mapped[TokenAction] = mapped_column(Enum(TokenAction, values_callable=lambda x: [f"action:{e.value}" for e in x]))
 
 class WireguardConfigLogs(Base):
     __tablename__ = "wireguard_config_logs"
@@ -180,65 +215,34 @@ class WireguardConfigLogs(Base):
     ip: Mapped[str] = mapped_column(Text)
     successful: Mapped[bool] = mapped_column(Boolean, default=False)
 
-
-class TokenMixin(object):
-    token: Mapped[str] = mapped_column(String(32), index=True, unique=True)
-    token_candidate: Mapped[str] = mapped_column(String(32), index=True, unique=True)
-    token_expiration: Mapped[datetime.datetime] = mapped_column(TZDateTime)
-    token_last_access: Mapped[datetime.datetime] = mapped_column(TZDateTime)
-
-    def access(self, session):
-        self.token_last_access = datetime.datetime.now(tz=datetime.timezone.utc)
-        session.add(self)
-        session.commit()
-
-    def is_polling(self):
-        if not self.token_last_access:
-            return False
-        elif self.token_last_access + datetime.timedelta(seconds=60) \
-                <= datetime.datetime.now(tz=datetime.timezone.utc): # TODO: use LONG_POLLING_INTERVAL from config
-            return False
-        else:
-            return True
-
-    def generate_token_candidate(self):
-        self.token_candidate = ''.join((random.choice(string.digits + string.ascii_letters) for _ in range(32)))
-        return self.token_candidate
-
-    def revoke_token(self, session):
-        self.token_expiration = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(seconds=1)
-        session.add(self)
-        session.commit()
-
-    def activate(self, session):
-        self.token = self.token_candidate
-        self.token_expiration = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=365)
-        session.add(self)
-        session.commit()
-
-    def is_activated(self):
-        return False if not self.token_expiration or self.token_expiration < datetime.datetime.now(tz=datetime.timezone.utc) else True
-
-    @staticmethod
-    def _check_token(token, _class):
-        obj = _class.query.filter_by(token=token).first()
-        if obj and obj.is_activated():
-            return obj
-        else:
-            return None
-
-    @staticmethod
-    def _check_token_candidate(token, _class):
-        return _class.query.filter_by(token_candidate=token).first()
-
-
-class Probe(Base, TokenMixin):
+class Probe(Base):
     __tablename__ = "probe"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(Text, unique=True)
-    mac: Mapped[Optional[str]] = mapped_column(Text, index=True, unique=True)
-    status: Mapped[Optional["ProbeStatus"]] = relationship(back_populates="probe")
+    status: Mapped[List["ProbeStatus"]] = relationship(
+            back_populates="probe",
+            cascade="all, delete",
+            order_by="ProbeStatus.active.desc(), ProbeStatus.begin.desc()",
+            )
+    token_id: Mapped[int] = mapped_column(
+            Integer,
+            ForeignKey("mam_tokens.id"),
+            unique=True,
+            )
+    token: Mapped[MamToken] = relationship(back_populates="probe")
+    country: Mapped[Optional[str]] = mapped_column(String(2))
+    last_poll: Mapped[Optional[datetime.datetime]] = mapped_column(TZDateTime)
+    startup_log: Mapped[List["ProbeServiceStartupLog"]] = relationship(
+            back_populates="probe",
+            cascade="all, delete",
+            order_by="ProbeServiceStartupLog.timestamp.desc()",
+            )
+    system_info: Mapped[List["ProbeSystemInformation"]] = relationship(
+            back_populates="probe",
+            cascade="all, delete",
+            order_by="ProbeSystemInformation.timestamp.desc()",
+            )
 
     def __repr__(self):
         return f"<Probe {self.id}>"
@@ -246,25 +250,78 @@ class Probe(Base, TokenMixin):
     def to_dict(self):
         return {'id': self.id,
                 'name': self.name,
-                'mac': self.mac}
+                'mac': self.token.mac}
 
-    @staticmethod
-    def check_token(token):
-        # noinspection PyTypeChecker
-        return TokenMixin._check_token(token, Probe)
+    def is_polling(self):
+        if self.last_poll is None:
+            return False
 
-    @staticmethod
-    def check_token_candidate(token):
-        # noinspection PyTypeChecker
-        return TokenMixin._check_token_candidate(token, Probe)
+        if self.last_poll + datetime.timedelta(seconds=MamConfig.LONG_POLLING_INTERVAL) \
+                <= datetime.datetime.now(tz=datetime.timezone.utc):
+            return False
+        else:
+            return True
 
+    def activation_time(self):
+        return next(map(lambda x: x.time, filter(lambda x: x.action == TokenAction.Activated, self.token.logs)), None)
+
+    def time_since_activation(self):
+        time = self.activation_time()
+
+        if time is None:
+            return ""
+        else:
+            time = now() - time
+            hours, rem = divmod(time.seconds, 3600)
+            minutes, seconds = divmod(rem, 60)
+
+            if time.days != 0:
+                return f"{time.days}d {hours:02}:{minutes:02}:{seconds:02}"
+            else:
+                return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    def get_status_statistics(self):
+        """
+        Calculate durations and percentages for list of status
+        """
+        activated = self.activation_time()
+        current_time = now()
+
+        if activated is None:
+            known_for = datetime.timedelta()
+        elif self.status:
+            #known_for = (self.status[0].end - self.status[-1].begin) 
+            known_for = (self.status[0].end - activated)
+        else:
+            known_for = current_time - activated
+
+        durations = {st.name: datetime.timedelta() for st in ProbeStatusType}
+        for s in self.status:
+            durations[s.status.name] += s.duration() # pyright: ignore
+
+        if self.status and activated is not None:
+            durations["pre_registration"] = self.status[-1].begin - activated
+        elif activated is not None:
+            durations["pre_registration"] = current_time - activated
+
+        if known_for > datetime.timedelta():
+            percentages = {st: (duration / known_for * 100) for st, duration in durations.items()}
+        else:
+            percentages = {st: 0 for st, _ in durations.items()}
+
+        return durations, percentages
+
+    def is_activated(self):
+        return self.token is not None
 
 class ProbeServiceStartupLog(Base):
     __tablename__ = "probe_service_startup_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    mac: Mapped[Optional[str]] = mapped_column(Text, nullable=False)
+    mac: Mapped[str] = mapped_column(Text, nullable=False)
     timestamp: Mapped[datetime.datetime] = mapped_column(TZDateTime, nullable=False)
+    probe_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("probe.id"))
+    probe: Mapped[Probe] = relationship(back_populates="startup_log")
 
 class ProbeStatusType(enum.Enum):
     online = "online"
@@ -274,7 +331,7 @@ class ProbeStatus(Base):
     __tablename__ = "probe_status"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    probe_id: Mapped[int] = mapped_column(Integer, ForeignKey("probe.id"), nullable=False) # TODO
+    probe_id: Mapped[int] = mapped_column(Integer, ForeignKey("probe.id"))
     probe: Mapped[Probe] = relationship(back_populates="status")
     active: Mapped[bool] = mapped_column(Boolean, index=True)
     status: Mapped[Enum] = mapped_column(Enum(ProbeStatusType), nullable=False)
@@ -286,8 +343,7 @@ class ProbeStatus(Base):
 
     def duration(self):
         if self.begin and self.end:
-            delta = self.end - self.begin
-            return delta - datetime.timedelta(microseconds=delta.microseconds)
+            return self.end - self.begin
         else:
             return datetime.timedelta()
 
@@ -296,7 +352,8 @@ class ProbeSystemInformation(Base):
     __tablename__ = "probe_system_information"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    probe_id: Mapped[int] = mapped_column(Integer, ForeignKey('probe.id'), nullable=False) # TODO
+    probe_id: Mapped[int] = mapped_column(Integer, ForeignKey('probe.id'))
+    probe: Mapped[List[Probe]] = relationship(back_populates="system_info")
     timestamp: Mapped[datetime.datetime] = mapped_column(TZDateTime, nullable=False)
     information: Mapped[str] = mapped_column(Text(), nullable=False)
 

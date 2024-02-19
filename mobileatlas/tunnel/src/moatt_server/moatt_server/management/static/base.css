@@ -46,3 +46,24 @@ details[open] > summary > h2::after {
 details > summary > h2::after {
   content: " ◀";
 }
+
+fieldset {
+  width: fit-content;
+}
+
+#WgBoxLbl {
+  margin-right: 1em;
+}
+
+#ipIn, #ipInLbl {
+  display: none;
+}
+
+#WgBox:checked ~ #ipIn, #WgBox:checked ~ #ipInLbl {
+  display: unset;
+}
+
+input:invalid {
+  border-color: red;
+  border-style: solid;
+}
