@@ -3,6 +3,9 @@ import socket
 import ssl
 from typing import Optional
 
+from moatt_clients.client import Client, ProtocolError
+from moatt_clients.errors import SimRequestError
+from moatt_clients.streams import ApduStream, RawStream
 from moatt_types.connect import (
     ConnectionRequestFlags,
     ConnectRequest,
@@ -12,10 +15,6 @@ from moatt_types.connect import (
     Imsi,
     SessionToken,
 )
-
-from moatt_clients.client import Client, ProtocolError
-from moatt_clients.errors import SimRequestError
-from moatt_clients.streams import ApduStream, RawStream
 
 logger = logging.getLogger(__name__)
 

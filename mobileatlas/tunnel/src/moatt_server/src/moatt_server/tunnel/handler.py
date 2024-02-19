@@ -13,7 +13,6 @@ from ..auth import TokenError, get_session_token
 from .util import write_msg
 
 LOGGER = logging.getLogger(__name__)
-CONFIG = config.get_config()
 
 
 class Handler:
@@ -25,7 +24,7 @@ class Handler:
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> Optional[dbm.SessionToken]:
         LOGGER.debug("Waiting for authorisation message.")
-        async with asyncio.timeout(CONFIG.AUTHMSG_TIMEOUT):
+        async with asyncio.timeout(config.get_config().AUTHMSG_TIMEOUT):
             auth_req = AuthRequest.decode(await reader.readexactly(AuthRequest.LENGTH))
         LOGGER.debug(f"Received authorisation message: {auth_req}")
 

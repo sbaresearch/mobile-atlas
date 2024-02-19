@@ -2,8 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from .. import config
 
-CONFIG = config.get_config()
-
 _ENGINE = None
 
 
@@ -11,7 +9,7 @@ def create_sessionmaker():
     global _ENGINE, _SESSION_MAKER
 
     if _ENGINE is None:
-        _ENGINE = create_async_engine(CONFIG.db_url())
+        _ENGINE = create_async_engine(config.get_config().db_url())
 
 
 async def dispose_engine():

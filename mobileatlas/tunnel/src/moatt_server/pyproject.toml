@@ -4,12 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moatt_server"
-version = "0.0.1"
+dynamic = [ "version", "dependencies", "optional-dependencies" ]
 
-dependencies = [
-  "SQLAlchemy[asyncio]",
-  "psycopg[binary]",
-  "fastapi",
-  "uvicorn[standard]",
-  "git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types",
-]
+[project.scripts]
+moat-tunnel-server = "moatt_server.tunnel.cli:main"
+
+[tool.setuptools.dynamic.version]
+attr = "moatt_server.VERSION"
+
+[tool.setuptools.dynamic.dependencies]
+file = [ "requirements.txt" ]
+
+[tool.setuptools.dynamic.optional-dependencies.dev]
+file = [ "dev-requirements.txt" ]

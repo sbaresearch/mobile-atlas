@@ -17,7 +17,6 @@ from .handler import Handler
 from .util import read_con_req, write_msg
 
 LOGGER = logging.getLogger(__name__)
-CONFIG = config.get_config()
 
 
 class ProbeHandler(Handler):
@@ -59,7 +58,7 @@ class ProbeHandler(Handler):
         await write_msg(writer, AuthResponse(AuthStatus.Success))
 
         LOGGER.debug("waiting for probe connect request")
-        async with asyncio.timeout(CONFIG.PROBE_REQUEST_TIMEOUT):
+        async with asyncio.timeout(config.get_config().PROBE_REQUEST_TIMEOUT):
             con_req = await read_con_req(reader)
         LOGGER.debug(f"got probe connect request {con_req}")
 

@@ -5,6 +5,9 @@ import ssl
 from typing import Optional
 
 import requests
+
+from moatt_clients.errors import AuthError, ProtocolError
+from moatt_clients.streams import RawStream
 from moatt_types.connect import (
     AuthRequest,
     AuthResponse,
@@ -12,9 +15,6 @@ from moatt_types.connect import (
     SessionToken,
     Token,
 )
-
-from moatt_clients.errors import AuthError, ProtocolError
-from moatt_clients.streams import RawStream
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,5 @@
+alembic
+anyio
+httpx
+pytest
+uvicorn[standard]

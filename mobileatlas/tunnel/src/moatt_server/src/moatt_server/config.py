@@ -1,5 +1,4 @@
 import dataclasses
-import functools
 import logging
 import os
 import tomllib
@@ -102,9 +101,19 @@ def _check_config(cfg: dict[str, Any]):
             raise ConfigError
 
 
-@functools.cache
-def get_config() -> Config:
-    conf = _load_toml_config(Path("config.toml"))
+_CONFIG: Config | None = None
+
+
+def init_config(path: str | Path | None) -> None:
+    global _CONFIG
+
+    if _CONFIG is not None:
+        raise ConfigError
+
+    if isinstance(path, str):
+        path = Path(path)
+
+    conf = _load_toml_config(path) if path else None
 
     if conf is None:
         conf = {}
@@ -112,6 +121,15 @@ def get_config() -> Config:
     conf.update(_load_env_config())
 
     try:
-        return Config(**conf)
+        _CONFIG = Config(**conf)
     except TypeError as e:
         raise ConfigError from e
+
+
+def get_config() -> Config:
+    global _CONFIG
+
+    if _CONFIG is None:
+        raise ConfigError
+    else:
+        return _CONFIG

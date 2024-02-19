@@ -18,7 +18,6 @@ from .handler import Handler
 from .util import poll_eof, write_msg
 
 LOGGER = logging.getLogger(__name__)
-CONFIG = config.get_config()
 
 
 class ProviderHandler(Handler):
@@ -185,7 +184,7 @@ class ProviderHandler(Handler):
 
         LOGGER.debug("Waiting for provider to accept connection request.")
         try:
-            async with asyncio.timeout(CONFIG.PROVIDER_RESPONSE_TIMEOUT):
+            async with asyncio.timeout(config.get_config().PROVIDER_RESPONSE_TIMEOUT):
                 con_res = ConnectResponse.decode(
                     await reader.readexactly(ConnectResponse.LENGTH)
                 )

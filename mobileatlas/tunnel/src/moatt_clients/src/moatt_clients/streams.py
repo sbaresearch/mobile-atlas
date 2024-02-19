@@ -4,9 +4,8 @@ import ssl
 import struct
 from typing import Optional
 
-from moatt_types.connect import ApduOp, ApduPacket
-
 from moatt_clients.errors import ProtocolError
+from moatt_types.connect import ApduOp, ApduPacket
 
 logger = logging.getLogger(__name__)
 

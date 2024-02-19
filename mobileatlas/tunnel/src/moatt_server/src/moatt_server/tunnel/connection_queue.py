@@ -11,7 +11,6 @@ from .. import config
 from .. import models as dbm
 
 LOGGER = logging.getLogger(__name__)
-CONFIG = config.get_config()
 
 queues: dict[int, "Queue"] = {}
 
@@ -100,7 +99,7 @@ class Queue(asyncio.Queue):
                 return True
 
         while True:
-            await asyncio.sleep(CONFIG.QUEUE_GC_INTERVAL)
+            await asyncio.sleep(config.get_config().QUEUE_GC_INTERVAL)
 
             if len(self._queue) != 0:
                 LOGGER.debug("Queue GC starting.")
@@ -139,7 +138,7 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
 def _get_queue(id: int) -> Queue:
     q = queues.get(id)
     if q is None:
-        q = Queue(maxsize=CONFIG.MAX_QUEUE_SIZE)
+        q = Queue(maxsize=config.get_config().MAX_QUEUE_SIZE)
         queues[id] = q
     return q
 
