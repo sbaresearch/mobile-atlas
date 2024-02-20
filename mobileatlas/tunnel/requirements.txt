@@ -1,7 +1,0 @@
-alembic
-flask
-flask-sqlalchemy
-SQLAlchemy
-aiosqlite
-#git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
-#git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients

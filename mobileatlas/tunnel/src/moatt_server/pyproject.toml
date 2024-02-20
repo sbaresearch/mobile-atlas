@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moatt_server"
+dynamic = [ "version", "dependencies", "optional-dependencies" ]
+
+[project.scripts]
+moat-tunnel-server = "moatt_server.tunnel.cli:main"
+
+[tool.setuptools.dynamic.version]
+attr = "moatt_server.VERSION"
+
+[tool.setuptools.dynamic.dependencies]
+file = [ "requirements.txt" ]
+
+[tool.setuptools.dynamic.optional-dependencies.dev]
+file = [ "dev-requirements.txt" ]
