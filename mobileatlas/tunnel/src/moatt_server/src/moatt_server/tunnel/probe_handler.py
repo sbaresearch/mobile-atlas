@@ -2,36 +2,42 @@ import asyncio
 import logging
 
 from moatt_types.connect import (
-    AuthResponse,
-    AuthStatus,
     ConnectionRequestFlags,
+    ConnectRequest,
     ConnectResponse,
     ConnectStatus,
+    SessionToken,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .. import config
-from ..auth import AuthError, get_sim
+from .. import auth
+from ..config import Config
 from . import connection_queue
-from .handler import Handler
-from .util import read_con_req, write_msg
+from .util import read_msg, write_msg
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ProbeHandler(Handler):
-    def __init__(self, async_session: async_sessionmaker[AsyncSession], timeout=0):
-        super().__init__(async_session, timeout)
+class ProbeHandler:
+    def __init__(self, config: Config, async_session: async_sessionmaker[AsyncSession]):
+        self.config = config
+        self.async_session = async_session
+
+    async def valid_token(self, token: SessionToken) -> None:
+        await auth.register_probe(token)
 
     async def handle(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        token: SessionToken,
     ) -> None:
         def cleanup():
             if not writer.is_closing():
                 writer.close()
 
         try:
-            await self._handle(reader, writer)
+            await self._handle(reader, writer, token)
         except (EOFError, ConnectionResetError):
             LOGGER.warn("Client closed connection unexpectedly.")
             cleanup()
@@ -43,23 +49,22 @@ class ProbeHandler(Handler):
             cleanup()
 
     async def _handle(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        session_token: SessionToken,
     ) -> None:
         async def close():
             writer.close()
             await writer.wait_closed()
 
-        session_token = await self._handle_auth_req(reader, writer)
-
-        if session_token is None:
-            return
-
-        LOGGER.debug("Sending successful authorisation message.")
-        await write_msg(writer, AuthResponse(AuthStatus.Success))
-
         LOGGER.debug("waiting for probe connect request")
-        async with asyncio.timeout(config.get_config().PROBE_REQUEST_TIMEOUT):
-            con_req = await read_con_req(reader)
+        async with asyncio.timeout(
+            self.config.PROBE_REQUEST_TIMEOUT.total_seconds()
+            if self.config.PROBE_REQUEST_TIMEOUT
+            else None
+        ):
+            con_req = await read_msg(reader, ConnectRequest.decode)
         LOGGER.debug(f"got probe connect request {con_req}")
 
         if con_req is None:
@@ -71,8 +76,8 @@ class ProbeHandler(Handler):
 
         try:
             async with self.async_session() as session, session.begin():
-                sim = await get_sim(session, session_token, con_req.identifier)
-        except AuthError:
+                sim = await auth.get_sim(session, session_token, con_req.identifier)
+        except auth.AuthError:
             LOGGER.debug(
                 "Received disallowed SIM request from probe. Closing connection."
             )
@@ -93,11 +98,18 @@ class ProbeHandler(Handler):
             return
 
         LOGGER.debug("Sending stream to provider handler")
+
+        probe_id = await auth.identity(session_token)
+        assert probe_id is not None, (
+            "Expected identity of probe to be known after" "successful registration."
+        )
+
         try:
             connection_queue.put_nowait(
                 sim.provider.id,
                 connection_queue.QueueEntry(
                     sim,
+                    probe_id,
                     con_req,
                     reader,
                     writer,

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import struct
 from typing import Optional
+from uuid import UUID
 
 from moatt_types.connect import ApduPacket
 
@@ -12,9 +13,14 @@ logger = logging.getLogger(__name__)
 
 class ApduStream:
     def __init__(
-        self, sim: dbm.Sim, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        sim: dbm.Sim,
+        client_id: UUID,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
     ):
         self.sim = sim
+        self.client_id = client_id
         self.reader = reader
         self.writer = writer
 

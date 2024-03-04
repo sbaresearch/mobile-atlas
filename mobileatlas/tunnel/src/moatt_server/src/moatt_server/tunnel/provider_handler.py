@@ -1,28 +1,23 @@
 import asyncio
 import logging
 
-from moatt_types.connect import (
-    AuthResponse,
-    AuthStatus,
-    ConnectResponse,
-    ConnectStatus,
-    Iccid,
-)
+from moatt_types.connect import ConnectResponse, ConnectStatus, SessionToken
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .. import auth, config, db
+from .. import auth, db
 from .. import models as dbm
+from ..config import Config
 from . import connection_queue
 from .apdu_stream import ApduStream
-from .handler import Handler
-from .util import poll_eof, write_msg
+from .util import poll_eof, read_msg, write_msg
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ProviderHandler(Handler):
-    def __init__(self, async_session: async_sessionmaker[AsyncSession], timeout=0):
-        super().__init__(async_session, timeout)
+class ProviderHandler:
+    def __init__(self, config: Config, async_session: async_sessionmaker[AsyncSession]):
+        self.config = config
+        self.async_session = async_session
 
     async def handle_established_connection(
         self, probe: ApduStream, provider: ApduStream
@@ -57,9 +52,15 @@ class ProviderHandler(Handler):
                         return
 
                     async with self.async_session() as session, session.begin():
-                        await auth.log_apdu(
+                        await db.log_apdu(
                             session,
-                            probe.sim.iccid,
+                            provider.client_id,
+                            probe.client_id,
+                            db.SimId(
+                                id=provider.sim.id,
+                                iccid=provider.sim.iccid,
+                                imsi=provider.sim.imsi,
+                            ),
                             r,
                             (
                                 dbm.Sender.Probe
@@ -83,10 +84,13 @@ class ProviderHandler(Handler):
             await provider.close()
 
     async def handle(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        token: SessionToken,
     ) -> None:
         try:
-            await self._handle(reader, writer)
+            await self._handle(reader, writer, token)
         except (EOFError, ConnectionResetError):
             LOGGER.warn("Client closed connection unexpectedly.")
         except asyncio.QueueFull as e:
@@ -107,22 +111,23 @@ class ProviderHandler(Handler):
                 writer.close()
 
     async def _handle(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        session_token: SessionToken,
     ) -> None:
-        session_token = await self._handle_auth_req(reader, writer)
+        # if session_token.provider is None:
+        #    LOGGER.debug("Session token was not used to register a provider.")
+        #    await write_msg(writer, AuthResponse(AuthStatus.ProviderNotRegistered))
+        #    writer.close()
+        #    await writer.wait_closed()
+        #    return
 
-        assert session_token is not None
-
-        if session_token.provider is None:
-            LOGGER.debug("Session token was not used to register a provider.")
-            await write_msg(writer, AuthResponse(AuthStatus.ProviderNotRegistered))
-            writer.close()
-            await writer.wait_closed()
-            return
-
-        await write_msg(writer, AuthResponse(AuthStatus.Success))
-
-        provider_id = session_token.provider.id
+        # provider_id = session_token.provider.id
+        provider_id = await auth.identity(session_token)
+        assert provider_id is not None, (
+            "Expected identity of provider to be known after" "successful registration."
+        )
 
         async with self.async_session() as session, session.begin():
             await db.provider_available(session, provider_id)
@@ -175,19 +180,23 @@ class ProviderHandler(Handler):
 
         LOGGER.debug(f"Received a connection request: {qe.con_req}")
 
+        # TODO check request validity again
+
         try:
             await write_msg(writer, qe.con_req)
         except Exception as e:
             LOGGER.warn(f"Provider disconnected. {e}")
-            connection_queue.put_nowait(session_token.provider.id, qe)
+            connection_queue.put_nowait(provider_id, qe)
             raise
 
         LOGGER.debug("Waiting for provider to accept connection request.")
         try:
-            async with asyncio.timeout(config.get_config().PROVIDER_RESPONSE_TIMEOUT):
-                con_res = ConnectResponse.decode(
-                    await reader.readexactly(ConnectResponse.LENGTH)
-                )
+            async with asyncio.timeout(
+                self.config.PROVIDER_RESPONSE_TIMEOUT.total_seconds()
+                if self.config.PROVIDER_RESPONSE_TIMEOUT
+                else None
+            ):
+                con_res = await read_msg(reader, ConnectResponse.decode)
         except TimeoutError:
             LOGGER.info("Provider timed out.")
             await write_msg(qe.writer, ConnectResponse(ConnectStatus.ProviderTimedOut))
@@ -219,15 +228,15 @@ class ProviderHandler(Handler):
             await qe.writer.wait_closed()
             return
 
-        iccid = Iccid(qe.sim.iccid)
+        sim_id = qe.sim.id
         probe_stream = None
         provider_stream = None
         try:
-            probe_stream = ApduStream(qe.sim, qe.reader, qe.writer)
-            provider_stream = ApduStream(qe.sim, reader, writer)
+            probe_stream = ApduStream(qe.sim, qe.probe_id, qe.reader, qe.writer)
+            provider_stream = ApduStream(qe.sim, qe.probe_id, reader, writer)
 
             async with self.async_session() as session, session.begin():
-                await db.sim_used(session, session_token, iccid)
+                await db.sim_used(session, session_token, sim_id)
 
             await self.handle_established_connection(probe_stream, provider_stream)
         finally:
@@ -237,4 +246,4 @@ class ProviderHandler(Handler):
                 await probe_stream.close()
 
             async with self.async_session() as session, session.begin():
-                await db.sim_unused(session, session_token, iccid)
+                await db.sim_unused(session, session_token, sim_id)

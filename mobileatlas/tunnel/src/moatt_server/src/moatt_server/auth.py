@@ -1,43 +1,33 @@
 import datetime
-import enum
 import logging
-import secrets
-import typing
 from typing import Optional
+from uuid import UUID
 
-from moatt_types.connect import (
-    ApduPacket,
-    AuthStatus,
-    Iccid,
-    IdentifierType,
-    Imsi,
-    SessionToken,
-    Token,
-)
+from moatt_types.connect import AuthStatus, Iccid, Imsi, SessionToken, SimId, SimIndex
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from . import models as dbm
+from .auth_handler import AuthResult, SimIdents, auth_handler
+from .config import get_config
 
 LOGGER = logging.getLogger(__name__)
 
 
-@enum.unique
-class TokenErrorType(enum.Enum):
-    Invalid = 0
-    Expired = 1
-
-
 class TokenError(Exception):
-    def __init__(self, etype: TokenErrorType) -> None:
+    def __init__(self, etype: AuthResult) -> None:
         self.etype = etype
 
     def to_auth_status(self) -> AuthStatus:
-        if self.etype in [TokenErrorType.Invalid, AuthStatus.Unauthorized]:
-            return AuthStatus.Unauthorized
-        else:
-            raise NotImplementedError
+        match self.etype:
+            case AuthResult.Success:
+                return AuthStatus.Success
+            case AuthResult.InvalidToken | AuthResult.ExpiredToken | AuthResult.Forbidden:
+                return AuthStatus.Unauthorized
+            case AuthResult.NotRegistered:
+                return AuthStatus.NotRegistered
+            case _:
+                raise NotImplementedError
 
 
 class Sim:
@@ -50,231 +40,203 @@ def now() -> datetime.datetime:
     return datetime.datetime.now(tz=datetime.timezone.utc)
 
 
-def generate_session_token() -> SessionToken:
-    return SessionToken(secrets.token_bytes(25))
-
-
-async def insert_new_session_token(
-    session: AsyncSession, token_id, expires: Optional[datetime.timedelta] = None
-) -> SessionToken:
-    LOGGER.debug(f"Creating new session token. {expires=}")
-    stoken = generate_session_token()
-    time = now()
-    session.add(
-        dbm.SessionToken(
-            value=stoken.as_base64(),
-            created=time,
-            last_access=time,
-            token_id=token_id,
-            expires=time + expires if expires is not None else None,
-        )
-    )
-    return stoken
-
-
-async def deregister_session(
-    session: AsyncSession, session_token: SessionToken
-) -> bool:
-    LOGGER.debug("Deregistering session.")
-    stoken = await session.get(
-        dbm.SessionToken,
-        session_token.as_base64(),
-        options=[selectinload(dbm.SessionToken.provider)],
-    )
-
-    if stoken is None:
-        return False
-
-    if stoken.provider is not None:
-        await session.delete(stoken.provider)
-
-    await session.delete(stoken)
-
-    return True
-
-
 async def register_provider(
-    session: AsyncSession, session_token: SessionToken, sims: dict[Iccid, Sim]
+    session: AsyncSession,
+    session_token: SessionToken,
+    sims: dict[int, tuple[Iccid | None, Imsi | None]],
 ) -> bool:
     LOGGER.debug(f"Registering SIMs. {sims}")
-    created = False
-    stoken = await session.get(
-        dbm.SessionToken,
-        session_token.as_base64(),
-        options=[selectinload(dbm.SessionToken.provider)],
-    )
 
-    if stoken is None:
-        raise TokenError(TokenErrorType.Invalid)
+    authh = auth_handler()
 
+    if (
+        auth_res := await authh.allowed_provider_registration(session_token)
+    ) != AuthResult.Success:
+        raise TokenError(auth_res)
+
+    iccids, imsis = list(zip(*sims.values()))
+
+    if (
+        auth_res := await authh.allowed_sim_registration(session_token, sims)
+    ) != AuthResult.Success:
+        raise TokenError(auth_res)
+
+    provider_id = authh.identity(session_token)
+
+    if provider_id is None:
+        raise TokenError(AuthResult.InvalidToken)
+
+    provider = await session.get(dbm.Provider, provider_id)
+
+    modified = False
     time = now()
-    stoken.last_access = time
 
-    if stoken.provider is None:
-        created = True
-        provider = dbm.Provider(session_token_id=stoken.value)
+    if provider is None:
+        modified = True
+        provider = dbm.Provider(id=provider_id, last_active=time)
         session.add(provider)
-    else:
-        provider = stoken.provider
 
-    iccids = list(map(lambda x: x.iccid, sims.keys()))
+    ids = list(sims.keys())
 
-    removed_sims = await session.scalars(
-        select(dbm.Sim)
-        .where(dbm.Sim.provider_id == provider.id)
-        .where(dbm.Sim.iccid.not_in(iccids))
+    removed_sims = list(
+        await session.scalars(
+            select(dbm.Sim).where(
+                (dbm.Sim.provider_id == provider_id) & (dbm.Sim.id.not_in(ids))
+            )
+        )
     )
+
+    if len(removed_sims) > 0:
+        modified = True
 
     for sim in removed_sims:
-        sim.provider = None
+        await session.delete(sim)
 
     if len(sims) == 0:
-        return created
+        return modified
 
     existing_sims = list(
-        await session.scalars(select(dbm.Sim).where(dbm.Sim.iccid.in_(iccids)))
+        await session.scalars(
+            select(dbm.Sim).where(dbm.Sim.iccid.in_(iccids) | dbm.Sim.imsi.in_(imsis))
+        )
     )
-    new_iccids = set(iccids).difference(set([sim.iccid for sim in existing_sims]))
+    new_ids = set(ids)
 
     for sim in existing_sims:
-        if (i := sims[Iccid(sim.iccid)].imsi) is not None:
-            imsi = i.imsi
-        else:
-            imsi = None
+        if (
+            sim.provider.id == provider_id
+        ):  # TODO: test changing already registered sims -> defer constraint check??
+            new_sim = sims[sim.id]
+            iccid = new_sim[0].iccid if new_sim[0] is not None else None
+            imsi = new_sim[1].imsi if new_sim[1] is not None else None
 
-        if sim.provider is not None:
-            if sim.provider.id == provider.id:
-                continue
+            if sim.iccid != iccid or sim.imsi != imsi:
+                modified = True
+                await session.delete(sim)
+            else:
+                new_ids.remove(sim.id)
 
-            if sim.provider.session_token.is_expired():
-                await deregister_session(
-                    session, sim.provider.session_token.to_con_type()
-                )
-            elif sim.provider.allow_reregistration is False:
-                raise AuthError
+            continue
 
-        sim.provider = provider
-        session.add(dbm.Imsi(imsi=imsi, registered=time, sim=sim))
+        if sim.provider.is_expired(get_config().PROVIDER_EXPIRATION):
+            await remove_provider(session, sim.provider)
+        elif sim.provider.allow_reregistration is False:
+            raise AuthError
 
-    for iccid in new_iccids:
-        if (i := sims[Iccid(iccid)].imsi) is not None:
-            imsi = i.imsi
-        else:
-            imsi = None
+        await session.delete(sim)
 
+    if len(new_ids) > 0:
+        modified = True
+
+    for id in new_ids:
         sim = dbm.Sim(
-            iccid=iccid,
-            imsi=[dbm.Imsi(imsi=imsi, registered=time)] if imsi else [],
+            id=id,
+            iccid=sims[id][0],
+            imsi=sims[id][1],
             in_use=False,
             provider=provider,
         )
         session.add(sim)
 
-    return created
+    return modified
+
+
+async def deregister_provider(
+    session: AsyncSession, session_token: SessionToken
+) -> None:
+    authh = auth_handler()
+
+    prov_id = await authh.identity(session_token)
+
+    if prov_id is None:
+        return
+
+    provider = await session.get(dbm.Provider, prov_id)
+
+    if provider is None:
+        return
+
+    await remove_provider(session, provider)
+
+
+async def remove_provider(session: AsyncSession, provider: dbm.Provider) -> None:
+    await session.delete(provider)
 
 
 class AuthError(Exception):
     """Authorisation failure."""
 
 
-async def valid_token(session: AsyncSession, token: Token) -> bool:
-    result = await session.get(dbm.Token, token.as_base64())
+async def identity(token: SessionToken) -> UUID | None:
+    authh = auth_handler()
 
-    if result is None:
-        return False
-
-    return result.is_valid()
+    return await authh.identity(token)
 
 
-async def log_apdu(
-    session: AsyncSession,
-    sim_id: str,
-    apdu: ApduPacket,
-    sender: dbm.Sender,
-) -> dbm.ApduLog:
-    apdu_log = dbm.ApduLog(
-        sim_id=sim_id,
-        command=apdu.op,
-        payload=apdu.payload,
-        sender=sender,
-    )
-    session.add(apdu)
-    return apdu_log
+async def register_probe(token: SessionToken) -> None:
+    authh = auth_handler()
+
+    if (res := await authh.allowed_probe_registration(token)) != AuthResult.Success:
+        raise TokenError(res)
 
 
-async def get_session_token(
-    session: AsyncSession, session_token: SessionToken
-) -> dbm.SessionToken:
-    assert isinstance(session_token, SessionToken)
+async def provider_registered(session: AsyncSession, token: SessionToken) -> None:
+    authh = auth_handler()
 
-    stmt = (
-        select(dbm.SessionToken)
-        .where(dbm.SessionToken.value == session_token.as_base64())
-        .options(selectinload(dbm.SessionToken.provider))
-        .options(selectinload(dbm.SessionToken.token))
-    )
-    st = await session.scalar(stmt)
+    if (res := await authh.allowed_provider_registration(token)) != AuthResult.Success:
+        raise TokenError(res)
 
-    if st is None:
-        raise TokenError(TokenErrorType.Invalid)
+    identity = await authh.identity(token)
 
-    st.last_access = now()
+    if identity is None:
+        raise TokenError(AuthResult.InvalidToken)
 
-    if st.is_valid():
-        return st
-    elif st.is_expired():
-        raise TokenError(TokenErrorType.Expired)
-    else:
-        raise TokenError(TokenErrorType.Invalid)
+    provider = await session.get(dbm.Provider, identity)
+
+    if provider is None:
+        raise TokenError(AuthResult.NotRegistered)
 
 
 async def get_sim(
     session: AsyncSession,
-    session_token: dbm.SessionToken,
-    identifier: Imsi | Iccid,
+    token: SessionToken,
+    identifier: SimId | Iccid | Imsi | SimIndex,
 ) -> Optional[dbm.Sim]:
     LOGGER.debug(f"Retrieving SIM card. {identifier=}")
 
-    if not session_token.is_valid():
+    authh = auth_handler()
+
+    match identifier:
+        case SimId(id=id):
+            prov_id = await authh.identity(token)
+
+            if prov_id is None:
+                return None
+
+            sim = await session.scalar(
+                select(dbm.Sim).where(
+                    (dbm.Sim.provider_id == prov_id) & (dbm.Sim.id == id)
+                )
+            )
+        case Iccid(iccid=iccid):
+            sim = await session.scalar(select(dbm.Sim).where(dbm.Sim.iccid == iccid))
+        case Imsi(imsi=imsi):
+            sim = await session.scalar(select(dbm.Sim).where(dbm.Sim.imsi == imsi))
+        case SimIndex(index=index):
+            sim = await session.scalar(
+                select(dbm.Sim).order_by(dbm.Sim.id.asc()).limit(1).offset(index)
+            )
+        case _:
+            raise NotImplementedError
+
+    if sim is None:
+        raise AuthError  # raise an AuthError to make it harder to check whether arbitrary ids are registered
+
+    if not authh.allowed_sim_request(
+        token,
+        (await sim.awaitable_attrs.provider).id,
+        SimIdents(id=sim.id, iccid=sim.iccid, imsi=sim.imsi),
+    ):
         raise AuthError
 
-    time = now()
-    session_token.last_access = time
-    token = session_token.token
-    token.last_access = time
-
-    if identifier.identifier_type() == IdentifierType.Imsi:
-        imsi = typing.cast(Imsi, identifier).imsi
-        stmt = (
-            select(dbm.Sim)
-            .join(dbm.Sim.imsi)
-            .where(dbm.Imsi.imsi == imsi)
-            .order_by(dbm.Imsi.id.desc())
-            .limit(1)
-            .options(selectinload(dbm.Sim.provider))
-        )
-        sim = await session.scalar(stmt)
-
-        if sim is None:
-            return None
-
-        session.add(token)
-        await session.commit()
-
-        return sim
-    else:
-        iccid = typing.cast(Iccid, identifier).iccid
-        stmt = (
-            select(dbm.Sim)
-            .where(dbm.Sim.iccid == iccid)
-            .options(selectinload(dbm.Sim.provider))
-        )
-        sim = await session.scalar(stmt)
-
-        if sim is None:
-            return None
-
-        session.add(token)
-        await session.commit()
-
-        return sim
+    return sim

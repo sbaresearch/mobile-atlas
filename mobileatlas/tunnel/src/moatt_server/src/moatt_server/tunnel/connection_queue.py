@@ -1,9 +1,10 @@
 import asyncio
 import collections
 import logging
-import time
 from collections.abc import Awaitable
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
+from uuid import UUID
 
 from moatt_types.connect import ConnectRequest, ConnectResponse, ConnectStatus
 
@@ -12,19 +13,21 @@ from .. import models as dbm
 
 LOGGER = logging.getLogger(__name__)
 
-queues: dict[int, "Queue"] = {}
+queues: dict[UUID, "Queue"] = {}
 
 
 class QueueEntry:
     def __init__(
         self,
         sim: dbm.Sim,
+        probe_id: UUID,
         con_req: ConnectRequest,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
         immediate: bool = False,
     ):
         self.sim = sim
+        self.probe_id = probe_id
         self.con_req = con_req
         self.reader = reader
         self.writer = writer
@@ -37,7 +40,7 @@ class Queue(asyncio.Queue):
     # called at the end of super().__init__
     def _init(self, maxsize):
         self._queue = collections.deque()
-        self._last_active: int = time.monotonic_ns()
+        self._last_active: datetime = datetime.now(tz=timezone.utc)
         self._active: int = 0
         self._gc_task = asyncio.create_task(self._gc())
 
@@ -54,7 +57,7 @@ class Queue(asyncio.Queue):
     # end of overridable methods
 
     # active if currently running a tunnel?
-    def last_active(self) -> Optional[int]:
+    def last_active(self) -> Optional[datetime]:
         if self._active > 0:
             return None
 
@@ -69,7 +72,7 @@ class Queue(asyncio.Queue):
         self._active -= 1
 
         if self._active == 0:
-            self._last_active = time.monotonic_ns()
+            self._last_active = datetime.now(tz=timezone.utc)
 
     async def _cleanup(self) -> int:
         self._gc_task.cancel()
@@ -99,7 +102,7 @@ class Queue(asyncio.Queue):
                 return True
 
         while True:
-            await asyncio.sleep(config.get_config().QUEUE_GC_INTERVAL)
+            await asyncio.sleep(config.get_config().QUEUE_GC_INTERVAL.total_seconds())
 
             if len(self._queue) != 0:
                 LOGGER.debug("Queue GC starting.")
@@ -111,18 +114,17 @@ class Queue(asyncio.Queue):
                     )
 
 
-def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
+def queue_gc_coro_factory(timeout: timedelta) -> Callable[[], Awaitable[None]]:
     async def f():
         conns_closed = 0
         qs_removed = 0
-        now = time.monotonic_ns()
-        timeout_ns = timeout * 10**9
+        now = datetime.now(tz=timezone.utc)
 
         LOGGER.info("Starting removal of old connection requests")
 
         for id, q in queues.items():
             last_active = q.last_active()
-            if last_active is not None and now - last_active > timeout_ns:
+            if last_active is not None and now - last_active > timeout:
                 del queues[id]
                 qs_removed += 1
                 conns_closed += await q._cleanup()
@@ -135,7 +137,7 @@ def queue_gc_coro_factory(timeout) -> Callable[[], Awaitable[None]]:
     return f
 
 
-def _get_queue(id: int) -> Queue:
+def _get_queue(id: UUID) -> Queue:
     q = queues.get(id)
     if q is None:
         q = Queue(maxsize=config.get_config().MAX_QUEUE_SIZE)
@@ -143,7 +145,7 @@ def _get_queue(id: int) -> Queue:
     return q
 
 
-def put_nowait(id: int, qe: QueueEntry) -> None:
+def put_nowait(id: UUID, qe: QueueEntry) -> None:
     q = _get_queue(id)
     if qe.immediate and len(q._queue) >= len(q._getters):  # type: ignore
         raise asyncio.QueueFull(qe)
@@ -154,11 +156,11 @@ def put_nowait(id: int, qe: QueueEntry) -> None:
         raise
 
 
-async def get(id: int) -> QueueEntry:
+async def get(id: UUID) -> QueueEntry:
     q = _get_queue(id)
     return await q.get()
 
 
-def task_done(id: int):
+def task_done(id: UUID):
     q = _get_queue(id)
     q.task_done()
