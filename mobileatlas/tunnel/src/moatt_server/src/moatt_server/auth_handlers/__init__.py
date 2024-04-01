@@ -1,1 +1,1 @@
-from moat_management import MoatManagementAuth
+from .moat_management import MoatManagementAuth

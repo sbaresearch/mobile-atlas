@@ -2,14 +2,11 @@ import logging
 from dataclasses import dataclass
 from uuid import UUID
 
-import moatt_types.connect as mct
-from moatt_types.connect import ApduPacket, SessionToken
-from sqlalchemy import update
+from moatt_types.connect import ApduPacket, Token
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import models as dbm
-from .auth import get_sim
-from .auth_handler import auth_handler
+from .config import get_config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,38 +18,32 @@ class SimId:
     imsi: str | None = None
 
 
-async def provider_available(session: AsyncSession, provider_id: UUID) -> None:
-    res = await session.scalar(
-        update(dbm.Provider)
-        .where(dbm.Provider.id == provider_id)
-        .values(available=dbm.Provider.available + 1)
-    )
-    assert res == 1
+async def mark_provider_available(session: AsyncSession, provider_id: UUID) -> None:
+    prov = await session.get(dbm.Provider, provider_id)
+
+    assert prov is not None
+
+    prov.available += 1
 
 
-async def provider_unavailable(session: AsyncSession, provider_id: UUID) -> None:
-    res = await session.scalar(
-        update(dbm.Provider)
-        .where(dbm.Provider.id == provider_id)
-        .values(available=dbm.Provider.available - 1)
-    )
-    assert res == 1
+async def mark_provider_unavailable(session: AsyncSession, provider_id: UUID) -> None:
+    prov = await session.get(dbm.Provider, provider_id)
+
+    assert prov is not None
+
+    prov.available -= 1
 
 
-async def sim_used(
-    session: AsyncSession, session_token: SessionToken, sim_id: int
-) -> None:
-    sim = await get_sim(session, session_token, mct.SimId(sim_id))
+async def sim_used(session: AsyncSession, provider_id: UUID, sim_id: int) -> None:
+    sim = await session.get(dbm.Sim, {"id": sim_id, "provider_id": provider_id})
 
     assert sim is not None, "Handler uses nonexistant SIM"
 
     sim.in_use = True
 
 
-async def sim_unused(
-    session: AsyncSession, session_token: SessionToken, sim_id: int
-) -> None:
-    sim = await get_sim(session, session_token, mct.SimId(sim_id))
+async def sim_unused(session: AsyncSession, provider_id: UUID, sim_id: int) -> None:
+    sim = await session.get(dbm.Sim, {"id": sim_id, "provider_id": provider_id})
 
     if sim is None:
         return
@@ -61,13 +52,13 @@ async def sim_unused(
 
 
 async def get_sim_ids(
-    session: AsyncSession, session_token: SessionToken
+    session: AsyncSession, session_token: Token
 ) -> list[tuple[int, str | None, str | None]]:
     LOGGER.debug("Retrieving registered SIM cards.")
 
-    authh = auth_handler()
+    authh = get_config().AUTH_HANDLER
 
-    provider_id = authh.identity(session_token)
+    provider_id = await authh.identity(session_token)
 
     if provider_id is None:
         return []
@@ -100,5 +91,5 @@ async def log_apdu(
         payload=apdu.payload,
         sender=sender,
     )
-    session.add(apdu)
+    session.add(apdu_log)
     return apdu_log

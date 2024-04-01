@@ -4,7 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from moatt_types.connect import ApduOp
-from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, LargeBinary, Text, func
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, LargeBinary, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -21,7 +21,6 @@ class Sim(Base):
     imsi: Mapped[Optional[str]] = mapped_column(unique=True)
     in_use: Mapped[bool] = mapped_column(server_default="FALSE")
     provider_id: Mapped[UUID] = mapped_column(
-        Integer,
         ForeignKey("providers.id", ondelete="CASCADE"),
         primary_key=True,
     )
@@ -50,15 +49,6 @@ class Provider(Base):
             self.last_active is not None
             and datetime.datetime.now(tz=datetime.timezone.utc) - self.last_active > ttl
         )
-
-
-class Probe(Base):
-    __tablename__ = "probes"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(Text, unique=True)
-    mac: Mapped[str] = mapped_column(Text, index=True, unique=True)
-    token: Mapped[str] = mapped_column(ForeignKey("tokens.value"))
 
 
 @enum.unique

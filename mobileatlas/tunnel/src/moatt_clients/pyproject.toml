@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "moatt_clients"
+name = "moatt-clients"
 dynamic = [ "version", "dependencies" ]
 
 [tool.setuptools.dynamic.version]

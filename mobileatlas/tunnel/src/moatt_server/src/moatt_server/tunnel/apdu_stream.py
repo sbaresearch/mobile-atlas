@@ -8,7 +8,7 @@ from moatt_types.connect import ApduPacket
 
 from .. import models as dbm
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class ApduStream:

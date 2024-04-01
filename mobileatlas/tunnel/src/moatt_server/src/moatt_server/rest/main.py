@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
-from moatt_types.connect import SessionToken
+from moatt_types.connect import Token
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import auth, db
@@ -28,7 +28,7 @@ app = FastAPI(lifespan=lifespan)
 @app.put("/provider/sims", status_code=204)
 async def provider_register(
     sims_req: pydantic_models.SimList,
-    session_token: Annotated[SessionToken, Depends(rest_auth.session_token)],
+    session_token: Annotated[Token, Depends(rest_auth.session_token)],
     session: Annotated[AsyncSession, Depends(db_utils.get_db)],
     response: Response,
 ):
@@ -42,7 +42,7 @@ async def provider_register(
 @app.get("/provider/sims")
 async def provider_get_registered_sims(
     session: Annotated[AsyncSession, Depends(db_utils.get_db)],
-    session_token: Annotated[SessionToken, Depends(rest_auth.session_token)],
+    session_token: Annotated[Token, Depends(rest_auth.session_token)],
 ) -> pydantic_models.SimList:
     async with session.begin():
         sims = await db.get_sim_ids(session, session_token)
@@ -51,9 +51,9 @@ async def provider_get_registered_sims(
         root=[
             pydantic_models.Sim(
                 id=sim[0],
-                iccid=pydantic_models.Iccid(root=sim[1])
-                if sim[1] is not None
-                else None,
+                iccid=(
+                    pydantic_models.Iccid(root=sim[1]) if sim[1] is not None else None
+                ),
                 imsi=pydantic_models.Imsi(root=sim[2]) if sim[2] is not None else None,
             )
             for sim in sims

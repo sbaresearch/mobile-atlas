@@ -1,13 +1,13 @@
 {
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-  inputs.flake-utils.url = github:numtide/flake-utils;
-  inputs.moatt_types = {
-    url = "../moatt_types";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.moatt-types = {
+    url = "github:sbaresearch/mobile-atlas?dir=mobileatlas/tunnel/src/moatt_types";
     inputs.nixpkgs.follows = "nixpkgs";
     inputs.flake-utils.follows = "flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils, moatt_types }:
+  outputs = { self, nixpkgs, flake-utils, moatt-types }:
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system};
           python = pkgs.python3;
@@ -16,9 +16,15 @@
             (builtins.match "^(.*\n)? *VERSION *= *\"([^\"]+)\" *(\n.*)?$"
               (builtins.readFile ./src/moatt_clients/__init__.py))
             1;
-      in rec {
+          deps = with python.pkgs; [
+            moatt-types.packages.${system}.moatt-types
+
+            requests
+            pydantic
+          ];
+      in {
         packages = rec {
-          moatt_clients = python.pkgs.buildPythonPackage {
+          moatt-clients = python.pkgs.buildPythonPackage {
             pname = pyproject.project.name;
             inherit version;
             pyproject = true;
@@ -29,25 +35,18 @@
               setuptools
             ];
 
-            propagatedBuildInputs = with python.pkgs; [
-              moatt_types.packages.${system}.moatt_types
-
-              requests
-            ];
+            propagatedBuildInputs = deps;
           };
-          default = moatt_clients;
+          default = moatt-clients;
         };
 
         devShells = {
           default = pkgs.mkShell {
-            buildInputs = with python.pkgs; [
-              packages.default
-
+            buildInputs = deps ++ (with python.pkgs; [
               isort
               black
-
               pkgs.nodePackages.pyright
-            ];
+            ]);
           };
         };
       }

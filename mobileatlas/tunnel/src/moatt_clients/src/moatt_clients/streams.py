@@ -2,24 +2,42 @@ import logging
 import socket
 import ssl
 import struct
-from typing import Optional
+from collections.abc import Callable
+from typing import Optional, TypeVar
+
+from moatt_types.connect import ApduOp, ApduPacket, PartialInput
 
 from moatt_clients.errors import ProtocolError
-from moatt_types.connect import ApduOp, ApduPacket
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class RawStream:
     def __init__(self, socket):
-        self.socket = socket
+        self._socket = socket
         self.buf = b""
 
     def getpeername(self):
-        return self.socket.getpeername()
+        return self._socket.getpeername()
 
     def write_all(self, buf: bytes) -> None:
-        self.socket.sendall(buf)
+        self._socket.sendall(buf)
+
+    T = TypeVar("T")
+
+    def read_message(self, decoder: Callable[[bytes], T]) -> T:
+        buf = b""
+
+        while True:
+            try:
+                return decoder(buf)
+            except PartialInput as e:
+                r = self.read_exactly(e.bytes_missing)
+
+                if len(r) == 0:
+                    raise EOFError from None
+
+                buf += r
 
     def read_exactly(self, n: int) -> bytes:
         while True:
@@ -45,7 +63,8 @@ class RawStream:
             return b
 
     def _fill_buf(self) -> bool:
-        b = self.socket.recv(1024)
+        b = self._socket.recv(1024)
+        print(f"Received: {b}")  # TODO
         if len(b) == 0:
             return False
         else:
@@ -54,10 +73,10 @@ class RawStream:
 
     def close(self) -> None:
         self.buf = b""
-        if isinstance(self.socket, ssl.SSLSocket):
-            self.socket.unwrap()
-        self.socket.shutdown(socket.SHUT_RDWR)
-        self.socket.close()
+        if isinstance(self._socket, ssl.SSLSocket):
+            self._socket.unwrap()
+        self._socket.shutdown(socket.SHUT_RDWR)
+        self._socket.close()
 
 
 class ApduStream:
@@ -119,7 +138,6 @@ class ApduStream:
             buf += r
             missing = ApduStream._bytes_missing(buf)
 
-        logger.debug(buf)
         p = ApduPacket.decode(buf)
 
         if p is None:

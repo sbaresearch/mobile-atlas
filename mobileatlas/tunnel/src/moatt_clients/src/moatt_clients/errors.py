@@ -1,10 +1,8 @@
-from typing import Union
-
-from moatt_types.connect import AuthStatus, ConnectStatus, Iccid, Imsi
+from moatt_types.connect import AuthStatus, ConnectStatus, SimIdentifierType
 
 
 class SimRequestError(Exception):
-    def __init__(self, status: ConnectStatus, id: Union[Imsi, Iccid]):
+    def __init__(self, status: ConnectStatus, id: SimIdentifierType):
         self.status = status
         self.id = id
 

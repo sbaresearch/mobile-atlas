@@ -22,19 +22,19 @@ ISODURATION_RE = re.compile(
 # TODO: find sensible defaults
 @dataclass(kw_only=True, frozen=True)
 class Config:
-    AUTHMSG_TIMEOUT: Optional[timedelta] = timedelta(seconds=10)
-    PROVIDER_RESPONSE_TIMEOUT: Optional[timedelta] = timedelta(seconds=10)
+    AUTHMSG_TIMEOUT: Optional[timedelta] = timedelta(minutes=10)
+    PROVIDER_RESPONSE_TIMEOUT: Optional[timedelta] = timedelta(minutes=10)
     PROVIDER_EXPIRATION: Optional[timedelta] = timedelta(minutes=10)
-    PROBE_REQUEST_TIMEOUT: Optional[timedelta] = timedelta(seconds=10)
-    TCP_KEEPIDLE: Optional[timedelta] = timedelta(seconds=10)
-    TCP_KEEPINTVL: Optional[timedelta] = timedelta(seconds=10)
+    PROBE_REQUEST_TIMEOUT: Optional[timedelta] = timedelta(minutes=10)
+    TCP_KEEPIDLE: Optional[timedelta] = timedelta(minutes=10)
+    TCP_KEEPINTVL: Optional[timedelta] = timedelta(minutes=10)
     TCP_KEEPCNT: Optional[int] = 10
     TCP_KEEPALIVE: bool = True
     MAX_QUEUE_SIZE: int = 10
     MAX_PROBE_WAITTIME: Optional[timedelta] = timedelta(minutes=5)
 
     GC_INTERVAL: timedelta = timedelta(minutes=1)
-    QUEUE_GC_INTERVAL: timedelta = timedelta(minutes=1)  # TODO rename
+    QUEUE_GC_INTERVAL: timedelta = timedelta(minutes=1)
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
@@ -42,7 +42,12 @@ class Config:
     DB_PASSWORD: str
     DB_NAME: str
 
-    AUTH_HANDLER: AuthHandler = MoatManagementAuth()
+    # TODO allow setting via config (instead of only through cmdline args)
+    # TUNNEL_PORT: int = 6666
+    # TUNNEL_CERT: str = "ssl/server.crt"
+    # TUNNEL_CERT_KEY: str = "ssl/server.key"
+
+    AUTH_HANDLER: AuthHandler
 
     def db_url(self) -> str:
         return (
@@ -52,7 +57,7 @@ class Config:
 
 
 class ConfigError(Exception):
-    """TODO"""
+    pass
 
 
 def _set(
@@ -91,31 +96,32 @@ def _parse_iso8601_duration(value: str) -> timedelta:
     )
 
 
-# TODO: test / allow loading of arbitrary classes
-def _load_handler(cls: str, allow_plugins: bool = False) -> AuthHandler:
+# TODO: test loading of arbitrary classes
+def _load_handler(
+    cls: str, cfg: dict[str, Any], allow_plugins: bool = False
+) -> AuthHandler:
     match cls:
         case "moat-management":
-            return MoatManagementAuth()
+            return MoatManagementAuth(cfg)
         case _:
             if not allow_plugins:
-                raise ConfigError(
-                    f'Unknown auth handler: "{cls}".'
-                )  # TODO explain possibility of loading arbitrary handler classes
+                raise ConfigError(f'Unknown auth handler: "{cls}".')
 
     module_name, class_name = cls.split(":")
     m = importlib.import_module(module_name)
-    return getattr(m, class_name)
+    c = getattr(m, class_name)
+
+    if not issubclass(c, AuthHandler):
+        raise ConfigError(
+            "Loading of auth handler failed. Not a subclass of AuthHandler."
+        )
+
+    return c(cfg)
 
 
 def _load_toml_config(
-    path: Path, module_loading_allowed: bool = False
+    cfg: dict[str, Any], module_loading_allowed: bool = False
 ) -> Optional[dict[str, Any]]:
-    try:
-        with open(path, "rb") as f:
-            cfg = tomllib.load(f)
-    except FileNotFoundError:
-        LOGGER.info(f"Config file '{path.absolute()}' does not exist.")
-        return None
 
     res = {}
 
@@ -161,14 +167,16 @@ def _load_toml_config(
             res,
             "AUTH_HANDLER",
             auth.get("handler"),
-            lambda x: _load_handler(x, module_loading_allowed),
+            lambda x: _load_handler(x, cfg, module_loading_allowed),
         )
 
     _check_config(res)
     return res
 
 
-def _load_env_config(module_loading_allowed: bool = False) -> dict[str, Any]:
+def _load_env_config(
+    cfg: dict[str, Any], module_loading_allowed: bool = False
+) -> dict[str, Any]:
     res = {}
 
     for f in dataclasses.fields(Config):
@@ -185,7 +193,9 @@ def _load_env_config(module_loading_allowed: bool = False) -> dict[str, Any]:
                     res,
                     f.name,
                     val,
-                    lambda x: _load_handler(x, allow_plugins=module_loading_allowed),
+                    lambda x: _load_handler(
+                        x, cfg, allow_plugins=module_loading_allowed
+                    ),
                 )
             else:
                 res[f.name] = f.type(val)
@@ -207,9 +217,7 @@ def _check_config(cfg: dict[str, Any]):
 _CONFIG: Config | None = None
 
 
-def init_config(
-    path: str | Path | None, allow_third_party_modules: bool = False
-) -> None:
+def init_config(path: str | Path, allow_third_party_modules: bool = False) -> Config:
     global _CONFIG
 
     if _CONFIG is not None:
@@ -218,23 +226,38 @@ def init_config(
     if isinstance(path, str):
         path = Path(path)
 
-    conf = _load_toml_config(path, allow_third_party_modules) if path else None
+    with open(path, "rb") as f:
+        cfg = tomllib.load(f)
+
+    conf = _load_toml_config(cfg, allow_third_party_modules) if path else None
 
     if conf is None:
         conf = {}
 
-    conf.update(_load_env_config(allow_third_party_modules))
+    conf.update(_load_env_config(cfg, allow_third_party_modules))
 
     try:
         _CONFIG = Config(**conf)
     except TypeError as e:
         raise ConfigError from e
 
+    return _CONFIG
+
 
 def get_config() -> Config:
     global _CONFIG
 
     if _CONFIG is None:
-        raise ConfigError
-    else:
-        return _CONFIG
+        LOGGER.info(
+            "Configuration was accessed before being explicitly initialized. Initializing..."
+        )
+        if "MOAT-SIMTUNNEL-CONFIG" not in os.environ:
+            raise ConfigError(
+                "Can't find config file because 'MOAT-SIMTUNNEL-CONFIG' env var is not set."
+            )
+        return init_config(
+            os.environ["MOAT-SIMTUNNEL-CONFIG"],
+            "ALLOW_THIRD_PARTY_MODULES" in os.environ,
+        )
+
+    return _CONFIG

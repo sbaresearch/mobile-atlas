@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from moatt_types.connect import ConnectResponse, ConnectStatus, SessionToken
+from moatt_types.connect import ConnectResponse, ConnectStatus, Token
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .. import auth, db
@@ -87,7 +87,7 @@ class ProviderHandler:
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-        token: SessionToken,
+        token: Token,
     ) -> None:
         try:
             await self._handle(reader, writer, token)
@@ -105,7 +105,7 @@ class ProviderHandler:
             probe_writer.close()
             await probe_writer.wait_closed()
         except Exception as e:
-            LOGGER.warn(f"Exception occurred while handling connection: {e}")
+            LOGGER.exception(f"Exception occurred while handling connection: {e}")
         finally:
             if not writer.is_closing():
                 writer.close()
@@ -114,23 +114,15 @@ class ProviderHandler:
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-        session_token: SessionToken,
+        session_token: Token,
     ) -> None:
-        # if session_token.provider is None:
-        #    LOGGER.debug("Session token was not used to register a provider.")
-        #    await write_msg(writer, AuthResponse(AuthStatus.ProviderNotRegistered))
-        #    writer.close()
-        #    await writer.wait_closed()
-        #    return
-
-        # provider_id = session_token.provider.id
         provider_id = await auth.identity(session_token)
-        assert provider_id is not None, (
-            "Expected identity of provider to be known after" "successful registration."
-        )
+        assert (
+            provider_id is not None
+        ), "Expected identity of provider to be known after successful registration."
 
         async with self.async_session() as session, session.begin():
-            await db.provider_available(session, provider_id)
+            await db.mark_provider_available(session, provider_id)
 
         try:
             while True:
@@ -176,11 +168,11 @@ class ProviderHandler:
                     break
         finally:
             async with self.async_session() as session, session.begin():
-                await db.provider_unavailable(session, provider_id)
+                await db.mark_provider_unavailable(session, provider_id)
 
         LOGGER.debug(f"Received a connection request: {qe.con_req}")
 
-        # TODO check request validity again
+        # TODO recheck request validity?
 
         try:
             await write_msg(writer, qe.con_req)
@@ -236,7 +228,7 @@ class ProviderHandler:
             provider_stream = ApduStream(qe.sim, qe.probe_id, reader, writer)
 
             async with self.async_session() as session, session.begin():
-                await db.sim_used(session, session_token, sim_id)
+                await db.sim_used(session, provider_id, sim_id)
 
             await self.handle_established_connection(probe_stream, provider_stream)
         finally:
@@ -246,4 +238,4 @@ class ProviderHandler:
                 await probe_stream.close()
 
             async with self.async_session() as session, session.begin():
-                await db.sim_unused(session, session_token, sim_id)
+                await db.sim_unused(session, provider_id, sim_id)

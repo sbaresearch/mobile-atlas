@@ -30,8 +30,8 @@ class Imsi(RootModel):
 
 class Sim(BaseModel):
     id: int = Field(ge=0, lt=2**64)
-    iccid: Optional[Iccid]
-    imsi: Optional[Imsi]
+    iccid: Optional[Iccid] = None
+    imsi: Optional[Imsi] = None
 
     def get_iccid(self) -> mtc.Iccid | None:
         if self.iccid is None:

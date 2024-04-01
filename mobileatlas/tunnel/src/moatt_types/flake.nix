@@ -1,6 +1,6 @@
 {
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-  inputs.flake-utils.url = github:numtide/flake-utils;
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -11,9 +11,9 @@
             (builtins.match "^(.*\n)? *VERSION *= *\"([^\"]+)\" *(\n.*)?$"
               (builtins.readFile ./src/moatt_types/__init__.py))
             1;
-      in rec {
+      in {
         packages = rec {
-          moatt_types = python.pkgs.buildPythonPackage {
+          moatt-types = python.pkgs.buildPythonPackage {
             pname = pyproject.project.name;
             inherit version;
             pyproject = true;
@@ -24,17 +24,14 @@
               setuptools
             ];
           };
-          default = moatt_types;
+          default = moatt-types;
         };
 
         devShells = {
           default = pkgs.mkShell {
             buildInputs = with python.pkgs; [
-              packages.default
-
               isort
               black
-
               pkgs.nodePackages.pyright
             ];
           };

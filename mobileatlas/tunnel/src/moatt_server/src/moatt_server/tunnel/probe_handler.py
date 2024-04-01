@@ -6,7 +6,7 @@ from moatt_types.connect import (
     ConnectRequest,
     ConnectResponse,
     ConnectStatus,
-    SessionToken,
+    Token,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -23,14 +23,14 @@ class ProbeHandler:
         self.config = config
         self.async_session = async_session
 
-    async def valid_token(self, token: SessionToken) -> None:
+    async def valid_token(self, token: Token) -> None:
         await auth.register_probe(token)
 
     async def handle(
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-        token: SessionToken,
+        token: Token,
     ) -> None:
         def cleanup():
             if not writer.is_closing():
@@ -45,14 +45,14 @@ class ProbeHandler:
             LOGGER.warn("Connection timed out.")
             cleanup()
         except Exception as e:
-            LOGGER.warn(f"Exception occurred while handling connection.\n{e}")
+            LOGGER.exception(f"Exception occurred while handling connection.\n{e}")
             cleanup()
 
     async def _handle(
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-        session_token: SessionToken,
+        session_token: Token,
     ) -> None:
         async def close():
             writer.close()

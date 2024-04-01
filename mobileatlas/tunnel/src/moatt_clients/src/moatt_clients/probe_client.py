@@ -3,18 +3,22 @@ import socket
 import ssl
 from typing import Optional
 
-from moatt_clients.client import Client, ProtocolError
-from moatt_clients.errors import SimRequestError
-from moatt_clients.streams import ApduStream, RawStream
 from moatt_types.connect import (
+    AuthType,
     ConnectionRequestFlags,
     ConnectRequest,
     ConnectResponse,
     ConnectStatus,
     Iccid,
     Imsi,
-    SessionToken,
+    SimId,
+    SimIndex,
+    Token,
 )
+
+from moatt_clients.client import Client, ProtocolError
+from moatt_clients.errors import SimRequestError
+from moatt_clients.streams import ApduStream, RawStream
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ class ProbeClient(Client):
 
     def __init__(
         self,
-        session_token: SessionToken,
+        session_token: Token,
         host: str,
         port: str | int,
         tls_ctx: Optional[ssl.SSLContext] = None,
@@ -45,13 +49,16 @@ class ProbeClient(Client):
             Optional TLS configuration.
         server_hostname
             TLS server hostname.
+        no_wait
+            Whether the client is willing to wait for the requested SIM card to become
+            available.
         """
         super().__init__(
             session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname
         )
         self.no_wait = no_wait
 
-    def connect(self, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
+    def connect(self, sim_id: Imsi | Iccid | SimId | SimIndex) -> Optional[ApduStream]:
         """Establish a connection with a SIM provider.
 
         Parameters
@@ -80,8 +87,10 @@ class ProbeClient(Client):
 
         return apdu_stream
 
-    def _connect(self, stream: RawStream, sim_id: Imsi | Iccid) -> Optional[ApduStream]:
-        self._authenticate(stream)
+    def _connect(
+        self, stream: RawStream, sim_id: Imsi | Iccid | SimId | SimIndex
+    ) -> Optional[ApduStream]:
+        self._authenticate(AuthType.Probe, stream)
 
         logger.debug(f"Sending connection request ({sim_id})")
 
@@ -92,7 +101,7 @@ class ProbeClient(Client):
         stream.write_all(ConnectRequest(sim_id, flags=flags).encode())
 
         logger.debug("Waiting for answer to connection request message.")
-        conn_res = ConnectResponse.decode(stream.read_exactly(ConnectResponse.LENGTH))
+        conn_res = stream.read_message(ConnectResponse.decode)
 
         if conn_res is None:
             logger.warn("Received malformed message during connection.")

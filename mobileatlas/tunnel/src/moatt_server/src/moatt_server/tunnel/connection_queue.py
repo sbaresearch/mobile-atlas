@@ -47,7 +47,8 @@ class Queue(asyncio.Queue):
     def _get(self) -> QueueEntry:
         self._acquire()
         try:
-            return self._queue.popleft()
+            qe = self._queue.popleft()
+            return qe
         finally:
             self._release()
 
@@ -74,7 +75,7 @@ class Queue(asyncio.Queue):
         if self._active == 0:
             self._last_active = datetime.now(tz=timezone.utc)
 
-    async def _cleanup(self) -> int:
+    def _cleanup(self) -> int:
         self._gc_task.cancel()
 
         num_closed = 0
@@ -88,7 +89,6 @@ class Queue(asyncio.Queue):
                 except Exception:
                     pass
                 writer.close()
-                await writer.wait_closed()
                 num_closed += 1
         except asyncio.QueueEmpty:
             pass
@@ -127,7 +127,7 @@ def queue_gc_coro_factory(timeout: timedelta) -> Callable[[], Awaitable[None]]:
             if last_active is not None and now - last_active > timeout:
                 del queues[id]
                 qs_removed += 1
-                conns_closed += await q._cleanup()
+                conns_closed += q._cleanup()
 
         LOGGER.info(
             "Finished removal of old connection requests. "

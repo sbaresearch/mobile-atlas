@@ -13,7 +13,7 @@ from moatt_types.connect import (
     AuthType,
     ConnectResponse,
     ConnectStatus,
-    SessionToken,
+    Token,
 )
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -36,7 +36,7 @@ class Server(Generic[H]):
     def __init__(
         self,
         config: Config,
-        host: str | Sequence[str] | None = None,
+        host: str | Sequence[str] = "localhost",
         port: int | str | None = None,
         tls_ctx: ssl.SSLContext | None = None,
         *,
@@ -53,7 +53,6 @@ class Server(Generic[H]):
         self._tls_ctx = tls_ctx
         self._host = host
         self._port = port
-        self._auth_handler = config.AUTH_HANDLER
         self._limit = limit
         self._kwargs = kwargs
         self._server = None
@@ -61,10 +60,13 @@ class Server(Generic[H]):
     async def _handle(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
+        LOGGER.debug("Handling new connection...")
+        close = False
         try:
             await self._dispatch(reader, writer)
         except (EOFError, ConnectionResetError):
             LOGGER.warn("Client closed connection unexpectedly.")
+            close = True
         except asyncio.QueueFull as e:
             LOGGER.warn(
                 "Failed to requeue connection request because either the queue"
@@ -76,9 +78,12 @@ class Server(Generic[H]):
             )
             probe_writer.close()
             await probe_writer.wait_closed()
+            close = True
         except Exception as e:
             LOGGER.warn(f"Exception occurred while handling connection: {e}")
-        finally:
+            close = True
+
+        if close:
             if not writer.is_closing():
                 writer.close()
 
@@ -124,7 +129,7 @@ class Server(Generic[H]):
             case _:
                 raise NotImplementedError
 
-    async def _valid_token(self, auth_type: AuthType, token: SessionToken) -> None:
+    async def _valid_token(self, auth_type: AuthType, token: Token) -> None:
         match auth_type:
             case AuthType.Provider:
                 async with self._sessionmaker() as session, session.begin():
@@ -135,16 +140,21 @@ class Server(Generic[H]):
                 raise NotImplementedError
 
     async def start(self):
-        if self._server is None:
+        if self._server is not None:
             raise AssertionError("Server is already running.")
 
-        self._sessionmaker = self._create_session_factory()
+        self._sessionmaker = await self._create_session_factory()
         self._probe_handler = ProbeHandler(self._config, self._sessionmaker)
         self._provider_handler = ProviderHandler(self._config, self._sessionmaker)
 
         LOGGER.debug("Creating asyncio server.")
         self._server = await asyncio.start_server(
-            self._handle, self._host, self._port, limit=self._limit, **self._kwargs
+            self._handle,
+            self._host,
+            self._port,
+            limit=self._limit,
+            ssl=self._tls_ctx,
+            **self._kwargs,
         )
 
         LOGGER.debug("Setting socket keepalive options.")
@@ -162,8 +172,14 @@ class Server(Generic[H]):
                     )
                 )
 
-    def _create_session_factory(self) -> async_sessionmaker[AsyncSession]:
+    async def _create_session_factory(self) -> async_sessionmaker[AsyncSession]:
         engine = create_async_engine(self._config.db_url())
+
+        async with engine.begin() as conn:
+            from .. import models as dbm
+
+            await conn.run_sync(dbm.Base.metadata.create_all)
+
         return async_sessionmaker(engine, expire_on_commit=False)
 
     def _set_keepalive_opts(self, sock: socket.socket) -> None:

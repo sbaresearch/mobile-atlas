@@ -11,12 +11,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--host", nargs="*")
-    parser.add_argument("--port", "-p", type=int, nargs="*")
+    parser.add_argument("--host", default="127.0.0.1", nargs="*")
+    parser.add_argument("--port", "-p", type=int)
     parser.add_argument("--cert", default="ssl/server.crt")
     parser.add_argument("--cert-key", default="ssl/server.key")
     parser.add_argument("--config", default="config.toml")

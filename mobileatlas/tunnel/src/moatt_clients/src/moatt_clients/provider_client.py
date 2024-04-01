@@ -2,40 +2,50 @@ import dataclasses
 import logging
 import socket
 import ssl
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import requests
-
-from moatt_clients.client import Client, ProtocolError
-from moatt_clients.errors import SimRequestError
-from moatt_clients.streams import ApduStream, RawStream
 from moatt_types.connect import (
+    AuthType,
     ConnectRequest,
     ConnectResponse,
     ConnectStatus,
     Iccid,
-    IdentifierType,
     Imsi,
-    SessionToken,
+    SimIdentifierType,
+    Token,
 )
 
-logger = logging.getLogger(__name__)
+from moatt_clients.client import Client, ProtocolError
+from moatt_clients.errors import SimRequestError
+from moatt_clients.streams import ApduStream, RawStream
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
 class SIM:
-    iccid: Iccid
-    imsi: Imsi
+    id: int
+    iccid: Optional[Iccid] = None
+    imsi: Optional[Imsi] = None
 
-    def _to_dict(self):
-        return {"iccid": self.iccid.iccid, "imsi": self.imsi.imsi}
+    def _to_dict(self) -> dict[str, Any]:
+        r: dict[str, Any] = {"id": self.id}
+
+        if self.iccid is not None:
+            r["iccid"] = self.iccid.iccid
+
+        if self.imsi is not None:
+            r["imsi"] = self.imsi.imsi
+
+        return r
 
 
 def register_sims(
     api_url: str,
-    session_token: SessionToken,
+    session_token: Token,
     sims: list[SIM],
-) -> Optional[SessionToken]:
+) -> Optional[Token]:
     """Register SIM cards with the tunnel server.
 
     Parameters
@@ -52,17 +62,17 @@ def register_sims(
     requests.HTTPError
         If registration is not successful.
     """
-    cookies = dict(session_token=session_token.as_base64())
+    headers = {"Authorization": f"Bearer {session_token.as_base64()}"}
     r = requests.put(
         f"{api_url}/provider/sims",
         json=list(map(lambda s: s._to_dict(), sims)),
-        cookies=cookies,
+        headers=headers,
     )
 
     try:
         r.raise_for_status()
     except requests.HTTPError:
-        logger.error(
+        LOGGER.error(
             f"Registration failed. Received {r.status_code} status from server."
         )
         raise
@@ -71,7 +81,7 @@ def register_sims(
 class ProviderClient(Client):
     def __init__(
         self,
-        session_token: SessionToken,
+        session_token: Token,
         host: str,
         port: int,
         cb: Callable[[ConnectRequest], ConnectStatus],
@@ -99,14 +109,14 @@ class ProviderClient(Client):
             session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname
         )
 
-    def wait_for_connection(self) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
+    def wait_for_connection(self) -> Optional[tuple[SimIdentifierType, ApduStream]]:
         """Wait for a probe to request a connection.
 
         Returns
         -------
         ICCID or IMSI of the requested SIM card and apdu stream to be used.
         """
-        logger.debug("Opening connection.")
+        LOGGER.debug("Opening connection.")
         stream = RawStream(
             self.tls_ctx.wrap_socket(
                 socket.create_connection((self.host, self.port)),
@@ -117,12 +127,12 @@ class ProviderClient(Client):
         try:
             apdu_stream = self._wait_for_connection(stream)
         except Exception as e:
-            logger.warn(f"Exception was raised while waiting for connection: {e}")
+            LOGGER.warn(f"Exception was raised while waiting for connection: {e}")
             stream.close()
             return None
 
         if apdu_stream is None:
-            logger.debug("APDU stream is none")
+            LOGGER.debug("APDU stream is none")
             stream.close()
 
         return apdu_stream
@@ -130,61 +140,27 @@ class ProviderClient(Client):
     def _wait_for_connection(
         self,
         stream: RawStream,
-    ) -> Optional[tuple[Imsi | Iccid, ApduStream]]:
-        self._authenticate(stream)
+    ) -> Optional[tuple[SimIdentifierType, ApduStream]]:
+        self._authenticate(AuthType.Provider, stream)
 
         logging.debug("Waiting for connection request.")
-        conn_req = self._read_con_req(stream)
+        conn_req = stream.read_message(ConnectRequest.decode)
 
         if conn_req is None:
-            logger.warn("Malformed connection request.")
+            LOGGER.warn("Malformed connection request.")
             raise ProtocolError
 
-        logger.debug(f"Received request for SIM: {conn_req.identifier}")
+        LOGGER.debug(f"Received request for SIM: {conn_req.identifier}")
 
         status = self.cb(conn_req)
 
-        logger.debug(f"Sending connection response with status: {status}")
+        LOGGER.debug(f"Sending connection response with status: {status}")
         stream.write_all(ConnectResponse(status).encode())
 
         if status != ConnectStatus.Success:
-            logger.info(
+            LOGGER.info(
                 f"Rejected request for SIM '{conn_req.identifier}' with '{status}'"
             )
             raise SimRequestError(status, conn_req.identifier)
 
         return (conn_req.identifier, ApduStream(stream))
-
-    @staticmethod
-    def _con_req_missing(b: bytes) -> int:
-        if len(b) < 2:
-            return ConnectRequest.MIN_LENGTH - len(b)
-
-        try:
-            ident_type = IdentifierType(b[1])
-            if ident_type == IdentifierType.Imsi:
-                return (2 + Imsi.LENGTH) - len(b)
-            elif ident_type == IdentifierType.Iccid:
-                return (2 + Iccid.LENGTH) - len(b)
-            else:
-                raise NotImplementedError
-        except ProtocolError:
-            return 0
-
-    def _read_con_req(self, stream) -> Optional[ConnectRequest]:
-        buf = stream.read(n=ConnectRequest.MIN_LENGTH)
-
-        if len(buf) == 0:
-            raise EOFError
-
-        missing = ProviderClient._con_req_missing(buf)
-        while missing > 0:
-            r = stream.read(n=missing)
-
-            if len(r) == 0:
-                raise EOFError
-
-            buf += r
-            missing = ProviderClient._con_req_missing(buf)
-
-        return ConnectRequest.decode(buf)

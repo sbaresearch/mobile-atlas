@@ -1,39 +1,16 @@
 import base64
 import enum
-import logging
 import struct
+from typing import Union
+from uuid import UUID
 
-logger = logging.getLogger(__name__)
 
 class PartialInput(Exception):
     def __init__(self, bytes_missing: int):
         self.bytes_missing = bytes_missing
 
+
 class Token:
-    def __init__(self, token: bytes):
-        assert len(token) < 2**16
-        self.token = token
-
-    def __repr__(self):
-        return f"Token({self.token})"
-
-    def __eq__(self, other):
-        if not isinstance(other, Token):
-            return NotImplemented
-
-        return self.token == other.token
-
-    def __hash__(self):
-        return hash(self.token)
-
-    def as_bytes(self):
-        return self.token
-
-    def as_base64(self) -> str:
-        return base64.b64encode(self.token).decode()
-
-
-class SessionToken:
     def __init__(self, token: bytes):
         assert len(token) < 2**16
         self.token = token
@@ -115,7 +92,9 @@ class ApduPacket:
             raise PartialInput((6 + plen) - len(msg))
 
         if len(msg) > 6 + plen:
-            raise ValueError(f"Expected message of length {6 + plen} but got {len(msg)} bytes.")
+            raise ValueError(
+                f"Expected message of length {6 + plen} but got {len(msg)} bytes."
+            )
 
         return ApduPacket(op, msg[6:])
 
@@ -164,7 +143,9 @@ class Imsi:
             raise PartialInput(Imsi._LEN - len(msg))
 
         if len(msg) > Imsi._LEN:
-            raise ValueError(f"Expected IMSI to be encoded as {Imsi._LEN} bytes. (actual: {len(msg)})")
+            raise ValueError(
+                f"Expected IMSI to be encoded as {Imsi._LEN} bytes. (actual: {len(msg)})"
+            )
 
         msg = msg.rstrip(b"\x00")
 
@@ -212,7 +193,9 @@ class Iccid:
             raise PartialInput(Iccid._LEN - len(msg))
 
         if len(msg) > Iccid._LEN:
-            raise ValueError(f"Expected ICCID to be encoded as {Iccid._LEN} bytes. (actual: {len(msg)})")
+            raise ValueError(
+                f"Expected ICCID to be encoded as {Iccid._LEN} bytes. (actual: {len(msg)})"
+            )
 
         msg = msg.rstrip(b"\x00")
 
@@ -227,29 +210,33 @@ class Iccid:
 
 
 class SimId:
-    _LEN = 8
+    _LEN = 24
 
-    def __init__(self, id: int):
+    def __init__(self, provider: UUID, id: int):
         assert id < 2 ** (8 * SimId._LEN)
 
+        self._provider = provider
         self._id = id
 
-
     def __repr__(self):
-        return f"SimId({self._id})"
+        return f"SimId({self._provider}, {self._id})"
 
     def __eq__(self, other):
         if not isinstance(other, SimId):
             return NotImplemented
 
-        return self._id == other._id
+        return self._provider == other._provider and self._id == other._id
 
     def __hash__(self):
-        return hash(self._id)
+        return hash((self._provider, self._id))
 
     @property
     def id(self) -> int:
         return self._id
+
+    @property
+    def provider(self) -> UUID:
+        return self._provider
 
     def identifier_type(self) -> IdentifierType:
         return IdentifierType.Id
@@ -260,37 +247,45 @@ class SimId:
             raise PartialInput(SimId._LEN - len(msg))
 
         if len(msg) > SimId._LEN:
-            raise ValueError(f"Expected 64-bit integer value.")
+            raise ValueError(f"Expected {SimId._LEN} bytes got {len(msg)}.")
 
-        return SimId(struct.unpack("!Q", msg)[0])
+        return SimId(UUID(bytes=msg[:16]), struct.unpack("!Q", msg[16:])[0])
 
     def encode(self) -> bytes:
-        return struct.pack("!Q", self._id)
+        return self._provider.bytes + struct.pack("!Q", self._id)
 
 
 class SimIndex:
-    _LEN = 8
+    _LEN = 24
 
-    def __init__(self, idx: int):
+    def __init__(self, provider: UUID, idx: int):
         assert id < 2 ** (8 * SimIndex._LEN)
 
+        self._provider = provider
         self._idx = idx
 
     def __repr__(self):
-        return f"SimIndex({self._idx})"
+        return f"SimIndex({self._provider}, {self._idx})"
 
     def __eq__(self, other):
         if not isinstance(other, SimIndex):
             return NotImplemented
 
-        return self._idx == other._idx
+        return self._provider == other._provider and self._idx == other._idx
 
     def __hash__(self):
-        return hash(self._idx)
+        return hash((self._provider, self._idx))
 
     @property
     def index(self) -> int:
         return self._idx
+
+    @property
+    def provider(self) -> UUID:
+        return self._provider
+
+    def identifier_type(self) -> IdentifierType:
+        return IdentifierType.Index
 
     @staticmethod
     def decode(msg: bytes) -> "SimIndex":
@@ -298,18 +293,21 @@ class SimIndex:
             raise PartialInput(SimIndex._LEN - len(msg))
 
         if len(msg) > SimIndex._LEN:
-            raise ValueError(f"Expected 64-bit integer value.")
+            raise ValueError(f"Expected {SimId._LEN} bytes got {len(msg)}.")
 
-        return SimIndex(struct.unpack("!Q", msg)[0])
+        return SimIndex(UUID(bytes=msg[:16]), struct.unpack("!Q", msg[16:])[0])
 
     def encode(self) -> bytes:
-        return struct.pack("!Q", self._idx)
+        return self._provider.bytes + struct.pack("!Q", self._idx)
+
+
+SimIdentifierType = Union[SimId, SimIndex, Iccid, Imsi]
 
 
 class AuthRequest:
     _MIN_LEN = 4
 
-    def __init__(self, auth_type: AuthType, session_token: SessionToken):
+    def __init__(self, auth_type: AuthType, session_token: Token):
         self.auth_type = auth_type
         self.session_token = session_token
 
@@ -329,11 +327,13 @@ class AuthRequest:
         if len(msg) != plen + 4:
             raise ValueError
 
-        return AuthRequest(AuthType(auth_type), SessionToken(msg[4:]))
+        return AuthRequest(AuthType(auth_type), Token(msg[4:]))
 
     def encode(self) -> bytes:
         token_bytes = self.session_token.as_bytes()
-        return struct.pack("!BBH", 1, self.auth_type.value, len(token_bytes)) + token_bytes
+        return (
+            struct.pack("!BBH", 1, self.auth_type.value, len(token_bytes)) + token_bytes
+        )
 
 
 class AuthResponse:
@@ -348,7 +348,9 @@ class AuthResponse:
             raise PartialInput(AuthResponse._LEN - len(msg))
 
         if len(msg) > AuthResponse._LEN:
-            raise ValueError(f"Expected message of length {AuthResponse._LEN} but got {len(msg)} bytes.")
+            raise ValueError(
+                f"Expected message of length {AuthResponse._LEN} but got {len(msg)} bytes."
+            )
 
         if msg[0] != 1:
             raise ValueError(f"Wrong version ({msg[0]}). Expected version 1.")
@@ -367,7 +369,9 @@ class ConnectionRequestFlags(enum.Flag):
 
 class ConnectRequest:
     def __init__(
-            self, identifier, flags: ConnectionRequestFlags = ConnectionRequestFlags.DEFAULT # TODO check compat
+        self,
+        identifier: SimIdentifierType,
+        flags: ConnectionRequestFlags = ConnectionRequestFlags.DEFAULT,  # TODO check compat
     ):
         self.flags = flags
         self.identifier = identifier
@@ -417,7 +421,9 @@ class ConnectResponse:
             raise PartialInput(ConnectResponse._LEN - len(msg))
 
         if len(msg) > ConnectResponse._LEN:
-            raise ValueError(f"Expected message of length {ConnectResponse._LEN} but got {len(msg)} bytes.")
+            raise ValueError(
+                f"Expected message of length {ConnectResponse._LEN} but got {len(msg)} bytes."
+            )
 
         if msg[0] != 1:
             raise ValueError(f"Wrong version ({msg[0]}). Expected version 1.")

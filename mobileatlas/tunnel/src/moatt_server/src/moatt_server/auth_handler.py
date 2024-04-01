@@ -1,11 +1,10 @@
 import enum
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
-from moatt_types.connect import Iccid, Imsi, SessionToken
-
-from .config import Config
+from moatt_types.connect import Token
 
 
 @enum.unique
@@ -15,55 +14,37 @@ class AuthResult(enum.Enum):
     ExpiredToken = 2
     Forbidden = 3
     NotRegistered = 4
+    NotFound = 5
 
 
 @dataclass
-class SimIdents:
+class SimIdent:
     id: int
     iccid: Optional[str]
     imsi: Optional[str]
 
 
-class AuthHandler:
-    def __init__(self, config: Config):
-        ...
+class AuthHandler(ABC):
+    def __init__(self, config: dict[str, Any] | None):
+        pass
 
-    async def allowed_provider_registration(self, token: SessionToken) -> AuthResult:
-        raise NotImplementedError
+    @abstractmethod
+    async def allowed_provider_registration(self, token: Token) -> AuthResult: ...
 
+    @abstractmethod
     async def allowed_sim_registration(
-        self, token: SessionToken, sims: dict[int, tuple[Iccid | None, Imsi | None]]
-    ) -> AuthResult:
-        raise NotImplementedError
+        self,
+        token: Token,
+        sims: list[SimIdent],
+    ) -> AuthResult: ...
 
-    async def allowed_probe_registration(self, token: SessionToken) -> AuthResult:
-        raise NotImplementedError
+    @abstractmethod
+    async def allowed_probe_registration(self, token: Token) -> AuthResult: ...
 
+    @abstractmethod
     async def allowed_sim_request(
-        self, token: SessionToken, provider_id: UUID, sim_ids: SimIdents
-    ) -> AuthResult:
-        raise NotImplementedError
+        self, token: Token, provider_id: UUID, sim_id: SimIdent
+    ) -> AuthResult: ...
 
-    async def identity(self, token: SessionToken) -> UUID | None:
-        raise NotImplementedError
-
-
-_HANDLER: AuthHandler | None = None
-
-
-def init_auth_handler(handler: AuthHandler) -> None:
-    global _HANDLER
-
-    if _HANDLER is not None:
-        raise AssertionError("Auth handler was already set.")
-
-    _HANDLER = handler
-
-
-def auth_handler() -> AuthHandler:
-    global _HANDLER
-
-    if _HANDLER is None:
-        raise AssertionError("No auth handler set.")
-
-    return _HANDLER
+    @abstractmethod
+    async def identity(self, token: Token) -> UUID | None: ...

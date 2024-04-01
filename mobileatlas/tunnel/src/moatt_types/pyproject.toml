@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "moatt_types"
+name = "moatt-types"
 dynamic = [ "version" ]
 
 [tool.setuptools.dynamic.version]
