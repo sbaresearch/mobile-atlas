@@ -22,8 +22,8 @@
         <td>{{t.mac}}</td>
         <td>{{t.scope.pretty()}}</td>
         <td>{{t.logs | map(attribute="time") | first}}</td>
-        <td>{{t.config | map(attribute="ip") | first}}</td>
-        <td>{{t.probe | map(attribute="name") | first}}</td>
+        <td>{{t.config.ip}}</td>
+        <td>{{t.probe.name}}</td>
         <td>
           <input class="token" type="hidden" value="{{t.token}}">
           <input class="confirm-text" type="hidden" value="{{t.scope.pretty(compact=True)}}">
@@ -93,6 +93,8 @@
       <div>
         <input id="PrBox" class="scope-chbx" type="checkbox" value="2">
         <label for="PrBox">Probe</label>
+        <label id="PrNameInLbl" for="PrNameIn"> Name: </label>
+        <input id="PrNameIn" type="text" placeholder="Probe name">
       </div>
     </fieldset>
     <button id="add-token">Submit</button>

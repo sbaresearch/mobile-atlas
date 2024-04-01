@@ -1,6 +1,11 @@
 fastapi
+httpx
+jinja2
 psycopg[binary]
-SQLAlchemy[asyncio]
-uvloop
 pycountry
+python-multipart
 redis
+SQLAlchemy[asyncio]
+uvicorn
+uvloop
+uvloop

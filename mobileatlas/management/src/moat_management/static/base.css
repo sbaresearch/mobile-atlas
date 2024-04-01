@@ -55,11 +55,12 @@ fieldset {
   margin-right: 1em;
 }
 
-#ipIn, #ipInLbl {
+#ipIn, #ipInLbl, #PrNameIn, #PrNameInLbl {
   display: none;
 }
 
-#WgBox:checked ~ #ipIn, #WgBox:checked ~ #ipInLbl {
+#WgBox:checked ~ #ipIn, #WgBox:checked ~ #ipInLbl,
+#PrBox:checked ~ #PrNameIn, #PrBox:checked ~ #PrNameInLbl {
   display: unset;
 }
 

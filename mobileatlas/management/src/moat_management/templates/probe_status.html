@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
     {% block content %}
-    <h2>ProbeStatus for {{p.name if p.name}} - {{p.mac}}</h2>
+    <h2>ProbeStatus for {{p.name if p.name}} - {{p.token.mac}}</h2>
 
     <h3>Summary</h3>
     <table>

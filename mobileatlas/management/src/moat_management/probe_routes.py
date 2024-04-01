@@ -1,66 +1,72 @@
-from flask import jsonify, request
-from sqlalchemy import select, exc as sqlexc
-from moatt_server.management import app, redis_client, db, token_auth
-from moatt_server import utils
-from moatt_server.models import (
-        Probe,
-        ProbeServiceStartupLog,
-        ProbeStatus,
-        ProbeStatusType,
-        ProbeSystemInformation,
-        TokenScope,
-        )
-from datetime import timedelta
-from json import dumps
-from flask import g
-import time
-import re
+import asyncio
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import exc as sqlexc
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from . import config
+from . import pydantic_models as pyd
+from .auth import bearer_token_probe
+from .config import get_config
+from .db import get_db
+from .models import (
+    MamToken,
+    Probe,
+    ProbeServiceStartupLog,
+    ProbeStatus,
+    ProbeStatusType,
+    ProbeSystemInformation,
+)
 
 """
 Endpoints called from the Measurement Probe are listed in this file
 """
 
-@app.route('/probe/startup', methods=['POST'])
-@token_auth.require_token(TokenScope.Probe)
-def startup_log():
-    if 'mac' not in request.values:
-        return "", 400
+router = APIRouter(prefix="/probe", tags=["probe"])
 
-    mac = request.values['mac']
-    if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
-        return "", 400
 
-    # Check if mac is known in Probe List, otherwise deny
-    #probe = list(db.session.scalars(select(Probe).join(Probe.token).where(MamToken.mac == mac).distinct())) # TODO: test
-    #stmt = select(Probe).join(Probe.token).where(MamToken.mac == mac).distinct()
-    #print(stmt)
-    #macs = list(db.session.scalars(stmt))
-    #print(macs)
-    #query = db.session.query(Probe.mac.distinct().label("mac"))
-    #macs = [row.mac for row in query.all()]
-    if g.token.mac != mac:
-        return "", 400
+@router.post("/startup")
+async def startup_log(
+    token: Annotated[MamToken, Depends(bearer_token_probe)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    mac: pyd.Mac,
+):
+    await session.begin()
+    session.add(token)
+    await session.refresh(token)
+
+    if token.mac != mac.mac:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     # Create a log entry
     prl = ProbeServiceStartupLog(
-            probe_id=g.token.probe[0].id,
-            mac=mac,
-            timestamp=utils.now())
-    db.session.add(prl)
-    db.session.commit()
+        probe_id=(await token.awaitable_attrs.probe).id,
+        mac=mac.mac,
+        timestamp=datetime.now(tz=timezone.utc),
+    )
+    session.add(prl)
+    await session.commit()
 
-    return "", 200
 
-@app.route('/probe/poll', methods=['POST'])
-@token_auth.require_token(TokenScope.Probe)
-def probe_poll():
+@router.post("/poll")
+async def probe_poll(
+    token: Annotated[MamToken, Depends(bearer_token_probe)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> pyd.Command | None:
     """
     The long poll endpoint for the probe
     """
-    if not g.token.probe:
-        return "", 403
-    probe = g.token.probe[0]
-    probe.last_poll = utils.now()
+
+    await session.begin()
+    session.add(token)
+    await session.refresh(token)
+
+    now = datetime.now(tz=timezone.utc)
+    probe = await token.awaitable_attrs.probe
+    probe.last_poll = now
 
     # Include a status update
     #
@@ -68,109 +74,98 @@ def probe_poll():
     # (2) Got last status
     #     (2a) Expired - Finish old status - create new status
     #     (2b) Active - Prolong active status
-    # Todo move this functionality
-    #ps = ProbeStatus.query.filter_by(probe_id=probe.id, active=True).first()
-    ps = db.session.scalar(
-            select(ProbeStatus)
-            .where((ProbeStatus.probe_id == probe.id) & (ProbeStatus.active == True))
-            )
-    interval = timedelta(seconds=app.config["LONG_POLLING_INTERVAL"])
-    now = utils.now()
+    ps = await session.scalar(
+        select(ProbeStatus).where(
+            (ProbeStatus.probe_id == probe.id) & (ProbeStatus.active == True)
+        )
+    )
+    interval = get_config().LONG_POLLING_INTERVAL
 
-    if ps:
+    if ps is not None:
         # Case (2b)
-        if ps.status == ProbeStatusType.online and ps.end + interval*2 > now:
+        if ps.status == ProbeStatusType.online and ps.end + interval * 2 > now:
             ps.end = now
-            db.session.add(ps)
-            db.session.commit()
         # Case (2a)
         else:
-            # if ps.status != ProbeStatusType.online or ps.status.end <= datetime.utcnow() + interval:
             ps.active = False
             ps.end = now
-            db.session.add(ps)
-            db.session.commit()
 
+            # Set to None so that a new Status is created
             ps = None
 
     # Case (1)
     if not ps:
-        ps = ProbeStatus(probe_id=probe.id,
-                         active=True,
-                         status=ProbeStatusType.online,
-                         begin=now,
-                         end=now+timedelta(milliseconds=1))
-        db.session.add(ps)
-        db.session.commit()
+        ps = ProbeStatus(
+            probe_id=probe.id,
+            active=True,
+            status=ProbeStatusType.online,
+            begin=now,
+            end=now + timedelta(milliseconds=1),
+        )
+        session.add(ps)
+
+    # We save the id before commit is called
+    # because commit expires the probe object
+    probe_id = probe.id
+    await session.commit()
 
     # Connect to redis queue and wait for command
-    pubsub = redis_client.pubsub(ignore_subscribe_messages=True)
-    pubsub.subscribe(f"probe:{probe.id}")
-    # This is because pubsub.listen() does not hava a timeout
-    # and get_message consumes the subscribe message as well
-    # https://github.com/andymccurdy/redis-py/issues/733
-    stoptime = time.time() + app.config["LONG_POLLING_INTERVAL"]
-    while time.time() < stoptime:
-        msg = pubsub.get_message(timeout=stoptime - time.time())
-        if msg:
-            return jsonify({'command': msg['data'].decode()})
+    pubsub = config.get_config().redis_client().pubsub(ignore_subscribe_messages=True)
+    await pubsub.subscribe(f"probe:{probe_id}")
 
-    return "", 200
+    try:
+        msg = await asyncio.wait_for(
+            anext(pubsub.listen()), get_config().LONG_POLLING_INTERVAL.total_seconds()
+        )
+        return pyd.Command(command=msg["data"].decode())
+    except TimeoutError:
+        pass
 
 
-@app.route('/probe/system_information', methods=['POST'])
-@token_auth.require_token(TokenScope.Probe)
-def probe_system_information():
+@router.post("/system_information")
+async def probe_system_information(
+    token: Annotated[MamToken, Depends(bearer_token_probe)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    json: pyd.Json,
+) -> None:
     """
     Endpoint for Uploading ProbeSystemInformation
     """
-    if not g.token.probe:
-        return "", 403
-    probe = g.token.probe[0]
 
-    if not request.json:
-        return "", 400
+    await session.begin()
+    session.add(token)
+    await session.refresh(token)
 
-    psi = ProbeSystemInformation(probe_id=probe.id,
-                                 timestamp=utils.now(),
-                                 information=dumps(request.json))
-    db.session.add(psi)
-    db.session.commit()
+    probe = await token.awaitable_attrs.probe
 
-    return "", 200
+    psi = ProbeSystemInformation(
+        probe_id=probe.id,
+        timestamp=datetime.now(tz=timezone.utc),
+        information=json.root,
+    )
+    session.add(psi)
+    await session.commit()
 
-class ProbeTokenActivationHandler(token_auth.TokenActivationHandler):
-    @staticmethod
-    def active(scope):
-        return TokenScope.Probe in scope
 
-    def __init__(self):
-        self.name = None
-        self.token = None
-
-    def validate_request(self, request):
-        if "name" not in request.values:
-            return "name missing", 400
-
-        self.name = request.values["name"]
-
-    def after_token_activation(self, session, token):
-        assert self.name != None
-
-        self.token = token
-        session.add(Probe(
-            name=self.name,
+def after_token_activation(session: AsyncSession, token: MamToken, name: str) -> None:
+    session.add(
+        Probe(
+            name=name,
             token=token,
-            ))
+        )
+    )
 
-    def handle_activation_error(self, session, exc):
-        assert self.token != None
 
-        if isinstance(exc, sqlexc.IntegrityError):
-            duplicate_name = session.scalar(
-                    select(Probe)
-                    .where((Probe.name == self.name) & (Probe.token_id != self.token.id))
-                    )
+async def handle_activation_error(
+    session: AsyncSession, exc: Exception, token: MamToken, name: str
+) -> None:
+    if isinstance(exc, sqlexc.IntegrityError):
+        duplicate_name = await session.scalar(
+            select(Probe).where((Probe.name == name) & (Probe.token_id != token.id))
+        )
 
-            if duplicate_name is not None:
-                return "Probe name is not unique", 400
+        if duplicate_name is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Probe name is not unique.",
+            )

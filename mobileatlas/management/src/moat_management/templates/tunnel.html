@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>🚧 This page is still under construction. 🚧</h2>
+
+<h2>Tunnel Tokens</h2>
+<table>
+  <tr>
+    <th>ID</th>
+    <th>Admin</th>
+    <th>Scope</th>
+    <th>Value</th>
+  </tr>
+  {% for t in tokens %}
+  <tr>
+    <td>{{t.id}}</td>
+    <td>{{t.admin}}</td>
+    <td>{{t.allowed_scope}}</td>
+    <td>{{t.base64_value()}}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Sims</h2>
+<table>
+  <tr>
+    <th>ICCID</th>
+    <th>IMSI</th>
+    <th>Public</th>
+<!--    <th>Provide</th>
+<th>Request</th>-->
+    <th>Tokens</th>
+  </tr>
+  {% for s in sims %}
+  <tr>
+    <td>{{s.iccid}}</td>
+    <td>{{s.imsi}}</td>
+    <td>{{s.public}}</td>
+    <td>{{s.token_assoc | map(attribute='token_id') | join(', ')}}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+
+<h2>Add Token</h2>
+<div>
+  <!--<label for="tunnel-token">Token</label>
+  <input id="tunnel-token" class="token" type="text">-->
+
+  <label for="ttoken-admin">Admin Rights</label>
+  <input id="ttoken-admin" type="checkbox">
+
+  <label for="ttoken-scope">Allowed Scope</label>
+  <select id="ttoken-scope" type="checkbox">
+    <option value="3">Both</option>
+    <option value="2">Provider</option>
+    <option value="1">Probe</option>
+  </select>
+
+  <button id="add-tunnel-token">Add Token</button>
+
+<h2>Add SIM</h2>
+  <label for="tsim-token">Token</label>
+  <select id="tsim-token">
+    {% for t in tokens %}<option value="{{t.id}}">{{t.id}}</option>{% endfor %}
+  </select>
+
+  <label for="tsim-imsi">IMSI</label>
+  <input id="tsim-imsi" type="text">
+
+  <label for="tsim-iccid">ICCID</label>
+  <input id="tsim-iccid" type="text">
+
+  <label for="tsim-public">Public</label>
+  <input id="tsim-public" type="checkbox">
+
+  <label for="tsim-provide">Provide</label>
+  <input id="tsim-provide" type="checkbox">
+
+  <label for="tsim-request">Request</label>
+  <input id="tsim-request" type="checkbox">
+
+  <button id="allow-sim">Add SIM</button>
+</div>
+{% endblock %}

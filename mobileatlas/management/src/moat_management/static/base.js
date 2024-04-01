@@ -48,7 +48,8 @@ $(document).ready(function(){
         $.ajax({
             url: '/probe/' + probe_id + '/change_country',
             type: 'post',
-            data: {'country': country},
+            data: JSON.stringify({'country': country}),
+            contentType: 'application/json',
             success: function(result){
                 location.reload();
             },
@@ -83,8 +84,9 @@ $(document).ready(function(){
 
         $.ajax({
             url: '/tokens/deactivate',
-            data: {'token': token},
             type: 'post',
+            data: JSON.stringify({'token': token}),
+            contentType: 'application/json',
             success: function(result){
                 location.reload();
             },
@@ -99,7 +101,7 @@ $(document).ready(function(){
         const token = $('.token', row).val();
         const scope = $('.token-scope', row).val();
 
-        let data = {'token_candidate': token, 'scope': scope};
+        let data = {'token_candidate': token, 'scope': Number(scope)};
 
         if (scope & 1) {
             data['ip'] = prompt('IP');
@@ -110,8 +112,9 @@ $(document).ready(function(){
 
         $.ajax({
             url: '/tokens/activate',
-            data: data,
             type: 'post',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
             success: function(result){
                 location.reload();
             },
@@ -127,15 +130,70 @@ $(document).ready(function(){
         for (const e of $('.scope-chbx')) {
             if (e.checked) { scope |= e.value; }
         }
-        let data = {'token_candidate': token, 'scope': scope};
+        let data = {'token_candidate': token, 'scope': Number(scope)};
 
         const ip = $('#WgBox')[0].checked ? $('#ipIn').val() : undefined;
         if (ip) { data['ip'] = ip; }
 
+        const name = $('#PrBox')[0].checked ? $('#PrNameIn').val() : undefined;
+        if (name) { data['name'] = name; }
+
         $.ajax({
             url: '/tokens/activate',
-            data: data,
             type: 'post',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function(result){
+                location.reload();
+            },
+            error: function(result){
+                alert(result.status + ' ' + result.responseText);
+            }
+        });
+    });
+
+    $('#add-tunnel-token').click(function(ev){
+        const admin = $('#ttoken-admin')[0].checked;
+        const scope = $('#ttoken-scope').val();
+
+        let data = {'admin': admin, 'scope': Number(scope)};
+
+        $.ajax({
+            url: '/tunnel/token',
+            type: 'post',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function(result){
+                location.reload();
+            },
+            error: function(result){
+                alert(result.status + ' ' + result.responseText);
+            }
+        });
+    });
+
+    $('#allow-sim').click(function(ev){
+        const token = Number($('#tsim-token').val());
+        const imsi = $('#tsim-imsi').val();
+        const iccid = $('#tsim-iccid').val();
+        const pub = $('#tsim-public')[0].checked;
+        const provide = $('#tsim-provide')[0].checked;
+        const request = $('#tsim-request')[0].checked;
+
+        let data = {
+            'public': pub,
+            'provide': provide,
+            'request': request,
+        };
+
+        if (imsi) { data['imsi'] = imsi; }
+        if (iccid) { data['iccid'] = iccid; }
+
+        $.ajax({
+            url: `/tunnel/token/${token}/sim`,
+            type: 'post',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
             success: function(result){
                 location.reload();
             },

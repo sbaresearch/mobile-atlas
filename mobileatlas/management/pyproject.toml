@@ -7,10 +7,10 @@ name = "moat-management"
 dynamic = [ "version", "dependencies" ]
 
 [project.scripts]
-moat-management = "moat-management.cli:main"
+moat-management = "moat_management.cli:main"
 
 [tool.setuptools.dynamic.version]
 attr = "moat_management.VERSION"
 
 [tool.setuptools.dynamic.dependencies]
-file = "requirements.txt"
+file = [ "requirements.txt" ]

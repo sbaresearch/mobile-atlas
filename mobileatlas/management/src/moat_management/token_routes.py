@@ -1,263 +1,223 @@
-from moatt_server.management import app, db, basic_auth
-from moatt_server.utils import now
-from moatt_server.models import MamTokenAccessLog, MamToken, TokenScope, TokenAction
-from moatt_server.management.wireguard_routes import WgTokenActivationHandler
-from moatt_server.management.probe_routes import ProbeTokenActivationHandler
-from moatt_server.management import token_auth
-from flask import request, render_template, g
-from sqlalchemy import select
+from datetime import datetime, timezone
+from typing import Annotated
 
-import base64
-import re
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-TOKEN_ACTIVATION_HANDLERS = [
-        WgTokenActivationHandler,
-        ProbeTokenActivationHandler
-        ]
+from . import probe_routes
+from . import pydantic_models as pyd
+from . import wireguard_routes
+from .auth import bearer_token_any, get_basic_auth
+from .db import get_db
+from .models import MamToken, MamTokenAccessLog, TokenAction, TokenScope
+from .resources import get_templates
 
-@app.route("/tokens", methods=["GET"])
-def token_index():
-    tokens = db.session.scalars(select(MamToken).where(MamToken.token != None))
-    token_reqs = db.session.scalars(select(MamToken).where(MamToken.token == None))
-    #print(type(list(token_reqs)[0].logs[0].action))
-    return render_template(
-            "tokens.html",
-            tokens=tokens,
-            token_reqs=token_reqs,
-            TokenAction=TokenAction,
-            )
+router = APIRouter(prefix="/tokens", tags=["tokens"])
 
-@app.route("/tokens/register", methods=["POST"])
-def token_register():
-    if "token_candidate" not in request.values \
-            or "mac" not in request.values \
-            or "scope" not in request.values:
-        return "token_candidate/mac/scope missing", 400
 
-    token_candidate = request.values["token_candidate"]
-    try:
-        if not token_candidate.isascii() or len(base64.b64decode(token_candidate, validate=True)) != 32:
-            return "token invalid", 400
-    except:
-        return "token invalid", 400
+@router.get("/")
+async def token_index(
+    session: Annotated[AsyncSession, Depends(get_db)], request: Request
+):
+    await session.begin()
 
-    mac = request.values["mac"]
-    if not re.match("[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac.lower()):
-            return "mac invalid, use 11:22:33:44:55:66", 400
-
-    try:
-        scope = get_scope(request.values["scope"])
-    except Exception:
-        return "invalid scope", 400
-
-    new_cand = add_token_candidate(token_candidate, scope, mac)
-
-    if new_cand is not None:
-        prune_candidates()
-
-    db.session.commit()
-
-    if new_cand is not None:
-        return "", 201
-    else:
-        return "", 200
-
-@app.route("/tokens/active", methods=["GET"])
-@token_auth.require_token(TokenScope(0))
-def token_active():
-    return "", 200
-
-@app.route("/tokens/revoke", methods=["DELETE"])
-@token_auth.require_token(TokenScope(0))
-def revoke():
-    delete_token(db.session, g.token.token)
-    db.session.commit()
-
-    return "", 200
-
-# TODO: log change
-@app.route("/tokens/scope", methods=["POST"])
-@basic_auth.required
-def change_scope():
-    if "scope" not in request.values or "token" not in request.values:
-        return "token/scope missing", 400
-
-    token = request.values["token"]
-    if not valid_token(token):
-        return "invalid token", 400
-
-    try:
-        scope = get_scope(request.values["scope"])
-    except:
-        return "invalid scope", 400
-
-    token = get_token_by_value(db.session, token)
-
-    if token is None:
-        return "token does not exist", 404
-
-    token.scope = scope
-    db.session.commit()
-
-    return "", 200
-
-@app.route("/tokens/activate", methods=["POST"])
-@basic_auth.required
-def token_activate():
-
-    if "token_candidate" not in request.values \
-            or "scope" not in request.values:
-        return "token_candidate/scope missing", 400
-
-    token_candidate = request.values["token_candidate"]
-    try:
-        if not token_candidate.isascii() or len(base64.b64decode(token_candidate, validate=True)) != 32:
-            return "invalid token", 400
-    except:
-        return "invalid token", 400
-
-    try:
-        scope = get_scope(request.values["scope"])
-    except:
-        return "invalid scope", 400
-
-    active_handlers = [h() for h in TOKEN_ACTIVATION_HANDLERS if h.active(scope)]
-    for handler in active_handlers:
-        resp = handler.validate_request(request)
-
-        if resp is not None:
-            return resp
-
-    token = db.session.scalar(select(MamToken).where(MamToken.token_candidate == token_candidate))
-
-    if token is None:
-        token = add_token_candidate(token_candidate, scope)
-        
-        if token is None:
-            raise Exception("Failed to create new token candidate.")
-
-    if token.scope != scope:
-        return "'scope' does not match the requested scope", 400
-
-    token.activate(db.session)
-
-    for handler in active_handlers:
-        resp = handler.after_token_activation(db.session, token)
-
-        if resp is not None:
-            return resp
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        for handler in active_handlers:
-            resp = handler.handle_activation_error(db.session, e)
-
-            if resp is not None:
-                return resp
-
-        raise e
-
-    return "", 200
-
-@app.route('/tokens/deactivate', methods=['POST'])
-@basic_auth.required
-def token_deactivate():
-    if 'token' not in request.values:
-        return "missing token", 400
-
-    token = request.values['token']
-    try:
-        if not token.isascii() or len(base64.b64decode(token, validate=True)) != 32:
-            return "invalid token", 400
-    except:
-        return "invalid token", 400
-
-    delete_token(db.session, token)
-    db.session.commit()
-
-    return "", 200
-
-def get_token_by_value(session, value: str) -> None | MamToken:
-    return session.scalar(
+    load_attrs = [MamToken.logs, MamToken.config, MamToken.probe]
+    tokens = (
+        await session.scalars(
             select(MamToken)
-            .where(
-                (MamToken.token == value) |
-                (MamToken.token_candidate == value)
-                )
+            .options(*map(selectinload, load_attrs))
+            .where(MamToken.token != None)
+        )
+    ).all()
+    token_reqs = (
+        await session.scalars(
+            select(MamToken)
+            .options(*map(selectinload, load_attrs))
+            .where(MamToken.token == None)
+        )
+    ).all()
+
+    ctx = {
+        "tokens": tokens,
+        "token_reqs": token_reqs,
+        "TokenAction": TokenAction,
+    }
+    return get_templates().TemplateResponse(
+        request=request, name="tokens.html", context=ctx
+    )
+
+
+@router.post("/register")
+async def token_register(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    reg: pyd.TokenRegistration,
+    response: Response,
+) -> None:
+    async with session.begin():
+        new_cand = await add_token_candidate(
+            session, reg.token_candidate, reg.scope, reg.mac
+        )
+
+        if new_cand is not None:
+            await prune_candidates(session)
+
+    if new_cand is not None:
+        response.status_code = status.HTTP_201_CREATED
+
+
+@router.get("/active")
+def token_active(_: Annotated[str, Depends(bearer_token_any)]) -> None:
+    return
+
+
+@router.delete("/revoke")
+async def revoke(
+    token: Annotated[MamToken, Depends(bearer_token_any)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    async with session.begin():
+        session.add(token)
+        await session.refresh(token)
+
+        if token.token is None:
+            raise AssertionError
+
+        await delete_token(session, token.token)
+
+
+@router.post("/activate")
+async def token_activate(
+    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    args: pyd.ActivateToken,
+    response: Response,
+) -> None:
+
+    await session.begin()
+
+    token = await session.scalar(
+        select(MamToken).where(MamToken.token_candidate == args.root.token_candidate)
+    )
+
+    if token is None:
+        token = await add_token_candidate(
+            session, args.root.token_candidate, args.root.scope
+        )
+        response.status_code = status.HTTP_201_CREATED
+
+        if token is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Token already exists."
             )
 
+    if token.scope != args.root.scope:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='"scope" does not match the requested scope.',
+        )
 
-def valid_token(token):
+    token.activate(session)
+
+    if isinstance(args.root, pyd.ActivateWgToken | pyd.ActivateTokenAll):
+        await wireguard_routes.after_token_activation(session, token, args.root.ip)  # type: ignore
+
+    if isinstance(args.root, pyd.ActivateProbeToken | pyd.ActivateTokenAll):
+        probe_routes.after_token_activation(session, token, args.root.name)
+
     try:
-        if token.isascii() and len(base64.b64decode(token, validate=True)) == 32:
-            return True
-    except:
-        pass
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        await session.begin()
 
-    return False
+        if not response.status_code == status.HTTP_201_CREATED:
+            session.add(token)
+            await session.refresh(token)
 
-def delete_token(session, token):
+        if isinstance(args.root, pyd.ActivateWgToken | pyd.ActivateTokenAll):
+            await wireguard_routes.handle_activation_error(session, e, token, args.root.ip)  # type: ignore
+
+        if isinstance(args.root, pyd.ActivateProbeToken | pyd.ActivateTokenAll):
+            await probe_routes.handle_activation_error(
+                session, e, token, args.root.name
+            )
+
+        raise
+
+
+@router.post("/deactivate")
+async def token_deactivate(
+    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    token: pyd.Token,
+) -> None:
+
+    async with session.begin():
+        await delete_token(session, token.token)
+
+
+async def get_token_by_value(session: AsyncSession, value: str) -> None | MamToken:
+    return await session.scalar(
+        select(MamToken).where(
+            (MamToken.token == value) | (MamToken.token_candidate == value)
+        )
+    )
+
+
+async def delete_token(session: AsyncSession, token: str) -> None:
     # we have to use Session.delete here
     # because using Session.execute with
     # sql.expression.delete does not
     # trigger configured cascades
-    tokens = session.scalars(
-            select(MamToken)
-            .where((MamToken.token == token) |
-                   (MamToken.token_candidate == token)
-                  )
-            )
+    tokens = await session.scalars(
+        select(MamToken).where(
+            (MamToken.token == token) | (MamToken.token_candidate == token)
+        )
+    )
 
-    time = now()
     for t in tokens:
-        session.add(MamTokenAccessLog(
-            token_value=t.token_value(),
-            scope=t.scope,
-            action=TokenAction.Deactivated,
-            time=time,
-            ))
-        session.delete(t)
-
-def prune_candidates():
-    old_tokens = db.session.scalars(
-            select(MamToken)
-            .outerjoin(MamToken.logs)
-            .where(MamToken.token == None)
-            .order_by(MamTokenAccessLog.time.desc())
-            .offset(10) # TODO: add config var
-            .distinct()
+        session.add(
+            MamTokenAccessLog(
+                token_value=t.token_value(),
+                scope=t.scope,
+                action=TokenAction.Deactivated,
+                time=datetime.now(tz=timezone.utc),
             )
+        )
+        await session.delete(t)
 
-    for token in old_tokens:
-        db.session.delete(token)
 
-def get_scope(scope):
-    s = TokenScope(int(scope))
+async def prune_candidates(session: AsyncSession) -> None:
+    subq = (
+        select(MamToken.id)
+        .join(MamToken.logs)
+        .order_by(MamTokenAccessLog.time.desc())
+        .offset(10)
+    )
+    stmt = delete(MamToken).where((MamToken.token == None) & MamToken.id.in_(subq))
+    await session.execute(stmt)
 
-    if s.value == 0:
-        raise ValueError
 
-    return s
-    #scopes = map(lambda x: TokenScope[x], scopes.split('|'))
-    #return reduce(lambda x, y: x | y, scopes)
-
-def add_token_candidate(token_candidate, scope, mac=None):
-    tc = db.session.scalar(
-            select(MamToken)
-            .where(
-                    (MamToken.token_candidate == token_candidate) |
-                    (MamToken.token == token_candidate)
-                  )
-            )
+async def add_token_candidate(
+    session: AsyncSession, token_candidate: str, scope: TokenScope, mac=None
+) -> MamToken | None:
+    tc = await session.scalar(
+        select(MamToken).where(
+            (MamToken.token_candidate == token_candidate)
+            | (MamToken.token == token_candidate)
+        )
+    )
 
     if tc is not None:
-        return
+        return None
 
     t = MamToken(token_candidate=token_candidate, scope=scope, mac=mac)
-    l = MamTokenAccessLog(token=t, token_value=token_candidate, scope=scope, action=TokenAction.Registered)
-    db.session.add(t)
-    db.session.add(l)
+    l = MamTokenAccessLog(
+        token=t, token_value=token_candidate, scope=scope, action=TokenAction.Registered
+    )
+    session.add(t)
+    session.add(l)
 
     return t
