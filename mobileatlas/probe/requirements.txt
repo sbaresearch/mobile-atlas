@@ -1,7 +1,7 @@
 # Tested with Python 3.9.2
 
 # Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pySim
+-e git+https://github.com/GGegenhuber/pysim.git@dd2ac45a5ac3af0e5ce65799ba8bd86745c52aae#egg=pySim
 # python3 port of kmod
 -e git+https://github.com/GGegenhuber/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
 
@@ -47,7 +47,6 @@ phonenumbers==8.13.18
 ply==3.11
 psutil==5.9.5
 ptyprocess==0.7.0
-PyBluez==0.22
 pycairo==1.24.0
 pycparser==2.21
 PyGObject==3.44.1

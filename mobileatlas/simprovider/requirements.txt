@@ -1,7 +1,7 @@
 # Tested with Python 3.9.2
 
 # Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pySim
+-e git+https://github.com/GGegenhuber/pysim.git@dd2ac45a5ac3af0e5ce65799ba8bd86745c52aae#egg=pySim
 
 moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients
 moatt-types @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
@@ -18,7 +18,6 @@ gsm0338==1.0.0
 idna==3.4
 jsonpath-ng==1.5.3
 ply==3.11
-PyBluez==0.22
 pyperclip==1.8.2
 pyscard==2.0.7
 pyserial @ git+https://github.com/GGegenhuber/pyserial.git@f251884cbcfd5c34ace7d31138d755b67c3db1a3
