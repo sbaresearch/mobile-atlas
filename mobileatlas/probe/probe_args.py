@@ -1,8 +1,6 @@
 import argparse
 from .measurement.test.test_args import TestParser
 
-
-
 class ProbeParser(TestParser):
     DEFAULT_SIM_SERVER_PORT = 5555
     DEFAULT_TEST_TIMEOUT = 3600  # in seconds -> 60min
@@ -17,21 +15,29 @@ class ProbeParser(TestParser):
     def add_arguments(self):
         super().add_arguments()
         self.parser.add_argument('--host', required=True,
-                            help='SIM server address (default: %(default)s)')
+                            help='SIM server address')
         self.parser.add_argument('--port', type=int, default=ProbeParser.DEFAULT_SIM_SERVER_PORT,
                             help='SIM server port (default: %(default)d)')
         self.parser.add_argument('--timeout', type=int, default=ProbeParser.DEFAULT_TEST_TIMEOUT,
                             help='Test timeout (default: %(default)d)')
         self.parser.add_argument('--no-namespace', dest='start_namespace', action='store_false',
                             help='Do not start a separate measurement namespace (start test in native environment)')
-        self.parser.add_argument('--api-url', required=True,
-                            help='SIM server REST API URL')
         self.parser.add_argument('--cafile',
                             help='CA certificates used to verify SIM server certificate. (File of concatenated certificates in PEM format.)')
         self.parser.add_argument('--capath',
                             help='Path to find CA certificates used to verify SIM server certificate.')
         self.parser.add_argument('--tls-server-name',
                             help='SIM server name used in certificate verification. (defaults to the value of --host)')
+
+        subparsers = self.parser.add_subparsers(title='subcommands', required=True, dest='subcommand')
+        server_parser = subparsers.add_parser('server')
+        direct_parser = subparsers.add_parser('direct')
+
+        server_parser.add_argument('--api-url', required=True,
+                            help='SIM server REST API URL')
+        direct_parser.add_argument('--cert', required=True, help='Client Certificate')
+        direct_parser.add_argument('--key', required=True, help='Client Certificate key')
+
         self.add_config_schema(ProbeParser.CONFIG_SCHEMA_PROBE)
         
     def parse(self):
@@ -54,11 +60,20 @@ class ProbeParser(TestParser):
     def get_capath(self):
         return self.test_args.capath
 
+    def get_cert(self):
+        return self.test_args.cert
+
+    def get_key(self):
+        return self.test_args.key
+
     def get_tls_server_name(self):
         if self.test_args.tls_server_name is None:
             return self.get_host()
         else:
             return self.test_args.tls_server_name
+
+    def get_direct_tunnel(self):
+        return self.test_args.subcommand == 'direct'
 
     def get_timeout(self):
         return self.test_args.timeout

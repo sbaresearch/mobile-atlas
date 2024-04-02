@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import logging
-import time
+import socket
+import ssl
+import struct
 import threading
+import time
 
 import pexpect
 import serial
@@ -68,6 +71,7 @@ class ModemTunnel(VirtualSim):
                  do_pps=True,
                  tls_ctx=None,
                  tls_server_name=None,
+                 direct_connection=False,
                  ):
         self._modem_type = modem_type
         self._clock = ModemTunnel.get_modem_clk(modem_type)
@@ -84,6 +88,7 @@ class ModemTunnel(VirtualSim):
         self._setup_gpios()
         self._tls_ctx = tls_ctx
         self._tls_server_name = tls_server_name
+        self._direct_connection = direct_connection
 
         # bugfix for strange bug at raspi, see https://www.raspberrypi.org/forums/viewtopic.php?t=270917
         # alternatively execute 'read -t 0.1 < /dev/ttyAMA1' after startup
@@ -109,7 +114,14 @@ class ModemTunnel(VirtualSim):
         for pin, off_state in self._power_pins:
             GPIO.setup(pin, GPIO.OUT)
 
-    def _setup_connection(self):
+    def _setup_direct_connection(self):
+        self._s = self._tls_ctx.wrap_socket(
+                socket.create_connection((self._sim_server_ip, self._sim_server_port)),
+                server_hostname=self._tls_server_name,
+                )
+        self._s.send(struct.pack('!Q', self._sim_imsi))
+
+    def _setup_indirect_connection(self):
         token = self._api_token
         session_token = register(self._api_url, token)
 
@@ -129,6 +141,13 @@ class ModemTunnel(VirtualSim):
         if self.connection is None:
             deregister(self._api_url, session_token)
             raise Exception("Connection failed.")
+
+    def _setup_connection(self):
+        if self._direct_connection:
+            self._setup_direct_connection()
+        else:
+            self._setup_indirect_connection()
+
 
     def _setup_modem(self):
         """
@@ -163,19 +182,32 @@ class ModemTunnel(VirtualSim):
             GPIO.wait_for_edge(self._rst_pin, GPIO.RISING)
             logger.info(f"reset pin was pulled up [{x}]")
 
-    # abstract method from virtual sim
-    def handle_apdu(self, apdu):
-        logger.info("forward apdu[" + str(len(apdu)) + "]: " + str(b2h(apdu)))
+    def handle_apdu_indirect(self, apdu):
         self.connection.send_apdu(apdu)  # forward apdu to sim-bank
         response = self.connection.recv()
 
         if response is None:
-            logger.info("peer closed connection.")
-            raise NotImplementedError # TODO
+            logger.error("peer closed connection unexpectedly.")
+            self.shutdown()
+            raise Exception("peer closed connection unexpectedly.")
 
         logger.debug("received answer: " + str(b2h(response.payload)))
-        #self._f.write(b2h(apdu) + "- " + b2h(response) + "\n")
         return response.payload
+
+    def handle_apdu_direct(self, apdu):
+        self._s.send(apdu)
+        response = self._s.recv(65535)
+        logger.debug("received answer: " + str(b2h(response)))
+        return response
+
+    # abstract method from virtual sim
+    def handle_apdu(self, apdu):
+        logger.info("forward apdu[" + str(len(apdu)) + "]: " + str(b2h(apdu)))
+
+        if self._direct_connection:
+            return self.handle_apdu_direct(apdu)
+        else:
+            return self.handle_apdu_indirect(apdu)
 
     def setup(self):
         #self._f = open("apdu_trace_new.txt", "w")
@@ -183,9 +215,14 @@ class ModemTunnel(VirtualSim):
         self._setup_modem()
 
     def shutdown(self):
-        # self._f.close()
-        self.connection.close()
-        deregister(self._api_url, self._session_token)
+        if self._direct_connection:
+            self._s.unwrap()
+            self._s.shutdown(socket.SHUT_RDWR)
+            self._s.close()
+        else:
+            self.connection.close()
+            deregister(self._api_url, self._session_token)
+
         logger.info("shutdown -> stopping virtualsim")
         self.stop()
         logger.info("virtualsim stopped")

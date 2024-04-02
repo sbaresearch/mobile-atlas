@@ -1,4 +1,30 @@
-# Forked PySim:
--e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pysim
+# Tested with Python 3.9.2
 
-requests
+# Forked PySim:
+-e git+https://github.com/GGegenhuber/pysim.git@7100095f31105a5b5aa3c7ed32a005bc568ad5ec#egg=pySim
+
+moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients
+moatt-types @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
+
+attrs==23.1.0
+bidict==0.22.1
+certifi==2023.7.22
+charset-normalizer==3.2.0
+cmd2==1.5.0
+colorama==0.4.6
+construct==2.10.68
+decorator==5.1.1
+gsm0338==1.0.0
+idna==3.4
+jsonpath-ng==1.5.3
+ply==3.11
+PyBluez==0.22
+pyperclip==1.8.2
+pyscard==2.0.7
+pyserial @ git+https://github.com/GGegenhuber/pyserial.git@f251884cbcfd5c34ace7d31138d755b67c3db1a3
+pytlv==0.71
+PyYAML==6.0.1
+requests==2.31.0
+six==1.16.0
+urllib3==2.0.4
+wcwidth==0.2.6

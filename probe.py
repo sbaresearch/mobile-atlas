@@ -81,28 +81,49 @@ def main():
     except ValueError as e:
         exit(f"{e}\nExiting...")
 
-    try:
-        api_token = Token(base64.b64decode(os.environ["API_TOKEN"]))
-    except:
-        exit("API_TOKEN environment variable is unset.\nExiting...")
+    if not parser.get_direct_tunnel():
+        try:
+            api_token = Token(base64.b64decode(os.environ["API_TOKEN"]))
+        except:
+            exit("API_TOKEN environment variable is unset.\nExiting...")
 
     # block kernel modules
     blacklist_kernel_modules(parser.get_blacklisted_modules())
 
     # Create modem tunnel
     logger.info("setup modem tunnel...")
+
     tls_ctx = ssl.create_default_context(cafile=parser.get_cafile(), capath=parser.get_capath())
-    tunnel = ModemTunnel(
-            parser.get_modem_type(),
-            parser.get_modem_adapter(),
-            parser.get_api_url(),
-            api_token,
-            parser.get_host(),
-            parser.get_port(),
-            parser.get_imsi(),
-            tls_ctx=tls_ctx,
-            tls_server_name=parser.get_tls_server_name(),
-            )
+    if parser.get_direct_tunnel():
+        if parser.get_cert() is None or parser.get_key() is None:
+            exit("Direct connection requires a client certificate and the corresponding key")
+
+        tls_ctx.load_cert_chain(parser.get_cert(), parser.get_key())
+        tunnel = ModemTunnel(
+                parser.get_modem_type(),
+                parser.get_modem_adapter(),
+                None,
+                None,
+                parser.get_host(),
+                parser.get_port(),
+                parser.get_imsi(),
+                tls_ctx=tls_ctx,
+                tls_server_name=parser.get_tls_server_name(),
+                direct_connection=True,
+                )
+    else:
+        tunnel = ModemTunnel(
+                parser.get_modem_type(),
+                parser.get_modem_adapter(),
+                parser.get_api_url(),
+                api_token,
+                parser.get_host(),
+                parser.get_port(),
+                parser.get_imsi(),
+                tls_ctx=tls_ctx,
+                tls_server_name=parser.get_tls_server_name(),
+                )
+
     tunnel.setup()  # resets modem
 
     logger.info("wait some time until modem is initialized...")
