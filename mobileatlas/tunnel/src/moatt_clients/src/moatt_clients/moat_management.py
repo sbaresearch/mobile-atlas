@@ -32,7 +32,7 @@ def deregister(api_url: str, session_token: Token) -> bool:
 
 
 def register_probe(api_url: str, mam_token: Token, tunnel_token: Token) -> Token:
-    """Try to register a client using a valid token.
+    """Register a client using valid management server and SIM tunnel tokens.
 
     Parameters
     ----------
@@ -46,13 +46,6 @@ def register_probe(api_url: str, mam_token: Token, tunnel_token: Token) -> Token
     Returns
     -------
     The session token returned by the server
-
-    Raises
-    ------
-    requests.HTTPError
-        If the server responds with an HTTP error code.
-    ValueError
-        If the server's response is malformed.
     """
     url = f"{api_url}/tunnel/probe"
 
@@ -76,6 +69,19 @@ def register_probe(api_url: str, mam_token: Token, tunnel_token: Token) -> Token
 
 
 def register_provider(api_url: str, tunnel_token: Token) -> Token:
+    """Register a SIM provider using a valid SIM tunnel token.
+
+    Parameters
+    ----------
+    api_url
+        API base URL (e.g., 'https://example.com/api/v1')
+    tunnel_token
+        MobileAtlas SIM tunnel token
+
+    Returns
+    -------
+    The session token returned by the server
+    """
     url = f"{api_url}/tunnel/provider"
 
     headers = {"Authorization": f"Bearer {tunnel_token.as_base64()}"}

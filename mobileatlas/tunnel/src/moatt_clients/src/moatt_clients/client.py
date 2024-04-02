@@ -11,6 +11,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Client:
+    """
+    Base class for the Provider- and ProbeClient classes.
+    Should not be used directly.
+    """
+
     def __init__(
         self,
         session_token: Token,

@@ -70,7 +70,7 @@ def main():
     cfg = init_config(args.config, SERVER_HOST=args.host, SERVER_PORT=args.port)
 
     server_cfg = uvicorn.Config(
-        app, host=args.host, port=cfg.SERVER_PORT, root_path=args.root_path
+        app, host=cfg.SERVER_HOST, port=cfg.SERVER_PORT, root_path=args.root_path
     )
     server = uvicorn.Server(server_cfg)
     uvloop.run(server.serve())

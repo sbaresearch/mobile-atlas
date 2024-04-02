@@ -53,7 +53,7 @@ def register_sims(
     api_url
         API base URL (e.g., 'https://example.com/api/v1')
     session_token
-        The session to use.
+        A valid session token.
     sims
         SIM cards to register.
 
@@ -79,6 +79,10 @@ def register_sims(
 
 
 class ProviderClient(Client):
+    """
+    Client used to provide SIM cards to the MobileAtlas tunnel server.
+    """
+
     def __init__(
         self,
         session_token: Token,
@@ -94,15 +98,15 @@ class ProviderClient(Client):
         session_token
             Session token to use
         host
-            Server hostname
+            Tunnel-Server hostname
         port
-            Port of the provider tunnel service.
+            Port of the Tunnel-Server
         cb
             Callback deciding whether requested SIM card is available.
         tls_ctx
-            Optional TLS configuration to use.
+            Optional TLS configuration.
         server_hostname
-            TLS server hostname.
+            Optional TLS server hostname used in server certificate validation.
         """
         self.cb = cb
         super().__init__(
@@ -110,11 +114,11 @@ class ProviderClient(Client):
         )
 
     def wait_for_connection(self) -> Optional[tuple[SimIdentifierType, ApduStream]]:
-        """Wait for a probe to request a connection.
+        """Wait for a single connection request.
 
         Returns
         -------
-        ICCID or IMSI of the requested SIM card and apdu stream to be used.
+        Identifier of the requested SIM card and connected ApduStream.
         """
         LOGGER.debug("Opening connection.")
         stream = RawStream(

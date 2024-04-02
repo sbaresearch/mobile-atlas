@@ -95,19 +95,13 @@ class Queue(asyncio.Queue):
         return num_closed
 
     async def _gc(self):
-        def f(qe):
-            if qe.writer.is_closing():
-                return False
-            else:
-                return True
-
         while True:
             await asyncio.sleep(config.get_config().QUEUE_GC_INTERVAL.total_seconds())
 
             if len(self._queue) != 0:
                 LOGGER.debug("Queue GC starting.")
                 size = len(self._queue)
-                self._queue = collections.deque(filter(lambda x: f(x), self._queue))
+                self._queue = collections.deque(filter(lambda qe: not qe.writer.is_closing(), self._queue))
                 if len(self._queue) < size:
                     LOGGER.info(
                         f"Removed {size - len(self._queue)} closed probe connection(s)."

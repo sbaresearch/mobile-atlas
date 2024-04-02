@@ -48,7 +48,7 @@ class ProbeClient(Client):
         tls_ctx
             Optional TLS configuration.
         server_hostname
-            TLS server hostname.
+            Optional TLS server hostname used in server certificate validation.
         no_wait
             Whether the client is willing to wait for the requested SIM card to become
             available.
