@@ -2,7 +2,7 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.moatt-types = {
-    url = "github:sbaresearch/mobile-atlas?dir=mobileatlas/tunnel/src/moatt_types";
+    url = "path:../moatt_types";
     inputs.nixpkgs.follows = "nixpkgs";
     inputs.flake-utils.follows = "flake-utils";
   };
