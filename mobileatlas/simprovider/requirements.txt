@@ -3,8 +3,8 @@
 # Forked PySim:
 -e git+https://github.com/GGegenhuber/pysim.git@dd2ac45a5ac3af0e5ce65799ba8bd86745c52aae#egg=pySim
 
-moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients
-moatt-types @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
+moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas@main#subdirectory=mobileatlas/tunnel/src/moatt_clients
+moatt-types @ git+https://github.com/sbaresearch/mobile-atlas@main#subdirectory=mobileatlas/tunnel/src/moatt_types
 
 attrs==23.1.0
 bidict==0.22.1

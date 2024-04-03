@@ -113,7 +113,7 @@ class ProviderClient(Client):
             session_token, host, port, tls_ctx=tls_ctx, server_hostname=server_hostname
         )
 
-    def wait_for_connection(self) -> Optional[tuple[SimIdentifierType, ApduStream]]:
+    def wait_for_connection(self) -> tuple[SimIdentifierType, ApduStream]:
         """Wait for a single connection request.
 
         Returns
@@ -121,19 +121,23 @@ class ProviderClient(Client):
         Identifier of the requested SIM card and connected ApduStream.
         """
         LOGGER.debug("Opening connection.")
-        stream = RawStream(
-            self.tls_ctx.wrap_socket(
-                socket.create_connection((self.host, self.port)),
-                server_hostname=self.server_hostname,
+        try:
+            stream = RawStream(
+                self.tls_ctx.wrap_socket(
+                    socket.create_connection((self.host, self.port)),
+                    server_hostname=self.server_hostname,
+                )
             )
-        )
+        except Exception as e:
+            LOGGER.warning(f"Could not connect to server: {e}")
+            raise ConnectionError from e
 
         try:
             apdu_stream = self._wait_for_connection(stream)
         except Exception as e:
-            LOGGER.warn(f"Exception was raised while waiting for connection: {e}")
+            LOGGER.warning(f"Exception was raised while waiting for connection: {e}")
             stream.close()
-            return None
+            raise
 
         if apdu_stream is None:
             LOGGER.debug("APDU stream is none")
@@ -144,14 +148,14 @@ class ProviderClient(Client):
     def _wait_for_connection(
         self,
         stream: RawStream,
-    ) -> Optional[tuple[SimIdentifierType, ApduStream]]:
+    ) -> tuple[SimIdentifierType, ApduStream]:
         self._authenticate(AuthType.Provider, stream)
 
         logging.debug("Waiting for connection request.")
         conn_req = stream.read_message(ConnectRequest.decode)
 
         if conn_req is None:
-            LOGGER.warn("Malformed connection request.")
+            LOGGER.warning("Malformed connection request.")
             raise ProtocolError
 
         LOGGER.debug(f"Received request for SIM: {conn_req.identifier}")

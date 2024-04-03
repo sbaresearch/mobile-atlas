@@ -61,7 +61,7 @@ def wait_for_modem():
             if modem_device:
                 break
         time.sleep(1)
-    
+
 def main():
     start = datetime.utcnow()
     """
@@ -83,6 +83,7 @@ def main():
 
     if not parser.get_direct_tunnel():
         try:
+            mam_token = Token(base64.b64decode(os.environ["MAM_TOKEN"]))
             api_token = Token(base64.b64decode(os.environ["API_TOKEN"]))
         except:
             exit("API_TOKEN environment variable is unset.\nExiting...")
@@ -116,6 +117,7 @@ def main():
                 parser.get_modem_type(),
                 parser.get_modem_adapter(),
                 parser.get_api_url(),
+                mam_token,
                 api_token,
                 parser.get_host(),
                 parser.get_port(),

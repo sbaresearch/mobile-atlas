@@ -10,25 +10,16 @@ import sys
 from os import path
 
 # TODO set correct path
-#PROBE_UTILITIES = "/home/pf/Documents/mobile-atlas-merge/setup/systemd/probe_utilities.py"
-PROBE_UTILITIES = "/home/pf/Documents/mobile-atlas-merge/setup/systemd/"
+PROBE_UTILITIES = "/usr/local/lib/mobile-atlas/"
 sys.path.append(PROBE_UTILITIES)
 
 import probe_utilities as probe_util
 
 WIREGUARD_DIR = "/etc/wireguard"
-#API_ENDPOINT = "https://mam.mobileatlas.eu"
-API_ENDPOINT = "http://localhost:5000"
+API_ENDPOINT = "https://mam.mobileatlas.eu"
 TOKEN_REG_URL = f"{API_ENDPOINT}/tokens/register"
 REGISTER_URL = f"{API_ENDPOINT}/wireguard/register"
 NET_INTERFACE = "eth0"
-
-# WIREGUARD_DIR = "/tmp/wireguard"
-# REGISTER_URL = "http://localhost:5000/wireguard/register"
-# NET_INTERFACE = "wlp2s0"
-
-def _get_or_create_wireguard_token():
-    return "vwMzQbmpvo0asJ0+GFtk6hC6Vd+T3LtnYYxFkCJkKRk="
 
 def get_or_create_mam_token():
     token_path = WIREGUARD_DIR + "/token"
@@ -46,9 +37,6 @@ def get_or_create_mam_token():
             return f.readline()
 
 def get_or_create_wireguard_key():
-    return {"public": "KJ+OCAwcvyz4rILS0tXMPrVYloE/S5SOWz+eujAYJHs=", "private": "wGHkux2e+A9BPPqDvKZUgYuppzCuL/L/J/yp84uHF3o="}
-
-def _get_or_create_wireguard_key():
     """
     Either read the keys or create new one with "wg genkey"
     """
@@ -67,8 +55,7 @@ def save_wireguard_config(private, ip, endpoint, publickey_endpoint, allowed_ips
     """
     Generate the config, however it will overwrite any existing wg0.conf
     """
-    with open("/dev/tty", "w") as cf:
-    #with open(WIREGUARD_DIR + "/wg0.conf", "w") as cf:
+    with open(WIREGUARD_DIR + "/wg0.conf", "w") as cf:
         cf.write(f"[Interface]\n")
         cf.write(f"Address = {ip}/32\n")
         cf.write(f"PrivateKey = {private}\n")
@@ -103,7 +90,7 @@ def main():
 
     res = requests.post(
             REGISTER_URL,
-            data={"publickey": keys["public"], "mac": mac},
+            json={"publickey": keys["public"], "mac": mac},
             headers={"Authorization": f"Bearer {token}"},
             )
 

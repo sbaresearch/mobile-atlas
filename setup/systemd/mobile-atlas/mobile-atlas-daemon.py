@@ -8,14 +8,12 @@ from datetime import datetime, timedelta, timezone
 
 # TODO: specify dependency
 #hack to add probe utlities module
-#PROBE_UTILITIES = "/usr/local/lib/mobile-atlas/"
-PROBE_UTILITIES = "/home/pf/Documents/mobile-atlas-merge/setup/systemd/"
+PROBE_UTILITIES = "/usr/local/lib/mobile-atlas/"
 sys.path.append(PROBE_UTILITIES)
 import probe_utilities as probe_util
 from probe_utilities import now
 
-#MAM_URL = "https://mam.mobileatlas.eu"
-MAM_URL = "http://localhost:5000"
+MAM_URL = "https://mam.mobileatlas.eu"
 NET_INTERFACE = "eth0"
 TOKEN_STORAGE_DIR = "/etc/mobileatlas/"
 GIT_DIR = "/home/pi/mobile-atlas/"
@@ -94,7 +92,7 @@ def main():
     auth_loop()
 
     requests.post(MAM_URL+'/probe/startup',
-                  data={'mac': state['mac']},
+                  json={'mac': state['mac']},
                   headers=token_header(),
                   timeout=TIMEOUT)
 

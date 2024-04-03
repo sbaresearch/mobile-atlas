@@ -15,9 +15,10 @@ import time
 from mobileatlas.simprovider.sim_provider import SimProvider
 from mobileatlas.simprovider.tunnel.sim_tunnel import SimTunnel
 
-from moatt_clients.provider_client import ProviderClient, register_sims
-from moatt_clients.client import register, deregister, AuthError
-from moatt_types.connect import Token, ConnectStatus, Imsi, Iccid
+from moatt_clients.provider_client import ProviderClient, register_sims, SIM
+from moatt_clients.errors import AuthError
+from moatt_clients.moat_management import register_provider, deregister_provider
+from moatt_types.connect import Token, ConnectStatus, Imsi, Iccid, SimId, SimIndex
 
 PORT_DEFAULT = 6666
 
@@ -44,15 +45,29 @@ def accept_connection(s):
     return connection
 
 def provides_sim(sim_provider, req):
-    device = next((x for x in sim_provider.get_sims() if Imsi(x.imsi) == req.identifier or Iccid(x.iccid) == req.identifier), None)
+    sim = get_sim(sim_provider, req.identifier)
 
-    if device:
-        return ConnectStatus.Success
-    else:
-        return ConnectStatus.NotFound
+    return ConnectStatus.Success if sim is not None else ConnectStatus.NotFound
 
 def get_sims(sim_provider):
-    return [{"iccid": x.iccid, "imsi": x.imsi} for x in sim_provider.get_sims()]
+    return [SIM(id=i, iccid=x.iccid, imsi=x.imsi) for i, x in enumerate(sim_provider.get_sims())]
+
+def get_sim(sim_provider, ident):
+    sims = sim_provider.get_sims()
+
+    if isinstance(ident, SimId):
+        if ident.id < len(sims):
+            return sims[ident.id]
+    elif isinstance(ident, SimIndex):
+        if ident.index < len(sims):
+            return sims[ident.index]
+    else:
+        sim = next((x for x in sims if Imsi(x.imsi) == ident or Iccid(x.iccid) == ident), None)
+
+        if sim is not None:
+            return sim
+
+    return None
 
 def direct_connection(host, port, sim_provider, tls_ctx):
     srv = init_server(host, port, tls_ctx)
@@ -133,16 +148,19 @@ verification. (defaults to the value of --host)')
     sim_provider = SimProvider(args.bluetooth_mac)
 
     sims = get_sims(sim_provider)
-    session_token = register(args.api_url, token)
-
-    if session_token is None:
-        logging.error("Registration failed.")
+    try:
+        session_token = register_provider(args.api_url, token)
+    except:
+        logging.exception("Registration with management server failed.")
         return
 
     try:
         sim_provider.set_device_change_callback(lambda: register_sims(args.api_url, session_token, get_sims(sim_provider)))
-        if register_sims(args.api_url, session_token, sims) is None:
-            logging.error("SIM card registration failed.")
+
+        try:
+            register_sims(args.api_url, session_token, sims)
+        except:
+            logging.exception("SIM card registration failed.")
             return
 
         tls_ctx = ssl.create_default_context(cafile=args.cafile, capath=args.capath)
@@ -172,7 +190,6 @@ verification. (defaults to the value of --host)')
             except Exception as e:
                 logging.warn(f"Error while establishing connection: {e}")
 
-            if id_connection is None:
                 failed_connections += 1
 
                 if failed_connections > 10:
@@ -187,20 +204,20 @@ verification. (defaults to the value of --host)')
             requested_sim = id_connection[0]
             connection = id_connection[1]
 
-            device = next((x for x in sim_provider.get_sims() if Iccid(x.iccid) == requested_sim or Imsi(x.imsi) == requested_sim), None)
-            if device:
-                logging.info(f"requested imsi {requested_sim} is on device {device.device_name}")
+            sim_info = get_sim(sim_provider, requested_sim)
+            if sim_info is not None:
+                logging.info(f"requested imsi {requested_sim} is on device {sim_info.device_name}")
                 # Start SimTunnel for connection to serial device
                 #tunnel = SimTunnel(connection, SerialSimLink(device))
                 #tunnel = SimTunnel(connection, BluetoothSapSimLink("80:5A:04:0E:90:F6"))
                 #tunnel = SimTunnel(connection, ModemATCommandLink("/dev/ttyACM0"))
-                tunnel = SimTunnel(connection, device.sl, device.iccid)
+                tunnel = SimTunnel(connection, sim_info.sl, sim_info.iccid)
                 tunnel.start()
             else:
                 logging.info(f"requested imsi {requested_sim} is currently not connected to the system")
                 connection.close()
     finally:
-        deregister(args.api_url, session_token)
+        deregister_provider(args.api_url, session_token)
 
 if __name__ == "__main__":
     try:

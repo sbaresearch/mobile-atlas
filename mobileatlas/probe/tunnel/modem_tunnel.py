@@ -14,7 +14,7 @@ from pySim.transport.virtual_sim import VirtualSim
 from pySim.utils import b2h
 
 from moatt_clients.probe_client import ProbeClient
-from moatt_clients.client import register, deregister
+from moatt_clients.moat_management import register_probe, deregister_probe
 from moatt_types.connect import Imsi
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,7 @@ class ModemTunnel(VirtualSim):
                  modem_type,
                  adapter_type,
                  api_url,
+                 mam_token,
                  api_token,
                  sim_server_ip,
                  sim_server_port,
@@ -76,6 +77,7 @@ class ModemTunnel(VirtualSim):
         self._modem_type = modem_type
         self._clock = ModemTunnel.get_modem_clk(modem_type)
         self._api_url = api_url
+        self._mam_token = mam_token
         self._api_token = api_token
         self._sim_server_ip = sim_server_ip
         self._sim_server_port = sim_server_port
@@ -94,7 +96,7 @@ class ModemTunnel(VirtualSim):
         # alternatively execute 'read -t 0.1 < /dev/ttyAMA1' after startup
         with serial.Serial(ModemTunnel.DEV_SERIAL, timeout=0.01) as ser:
             ser.read()  #timeout and discard input buffer
-            
+
         VirtualSim.__init__(self, device=ModemTunnel.DEV_SERIAL, clock=self._clock, timeout=6000, do_pps=do_pps)
         # thread should be initialized in above methode, however an error occures when we do not explicitly initialize it
         threading.Thread.__init__(self)
@@ -122,11 +124,13 @@ class ModemTunnel(VirtualSim):
         self._s.send(struct.pack('!Q', self._sim_imsi))
 
     def _setup_indirect_connection(self):
+        mam_token = self._mam_token
         token = self._api_token
-        session_token = register(self._api_url, token)
 
-        if session_token is None:
-            raise Exception("Registration failed.")
+        try:
+            session_token = register_probe(self._api_url, mam_token, token)
+        except Exception as e:
+            raise Exception("Registration failed.") from e
 
         self._session_token = session_token
         self.client = ProbeClient(
@@ -136,11 +140,11 @@ class ModemTunnel(VirtualSim):
                 tls_ctx=self._tls_ctx,
                 server_hostname=self._tls_server_name,
                 )
-        self.connection = self.client.connect(Imsi(str(self._sim_imsi)))
-
-        if self.connection is None:
-            deregister(self._api_url, session_token)
-            raise Exception("Connection failed.")
+        try:
+            self.connection = self.client.connect(Imsi(str(self._sim_imsi)))
+        except Exception as e:
+            deregister_probe(self._api_url, session_token)
+            raise Exception("Connection failed.") from e
 
     def _setup_connection(self):
         if self._direct_connection:

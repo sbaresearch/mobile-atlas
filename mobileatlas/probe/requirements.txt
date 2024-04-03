@@ -5,8 +5,8 @@
 # python3 port of kmod
 -e git+https://github.com/GGegenhuber/python-kmod.git@2fb18cee78d5ed70fa309646339b9db6a09d08ab#egg=kmod
 
-moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_clients
-moatt-types @ git+https://github.com/sbaresearch/mobile-atlas-tunnel@main#subdirectory=src/moatt_types
+moatt-clients @ git+https://github.com/sbaresearch/mobile-atlas@main#subdirectory=mobileatlas/tunnel/src/moatt_clients
+moatt-types @ git+https://github.com/sbaresearch/mobile-atlas@main#subdirectory=mobileatlas/tunnel/src/moatt_types
 pyserial @ git+https://github.com/GGegenhuber/pyserial.git@f251884cbcfd5c34ace7d31138d755b67c3db1a3
 
 aioquic==0.9.20

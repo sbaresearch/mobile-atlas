@@ -58,7 +58,7 @@ class ProbeClient(Client):
         )
         self.no_wait = no_wait
 
-    def connect(self, sim_id: Imsi | Iccid | SimId | SimIndex) -> Optional[ApduStream]:
+    def connect(self, sim_id: Imsi | Iccid | SimId | SimIndex) -> ApduStream:
         """Establish a connection with a SIM provider.
 
         Parameters
@@ -89,7 +89,7 @@ class ProbeClient(Client):
 
     def _connect(
         self, stream: RawStream, sim_id: Imsi | Iccid | SimId | SimIndex
-    ) -> Optional[ApduStream]:
+    ) -> ApduStream:
         self._authenticate(AuthType.Probe, stream)
 
         logger.debug(f"Sending connection request ({sim_id})")

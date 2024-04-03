@@ -205,6 +205,7 @@
     - { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.py', dest: '/usr/local/lib/wireguard-register/' }
     - { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.service', dest: '/lib/systemd/system/' }
     - { src: '/home/pi/mobile-atlas/setup/systemd/mobile-atlas/mobile-atlas.service', dest: '/lib/systemd/system/' }
+    - { src: '/home/pi/mobile-atlas/setup/systemd/probe_utilities.py', dest: '/usr/local/lib/mobile-atlas/' }
     become: yes
 
   - name: Add wireguard ping-watchdog

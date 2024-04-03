@@ -9,28 +9,6 @@ from . import types
 LOGGER = logging.getLogger(__name__)
 
 
-def deregister(api_url: str, session_token: Token) -> bool:
-    """Deregister a session token.
-
-    Parameters
-    ----------
-    api_url
-        API base URL (e.g., 'https://example.com/api/v1')
-    session_token
-        Session token to deregister.
-
-    Returns
-    -------
-    Whether deregistration was successful.
-    """
-    r = requests.delete(f"{api_url}/tunnel/probe", json=session_token.as_base64())
-
-    if r.status_code != requests.codes.ok:
-        return False
-    else:
-        return True
-
-
 def register_probe(api_url: str, mam_token: Token, tunnel_token: Token) -> Token:
     """Register a client using valid management server and SIM tunnel tokens.
 
@@ -68,6 +46,23 @@ def register_probe(api_url: str, mam_token: Token, tunnel_token: Token) -> Token
         raise
 
 
+def deregister_probe(api_url: str, session_token: Token) -> bool:
+    """Deregister a probe session token.
+
+    Parameters
+    ----------
+    api_url
+        API base URL (e.g., 'https://example.com/api/v1')
+    session_token
+        Session token to deregister.
+
+    Returns
+    -------
+    Whether deregistration was successful.
+    """
+    return _deregister(f"{api_url}/tunnel/probe", session_token)
+
+
 def register_provider(api_url: str, tunnel_token: Token) -> Token:
     """Register a SIM provider using a valid SIM tunnel token.
 
@@ -101,3 +96,29 @@ def register_provider(api_url: str, tunnel_token: Token) -> Token:
     except (ValidationError, ValueError):
         LOGGER.exception("Received a malformed session_token")
         raise
+
+def deregister_provider(api_url: str, session_token: Token) -> bool:
+    """Deregister a provider session token.
+
+    Parameters
+    ----------
+    api_url
+        API base URL (e.g., 'https://example.com/api/v1')
+    session_token
+        Session token to deregister.
+
+    Returns
+    -------
+    Whether deregistration was successful.
+    """
+
+    return _deregister(f"{api_url}/tunnel/provider", session_token)
+
+
+def _deregister(url: str, session_token: Token) -> bool:
+    r = requests.delete(url, json=session_token.as_base64())
+
+    if r.status_code != requests.codes.ok:
+        return False
+    else:
+        return True
