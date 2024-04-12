@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moat-management"
-dynamic = [ "version", "dependencies" ]
+dynamic = [ "version", "dependencies", "optional-dependencies" ]
 
 [project.scripts]
 moat-management = "moat_management.cli:main"
@@ -14,3 +14,6 @@ attr = "moat_management.VERSION"
 
 [tool.setuptools.dynamic.dependencies]
 file = [ "requirements.txt" ]
+
+[tool.setuptools.dynamic.optional-dependencies.dev]
+file = [ "dev-requirements.txt" ]

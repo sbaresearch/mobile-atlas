@@ -1,19 +1,18 @@
-SRCDIR := ./src
+SRCDIRS := ./tunnel/src ./management/src
 TESTDIR := ./tests
 VENV := venv
 PYTHON := python
-PACKAGE_SRC = ./src
-PACKAGES := moatt_types moatt_clients moatt_server
-INSTALLS := $(patsubst %,install-%-deps,$(PACKAGES))
-DEV_INSTALLS := $(patsubst %,install-%-deps-dev,$(PACKAGES))
+PACKAGES := moatt_types moatt_clients moatt_server management
+INSTALLS := $(patsubst %,install-%-deps,$(notdir $(PACKAGES)))
+DEV_INSTALLS := $(patsubst %,install-%-deps-dev,$(notdir $(PACKAGES)))
+PIP_FLAGS :=
 
 .PHONY: dev clean $(INSTALLS) $(DEV_INSTALLS) dev-tools lint test
 
 install: $(VENV) $(INSTALLS)
 
 $(INSTALLS): $(VENV)
-	. "$(VENV)/bin/activate" && \
-		pip install "$(PACKAGE_SRC)/$(patsubst install-%-deps,%,$@)"
+	./install-package.sh -f "$(PIP_FLAGS)" "$(VENV)" "$(patsubst install-%-deps,%,$@)"
 
 dev: $(DEV_INSTALLS) dev-tools
 
@@ -23,8 +22,7 @@ $(VENV):
 		pip install -U pip
 
 $(DEV_INSTALLS): $(VENV)
-	. "$(VENV)/bin/activate" && \
-		pip install -e "$(PACKAGE_SRC)/$(patsubst install-%-deps-dev,%,$@)[dev]"
+	./install-package.sh -d -f "$(PIP_FLAGS)" "$(VENV)" "$(patsubst install-%-deps-dev,%,$@)"
 
 dev-tools:
 	. "$(VENV)/bin/activate" && \
@@ -48,4 +46,4 @@ isort:
 
 black:
 	@. "$(VENV)/bin/activate" && \
-		black --diff --check "$(SRCDIR)" "$(TESTDIR)"
+		black --diff --check $(SRCDIRS)
