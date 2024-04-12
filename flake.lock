@@ -18,33 +18,13 @@
         "type": "github"
       }
     },
-    "moatt-types": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1,
-        "narHash": "sha256-Glb6tiJyT2YYbalgYlzJhBIh+OpPPZmSme2yD/sdjvU=",
-        "path": "../moatt_types",
-        "type": "path"
-      },
-      "original": {
-        "path": "../moatt_types",
-        "type": "path"
-      }
-    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1712026416,
-        "narHash": "sha256-N/3VR/9e1NlN49p7kCiATiEY6Tzdo+CbrAG8kqCQKcI=",
+        "lastModified": 1714562304,
+        "narHash": "sha256-Mr3U37Rh6tH0FbaDFu0aZDwk9mPAe7ASaqDOGgLqqLU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "080a4a27f206d07724b88da096e27ef63401a504",
+        "rev": "bcd44e224fd68ce7d269b4f44d24c2220fd821e7",
         "type": "github"
       },
       "original": {
@@ -57,7 +37,6 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "moatt-types": "moatt-types",
         "nixpkgs": "nixpkgs"
       }
     },
