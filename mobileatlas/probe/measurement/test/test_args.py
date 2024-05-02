@@ -17,6 +17,7 @@ import pytz
 class TestParser():
     # Since quectel are our default modems
     DEFAULT_MODEM_TYPE = "quectel"
+    DEFAULT_MODEM_ADAPTER = "mpcie"
     DEFAULT_LOG_DIRECTORY = "/tmp/mobileatlas/"
     DEFAULT_LOGGING_FORMAT = '%(asctime)s, %(levelname)-8s [%(filename)s:%(funcName)s:%(lineno)d] %(message)s\r'
     DEFAULT_NETNS_DEBUGGING_PORT = 5678
@@ -54,6 +55,8 @@ class TestParser():
     def add_arguments(self):
         self.parser.add_argument('--modem', choices=['quectel', 'huawei', 'telit', 'simcom'],
                         default=TestParser.DEFAULT_MODEM_TYPE, help='Modem model that is used within the test environment (default: %(default)s)')
+        self.parser.add_argument('--modem-adapter', dest='modem_adapter', choices=['m2', 'mpcie', 'usb'],
+                        default=TestParser.DEFAULT_MODEM_ADAPTER, help='Modem adapter that is used within the test environment (default: %(default)s)')
         self.parser.add_argument('--testname', default=None, help='Name of the test will be executed (default: %(default)s)')
         self.parser.add_argument('--configfile', type=argparse.FileType('r', encoding='UTF-8'), required=True)
         self.parser.add_argument('--uuid', default=uuid.uuid1(), help='Unique identifier for the test run (per default an auto-generated uuid is used))')
@@ -117,6 +120,9 @@ class TestParser():
 
     def get_modem_type(self):
         return self.test_args.modem
+    
+    def get_modem_adapter(self):
+        return self.test_args.modem_adapter
 
     def get_uuid(self):
         return self.test_args.uuid

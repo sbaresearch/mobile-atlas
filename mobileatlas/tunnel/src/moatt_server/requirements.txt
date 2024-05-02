@@ -1,0 +1,5 @@
+fastapi
+httpx
+psycopg[binary]
+SQLAlchemy[asyncio]
+uvloop

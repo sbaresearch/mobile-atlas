@@ -77,20 +77,6 @@ When a reset is detected, we send an Answer To Reset (ATR) message to initiate c
 After a successful connection setup, we just relay all APDUs that are received from the modem to our SIM provider.
 For expensive commands or long-lasting round-trip times, we can repeatedly signal Waitng Time eXtension (WTX) to the modem.
 
-Historical Builds
------------
-During early experiments we've used even cheaper hardware for our measurement probes.  
-The first prototype was based on a Raspberry Pi 3B+ and a Huawei ME909s-120 modem.  
-To connect the modem to the system, we've used a cheap [Mini PCIe to USB Adapter](https://www.aliexpress.com/item/33059509853.html) from Aliexpress. Since pins of the SIM card socket are exposed and easily accessible we directly soldered wires to the pins instead of using an elegant adapter PCB.
-Althouth the early prototype was working as expected, we experienced some stability issues (e.g., dead mPCIe adapters, disconnected wires) during long lasting remote deployment scenarios. Therefore, we switched to more professional components in the succeeding revision. 
-
-### Early Probe Prototype
-<p align="left">
-    <img alt="Early MobileAtlas Measurement Probe Prototype" title="Early MobileAtlas Measurement Probe Prototype" src="../images/probe_early_prototype.png" width="550">
-</p>
-
-
-
 ### Candidate Components for 5G-ready Probe Version (testing)
 | Component | Model | Cost |
 | --- | --- | ---: |
@@ -104,3 +90,15 @@ Althouth the early prototype was working as expected, we experienced some stabil
 
 Further remarks:
 We're currently building a 5G-ready prototype with the listed components. Supporting other modems should be easily possible, because we use ModemManager as an abstraction layer to communicate with the attached modem. Similarily, other 5G HATs (e.g., [SIM8200EA-M2 5G HAT](https://www.waveshare.com/wiki/SIM8200EA-M2_5G_HAT)) should work equally well, since the modem is actually just attached via USB. However, we currently use HAT-specific GPIO ports to send out-of-band control messages to the modem (e.g., powering up/down via pulling a specific pin to high/low). Using a different HAT therefore requires minor patches to correctly map this to the corresponding GPIO pins.
+
+Historical Builds
+-----------
+During early experiments we've used even cheaper hardware for our measurement probes.  
+The first prototype was based on a Raspberry Pi 3B+ and a Huawei ME909s-120 modem.  
+To connect the modem to the system, we've used a cheap [Mini PCIe to USB Adapter](https://www.aliexpress.com/item/33059509853.html) from Aliexpress. Since pins of the SIM card socket are exposed and easily accessible we directly soldered wires to the pins instead of using an elegant adapter PCB.
+Althouth the early prototype was working as expected, we experienced some stability issues (e.g., dead mPCIe adapters, disconnected wires) during long lasting remote deployment scenarios. Therefore, we switched to more professional components in the succeeding revision. 
+
+### Early Probe Prototype
+<p align="left">
+    <img alt="Early MobileAtlas Measurement Probe Prototype" title="Early MobileAtlas Measurement Probe Prototype" src="../images/probe_early_prototype.png" width="550">
+</p>

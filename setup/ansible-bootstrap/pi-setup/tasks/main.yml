@@ -89,8 +89,11 @@
         # used for sim eumlation 
         dtoverlay=uart2
 
-        #set pin 26 to high (disables modem module)
-        gpio=26=op,dh 
+        #set pin 26 to high (disables modem module with mPCIe adapter)
+        gpio=26=op,dh
+
+        #set pin 16 to high (disables modem module with m.2 adapter)
+        gpio=16=op,dh
     become: yes
 
   - name: Install modemmanager from testing repository
@@ -154,15 +157,8 @@
 
   - name: Clone mobileatlas git repository
     git:
-      #repo: https://github.com/sbaresearch/mobile-atlas.git
-      repo: https://measurement-probe-read:sbaglpat-jxjjihMJdxi5wYd7bAsC@gitlab.sba-research.org/ggegenhuber/mobile-atlas-public.git
+      repo: https://github.com/sbaresearch/mobile-atlas.git
       dest: /home/pi/mobile-atlas
-    become_user: pi
-
-  - name: Clone mobileatlas config (private) git repository
-    git:
-      repo: https://measurement-probe:fillinaccesskey@gitlab.sba-research.org/ggegenhuber/mobile-atlas-config.git
-      dest: /home/pi/mobile-atlas-config
     become_user: pi
 
   - name: Install virtualenv for all users
@@ -209,6 +205,7 @@
     - { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.py', dest: '/usr/local/lib/wireguard-register/' }
     - { src: '/home/pi/mobile-atlas/setup/systemd/wireguard-register/wireguard-register.service', dest: '/lib/systemd/system/' }
     - { src: '/home/pi/mobile-atlas/setup/systemd/mobile-atlas/mobile-atlas.service', dest: '/lib/systemd/system/' }
+    - { src: '/home/pi/mobile-atlas/setup/systemd/probe_utilities.py', dest: '/usr/local/lib/mobile-atlas/' }
     become: yes
 
   - name: Add wireguard ping-watchdog

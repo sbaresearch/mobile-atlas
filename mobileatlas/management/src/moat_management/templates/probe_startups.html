@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+    {% block content %}
+    <h2>ProbeServiceStartups for {{p.name}} - {{p.token.mac}}</h2>
+    <ul>
+        {% for s in p.startup_log %}
+        <li>
+            <span class="timestamp">{{s.timestamp.isoformat(timespec='milliseconds')}}</span>
+        </li>
+        {%endfor%}
+    </ul>
+    {% endblock %}

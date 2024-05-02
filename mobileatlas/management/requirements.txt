@@ -1,0 +1,11 @@
+fastapi
+httpx
+jinja2
+psycopg[binary]
+pycountry
+python-multipart
+redis
+SQLAlchemy[asyncio]
+uvicorn
+uvloop
+uvloop

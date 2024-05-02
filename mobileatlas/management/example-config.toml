@@ -1,0 +1,33 @@
+[server]
+host = "localhost" # Host to listen on
+port = 8080 # Port to listen on
+user = "admin" # Web UI HTTP Basic auth username
+password = "password" # Web UI HTTP Basic auth password
+behind_proxy = false # Whether the server receives X-Forwarded-For HTTP headers.
+
+[db] # Database connection settings
+host = "localhost" # Hostname of Postgres instance (default: "localhost")
+port = 5432 # Port that Postgres is listening on (default: 5432)
+name = "postgres" # Database name
+user = "postgres" # Postgres user
+password = "supersecret-pw" # Postgres user password
+
+
+[redis]
+host = "localhost" # Hostname of redis instance
+port = 6379
+
+[tunnel]
+allowed_ips = [ "10.89.0.0/24" ] # IPs allowed to access the tunnel auth plugin backend
+
+[probes]
+polling_interval = "T1M" # How long probes can wait for a response when long polling
+notification_webhook = "" # Webhook to send status updates to
+
+
+# Wireguard configuration options
+[wireguard]
+endpoint = "127.0.0.1:2341"
+public_key = "GtL7fZc/bLnqZldpVofMCD6hDjrK28SsdLxevJ+qtKU="
+allowed_ips = "0.0.0.0/0"
+dns = "127.0.0.1"

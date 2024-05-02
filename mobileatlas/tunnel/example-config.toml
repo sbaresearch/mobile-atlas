@@ -1,0 +1,33 @@
+[db] # Database connection settings
+host = "localhost" # Hostname of Postgres instance (default: "localhost")
+port = 5432 # Port that Postgres is listening on (default: 5432)
+name = "postgres" # Database name
+user = "postgres" # Postgres user
+password = "supersecret-pw" # Postgres user password
+
+[timeouts]
+authmsg = "T1M" # Maximum time to wait for an AuthRequest after successful TLS handshake
+provider_response = "T10M" # Maximum time to wait for a provider to response to a ConnectRequest
+provider_expiration = "" # How long a provider can be idle until it gets considered expired
+probe_request = "T10M" # Maximum time to wait for a probe's ConnectRequest after successful auth
+max_probe_wait = "T1H" # Maximum time a probe is allowed to wait for a ConnectRequest
+
+# TCP keepalive settings (see man tcp(7))
+keepalive = true
+keepidle = "T1M"
+keepintvl = "T1M"
+keepcnt = 2
+
+[limits]
+max_queue_size = 50 # Maximum size of per provider connection queues
+
+[gc]
+interval = "T1M" # How frequently stale connection queues get garbage collected
+queues_interval = "T1M" # How often the connection queues should remove closed connections.
+
+[auth]
+handler = "moat-management" # Auth handler to use
+
+# Config file is passed to auth handler and can be used to configure the handler
+[moat-management-auth]
+base_url = "http://management:8000/tunnel-auth"

@@ -21,14 +21,23 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 * [mobileatlas](/mobileatlas): mobileatlas python modules
 * [hardware](/hardware): hardware specification and SIM tunneling technique
 * [setup](/setup): setup scripts that are used to install the MobileAtlas framework on a dedicated Raspberry Pi device
+* [probe-statuspage](/setup/systemd/probe-statuspage/doc/): documentation of lightweight status page that is running locally on the probes
 
 ### Related Repositories
 * [mobile-atlas-management](https://github.com/sbaresearch/mobile-atlas-management): management dashboard for admin interactions with deployed probes
 * [pySIM](https://github.com/GGegenhuber/pysim): forked version of pySIM that is used by SIM provider and measurement probe
-* [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating practices
+* [masters-thesis](https://github.com/GGegenhuber/masters-thesis): thesis that utilized mobile-atlas to measure traffic classification and zero-rating 
+* [wehe-server](https://github.com/phfrenzel/wehe-server): wehe-server that was extended (support for multiple traffic streams, IPv6) and is used for measurements on the MobileAtlas platform
+* [wehe-client](https://github.com/phfrenzel/wehe-cmdline): counterpart to the adapted wehe-server; to be used within MobileAtlas the wehe client and pre-recorded traffic recordings are placed within the probe's [measurement implementation](mobileatlas/probe/measurement/payload/res/wehe)
 
 ### Publications
-* [GLOBECOM22: Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
+* [[GLOBECOM22] Zero-Rating, One Big Mess: Analyzing Differential Pricing Practices of European MNOs](https://www.mobileatlas.eu/papers/22_GLOBECOM_Zero_Rating_One_Big_Mess.pdf)
+* [[USENIX Security '23] MobileAtlas: Geographically Decoupled Measurements in Cellular Networks for Security and Privacy Research](https://mobileatlas.eu/papers/23_USENIX_SECURITY_MobileAtlas_Geographically_Decoupled_Measurements_in_Cellular_Networks.pdf)
+
+### Presentations
+* [USENIX Security '23] MobileAtlas: Geographically Decoupled Measurements in Cellular Networks for Security and Privacy Research: [Info](https://www.usenix.org/conference/usenixsecurity23/presentation/gegenhuber), [Slides](https://www.usenix.org/system/files/sec23_slides_gegenhuber-gabriel.pdf)
+* [DEF CON 31] Cellular Carriers Hate this Trick: Using SIM Tunneling to Travel at Light Speed: [Info](https://info.defcon.org/event/?id=50791), [Recording](https://www.youtube.com/watch?v=MYfeNyZIzBE), [Slides](https://media.defcon.org/DEF%20CON%2031/DEF%20CON%2031%20presentations/Adrian%20atrox%20Dabrowski%20Gabriel%20K.%20Gegenhuber%20-%20Cellular%20carriers%20hate%20this%20trick%20Using%20SIM%20tunneling%20to%20travel%20at%20light%20speed.pdf)
+* [GSMA FASG#27] An Open-Source Framework for Rapid Distributed Security Testing and Measurements Based on SIM Tunneling
 
 ### Geographical Decoupling of SIM Card and Modem
 Physically moving devices and SIM cards between countries to enable measurements in a roaming environment is costly and does not scale well.
@@ -67,16 +76,23 @@ Further information can be found on our [website](https://www.mobileatlas.eu/).
 
 Acknowledgments
 ---------------------------------------
-MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) by 
+MobileAtlas was developed at [SBA Research](https://www.sba-research.org/) and [University of Vienna](https://sec.cs.univie.ac.at/) by 
 [Gabriel K. Gegenhuber](https://www.sba-research.org/team/gabriel-k-gegenhuber/),
-[Wilfried Mayer](https://www.sba-research.org/team/wilfried-mayer/), and
-[Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/).
+[Wilfried Mayer](https://www.sba-research.org/team/wilfried-mayer/),
+[Adrian Dabrowski](https://www.sba-research.org/team/adrian-dabrowski/), and
+[Philipp Frenzel](https://www.sba-research.org/team/philipp-frenzel/).
+
+Additionally, thanks go to [Markus Maier](https://www.sba-research.org/team/markus-maier/) for his occasional advice and his help designing the [SIM PCB](/hardware/sim-adapter).
+
+Furthermore, we want to thank all hosters of measurement probes who made this work possible at all.
 
 
 ### Funding
-This project is funded through the [NGI0 PET](https://nlnet.nl/PET) Fund, a fund established by NLnet with financial support from the European Commission's [Next Generation Internet](https://ngi.eu/) programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825310.
+This project was funded through the [NGI0 Entrust](https://nlnet.nl/entrust) Fund, a fund established by [NLnet](https://nlnet.nl/) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu/), under the aegis of DG Communications Networks, Content and Technology under grant agreement No 101069594.
 
-This research is also funded by the Austrian Science Fund (FWF): P30637-N31.
+This project was funded through the [NGI0 PET](https://nlnet.nl/PET) Fund, a fund established by [NLnet](https://nlnet.nl/) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu/) programme, under the aegis of DG Communications Networks, Content and Technology under grant agreement No 825310.
+
+This research was also funded by the Austrian Science Fund (FWF): P30637-N31.
 
 ### Image credits
 

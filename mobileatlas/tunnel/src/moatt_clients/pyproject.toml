@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moatt-clients"
+dynamic = [ "version", "dependencies" ]
+
+[tool.setuptools.dynamic.version]
+attr = "moatt_clients.VERSION"
+
+[tool.setuptools.dynamic.dependencies]
+file = [ "requirements.txt" ]

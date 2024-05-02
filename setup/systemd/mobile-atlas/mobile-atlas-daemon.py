@@ -1,17 +1,17 @@
 #!/usr/bin/python3
-import json
-import os
+
 import sys
 import time
 import requests
 import subprocess
-from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
+# TODO: specify dependency
 #hack to add probe utlities module
-PROBE_UTILITIES_DIR = "/home/pi/mobile-atlas/setup/systemd/"
-sys.path.append(PROBE_UTILITIES_DIR)
-import probe_utilities
+PROBE_UTILITIES = "/usr/local/lib/mobile-atlas/"
+sys.path.append(PROBE_UTILITIES)
+import probe_utilities as probe_util
+from probe_utilities import now
 
 MAM_URL = "https://mam.mobileatlas.eu"
 NET_INTERFACE = "eth0"
@@ -20,7 +20,7 @@ GIT_DIR = "/home/pi/mobile-atlas/"
 # Todo improve test/prod config
 
 # Seconds to wait for after Exception
-RETRY_INTERVAL = 60
+RETRY_INTERVAL = 10
 # Seconds in between System Information Updates
 SYSTEM_INFO_UPDATE_INTERVAL = 3600
 # Timeout for Requests, according to LongPollingValue
@@ -34,52 +34,31 @@ def token_header():
     else:
         return {}
 
-def authenticate():
-    """
-    Authenticate with Token or MAC address
-    """
+def authenticate(token):
+    if not state['registered']:
+        resp = probe_util.register_token(token, mac=state['mac'])
 
-    # Check if token exists
-    if state['token']:
-        r = requests.post(MAM_URL + '/probe/register',
-                          data={'mac': state['mac']},
-                          headers=token_header(),
-                          timeout=TIMEOUT)
-    # Otherwise request token with MAC
-    elif state['mac']:
-        r = requests.post(MAM_URL + '/probe/register',
-                          data={'mac': state['mac']},
-                          timeout=TIMEOUT)
-    else:
+        if not resp.ok:
+            return
+
+    state['registered'] = True
+
+    if not probe_util.is_token_active(token):
         return
-
-    if r.status_code == 200:
-        j = json.loads(r.content)
-        # If the token we sent is activated
-        if 'token' in j and j['token'] == state['token']:
-            # Everything works
-            probe_utilities.store_token(TOKEN_STORAGE_DIR, state['token'])
-            state['authenticated'] = True
-            print("MobileAtlas Authenticated")
-        # If the token we sent is still a token_candidate (not activated)
-        elif 'token_candidate' in j and j['token_candidate'] == state['token']:
-            state['authenticated'] = False
-        # If we got a new token_candidate we use it the next time (but don't store it)
-        elif 'token_candidate' in j:
-            state['token'] = j['token_candidate']
-            state['authenticated'] = False
+    else:
+        state['authenticated'] = True
 
 def request_system_information(force=False):
     """
     Post the probe_system_information
     """
-    too_old = state['last_system_information'] < datetime.utcnow() - timedelta(seconds=SYSTEM_INFO_UPDATE_INTERVAL)
+    too_old = state['last_system_information'] < now() - timedelta(seconds=SYSTEM_INFO_UPDATE_INTERVAL)
     if force or not state['last_system_information'] or too_old:
         requests.post(MAM_URL + '/probe/system_information',
                       headers=token_header(),
-                      json=probe_utilities.get_system_information(),
+                      json=probe_util.get_system_information(),
                       timeout=TIMEOUT)
-        state['last_system_information'] = datetime.utcnow()
+        state['last_system_information'] = now()
 
 
 def handle_command(command):
@@ -96,29 +75,37 @@ def handle_command(command):
     else:
         print(f"Got unrecognized command {command}")
 
-
-def main():
-    # Service Startup
-    probe_utilities.write_activity_log("0", "ServiceStartup", datetime.utcnow().isoformat(timespec='seconds'))
-    requests.post(MAM_URL+'/probe/startup',
-                  data={'mac': state['mac']},
-                  timeout=TIMEOUT)
-
+def auth_loop():
+    token = state['token']
     while not state['authenticated']:
-        authenticate()
+        authenticate(token)
 
         # Wait 60 seconds before next check
         if not state['authenticated']:
             print(f"Not Authenticated; Wait {RETRY_INTERVAL}")
             time.sleep(RETRY_INTERVAL)
 
+def main():
+    # Service Startup
+    probe_util.write_activity_log("0", "ServiceStartup", now().isoformat(timespec='seconds'))
+
+    auth_loop()
+
+    requests.post(MAM_URL+'/probe/startup',
+                  json={'mac': state['mac']},
+                  headers=token_header(),
+                  timeout=TIMEOUT)
+
+    min_inter_poll_time = timedelta(seconds=RETRY_INTERVAL / 2)
     while True:
         request_system_information()
 
         # Main Polling Request
+        poll_start = now()
         r = requests.post(MAM_URL + '/probe/poll',
                           headers=token_header(),
                           timeout=TIMEOUT)
+        poll_duration = now() - poll_start
 
         # TODO better exception handling
         #   timeout, 403 cause unauthenticated, ...
@@ -127,11 +114,15 @@ def main():
             print(f"Received {r.json()}")
             handle_command(r.json()['command'])
 
+        # TODO: find meaningful retry value
+        if poll_duration < min_inter_poll_time:
+            time.sleep((min_inter_poll_time - poll_duration).total_seconds())
 
-state = {"token": probe_utilities.load_token(TOKEN_STORAGE_DIR),
-         "last_system_information": datetime.min,
+state = {"token": probe_util.load_or_create_token(TOKEN_STORAGE_DIR),
+         "registered": False,
+         "last_system_information": datetime.min.replace(tzinfo=timezone.utc),
          "authenticated": False,
-         "mac": probe_utilities.get_mac_addr()}
+         "mac": probe_util.get_mac_addr(NET_INTERFACE)}
 
 if __name__ == '__main__':
     print('MobileAtlas service startup')
