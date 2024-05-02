@@ -2,14 +2,14 @@
 
 The MobileAtlas SIM Tunnel Server relays the communication between a measurement probe's modem and a
 SIM card hosted on a SIM provider. Additionally, it handles access management, logs relayed
-communication, and provides information on managed SIM cards.
+communication and provides information on managed SIM cards.
 
 This directory contains:
 
 * The implementation of the actual server which provides a FastAPI REST interface and a
-  server handling the connections between probes and SIM providers.
+  server that handles the connections between probes and SIM providers.
 * Client implementations for the probe- and the SIM provider sides.
-* The `moatt-types` package which provides types that are shared between the server and
+* The `moatt-types` package, which provides types that are shared between the server and
   client implementations.
 
 Details on how SIM Providers and Probes interact with the tunnel server are provided
@@ -27,7 +27,7 @@ nix build .\#moatt-server-image
 ./result | podman load
 ```
 
-In order to run, the container needs a valid configuration and access to a TLS
+To run, the container needs a valid configuration and access to a TLS
 certificate (which can be generated with the Makefile in `../tls-certs`) and key. The
 following provides an example of how these can be provided to a container:
 
