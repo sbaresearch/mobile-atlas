@@ -85,3 +85,22 @@ sudo ./probe.py --host <SIM provider address> --testname TestNetworkInfo --confi
 cd mobile-atlas
 sudo ./probe.py --host <SIM provider address> --testname TestNetworkInfo --configfile mobileatlas/probe/test_config.json
 ```
+
+#### Test Config
+
+A json formatted config file containing the experiment's configuration parameters has to be provided when executing the probe.
+`test_config.json`:
+```json
+{
+    "imsi" : 123456789012345,
+    "phone_number": "+1234567890",
+    "provider_name": "AT_MobileAtlasTest",
+    "module_blacklist" : ["qmi_wwan", "cdc_ether"],
+    "test_params": {
+        "apn" : "internet",
+        "pdp_type" : "ipv4v6"
+    }
+}
+```
+
+The allowed configuration options are defined [here](probe/measurement/test/test_args.py) and can be further extended by every specific experiemtn (cf. function `validate_test_config` in [this](probe/measurement/test/test_network_base.py) file).
