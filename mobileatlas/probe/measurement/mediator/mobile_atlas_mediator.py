@@ -327,6 +327,23 @@ class MobileAtlasMediator(MMCallbackClass, NMCallbackClass):
         #logger.debug(json.dumps(mm_config, indent=4))
         return mm_config
 
+    def qmi_get_modem_capabilities(self):
+        mm_capabilities = self.mm.qmi_get_modem_capabilities()
+        return mm_capabilities
+
+    def qmi_list_mbn_configs(self):
+        mm_qmi_config = self.mm.qmi_list_mbn_configs()
+        return mm_qmi_config
+
+    def qmi_set_selected_config(self, config_id_str):
+        self.mm.qmi_set_selected_config(config_id_str)
+
+    def qmi_delete_config(self, config_id_str):
+        self.mm.qmi_delete_config(config_id_str)
+
+    def qmi_load_mbn_file(self, config_path):
+        self.mm.qmi_load_mbn_file(config_path)
+
     def _enable_veth_bridge(self):
         # sometimes bridge is not added properly, just readd it here again... :X
         #os.system("ip link add veth0 type veth peer name veth1 netns default")

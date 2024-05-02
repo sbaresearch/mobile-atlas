@@ -503,6 +503,55 @@ class ModemWatcher:
                 return o
         raise ValueError("There is no object with the provided path")
 
+    def get_modem_ports(self, modem_path=None, filter_port_type=None): #e.g. filter_port_type=ModemPortType.QMI
+        try:
+            modem_obj = self.get_modem_from_list(modem_path)
+            b, ports = modem_obj.get_modem().get_ports()
+            if not b:
+                print("cannot retrieve ports...")
+                return
+            for p in ports:
+                print(type(p.type))
+                print(f"{p.name}: {p.type}")
+            if filter_port_type:
+                filtered_ports = [p for p in ports if p.type == filter_port_type]
+                print(f"filter ports for type {filter_port_type}, found {len(filtered_ports)}/{len(ports)} matches")
+                ports = filtered_ports
+            return ports
+        except ValueError as e: # cannot get modem
+            pass
+
+    def get_qmi_port(self, modem_path=None):
+        from gi.repository.ModemManager import ModemPortType
+        qmi_ports = self.get_modem_ports(modem_path, ModemPortType.QMI)
+        #print(qmi_ports)
+        return f"/dev/{qmi_ports[0].name}"
+
+    def qmi_get_modem_capabilities(self, modem_path=None):
+        qmi_port = get_qmi_port(modem_path)
+        from mobileatlas.probe.measurement.mediator.modem_qmi_proxy import get_capabilities
+        return get_capabilities(qmi_port)
+
+    def qmi_list_mbn_configs(self, modem_path=None):
+        qmi_port = get_qmi_port(modem_path)
+        from mobileatlas.probe.measurement.mediator.modem_qmi_proxy import list_mbn_configs
+        return list_mbn_configs(qmi_port)
+        
+    def qmi_set_selected_config(self, config_id_str, modem_path=None):
+        qmi_port = get_qmi_port(modem_path)
+        from mobileatlas.probe.measurement.mediator.modem_qmi_proxy import set_selected_config
+        return set_selected_config(qmi_port, config_id_str)
+
+    def qmi_delete_config(self, config_id_str, modem_path=None):
+        qmi_port = get_qmi_port(modem_path)
+        from mobileatlas.probe.measurement.mediator.modem_qmi_proxy import delete_config
+        return delete_config(qmi_port, config_id_str)
+
+    def qmi_load_mbn_file(self, config_path, modem_path=None):
+        qmi_port = get_qmi_port(modem_path)
+        from mobileatlas.probe.measurement.mediator.modem_qmi_proxy import load_mbn_file
+        return load_mbn_file(qmi_port, config_path)
+
     @staticmethod
     def parse_modem_config(modem_obj):
         # modem_obj has this functions: https://valadoc.org/libmm-glib/MM.Object.html
