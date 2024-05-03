@@ -23,7 +23,7 @@ The following snippet can be used to generate a container image and load it into
 
 ```bash
 cd src/moatt_server
-nix build .\#moatt-server-image
+nix build .\#moat-tunnel-server-container
 ./result | podman load
 ```
 
@@ -32,7 +32,7 @@ certificate (which can be generated with the Makefile in `../tls-certs`) and key
 following provides an example of how these can be provided to a container:
 
 ```
-podman run -d -e MOAT-SIMTUNNEL-CONFIG=./config/config.toml -v <dir containing config>:/app/config:z,ro -v ../tls-certs:/app/ssl:z,ro
+podman run -d -e MOAT_SIMTUNNEL_CONFIG=./config/config.toml -v <dir containing config>:/app/config:z,ro -v ../tls-certs:/app/ssl:z,ro
 ```
 
 ### Using Nix
@@ -43,19 +43,37 @@ Running the tunnel server:
 
 ```bash
 cd src/moatt_server
-nix run . -- --config <config-file> &
+nix run .\#moat-tunnel-server -- --config <config-file> &
 ```
 
 Running the REST API:
 
 ```
 nix develop
-gunicorn -k uvicorn.workers.UvicornWorker moatt_server.rest.main:app
+MOAT_SIMTUNNEL_CONFIG=<config-file> gunicorn -k uvicorn.workers.UvicornWorker moatt_server.rest.main:app
 ```
 
 ### Virtualenv
 
-**TODO**
+Create a virtualenv using the [Makefile](../Makefile) and activate it:
+
+```bash
+cd ..
+make
+source venv/bin/activate
+```
+
+Start the server installed in the venv:
+
+```bash
+moat-tunnel-server -- --config <config-file>
+```
+
+Finally, use `gunicorn` to run the REST API:
+
+```
+MOAT_SIMTUNNEL_CONFIG=<config-file> gunicorn -k uvicorn.workers.UvicornWorker moatt_server.rest.main:app
+```
 
 ## Tunnel Configuration
 

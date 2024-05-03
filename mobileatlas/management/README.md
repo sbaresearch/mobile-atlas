@@ -14,15 +14,15 @@ All this is administered through a simple web UI.
 The following can be used to build a container image and load it into podman.
 
 ```bash
-nix build .\#moat-management-image
+nix build .\#moat-management-server-container
 ./result | podman load
 ```
 
 To add a configuration file to the container, use a bind mount and set the
-`MOAT-MANAGEMENT-CONFIG` environment variable. E.g.:
+`MOAT_MANAGEMENT_CONFIG` environment variable. E.g.:
 
 ```
-podman run -d -e MOAT-MANAGEMENT-CONFIG=./config/config.toml -v <directory-containing-config>:/app/config:z,ro localhost/mobile-atlas-management
+podman run -d -e MOAT_MANAGEMENT_CONFIG=./config/config.toml -v <directory-containing-config>:/app/config:z,ro localhost/mobile-atlas-management
 ```
 
 ### Using Nix
@@ -30,13 +30,25 @@ podman run -d -e MOAT-MANAGEMENT-CONFIG=./config/config.toml -v <directory-conta
 Another way to run the server is directly as a Nix app:
 
 ```bash
-nix run . -- --config <config-file>
+nix run .\#moat-management-server -- --config <config-file>
 ```
 
 
 ### Virtualenv
 
-**TODO**
+Create a virtualenv using the [Makefile](../Makefile) and activate it:
+
+```bash
+cd ..
+make
+source venv/bin/activate
+```
+
+Start the server installed in the venv:
+
+```bash
+moat-management -- --config <config-file>
+```
 
 ## Configuration
 

@@ -26,13 +26,13 @@
         };
 
         devShells = let 
-          attrDef = as: a: if as ? a then as.a else [];
+          attrDef = as: a: if pkgs.lib.hasAttr a as then as."${a}" else [];
           shellFor = p: pkgs.mkShell {
             buildInputs = builtins.concatMap (attrDef p) [ "dependencies" "dev-dependencies" ];
           };
         in {
           default = pkgs.mkShell {
-            buildInputs = dev-tools ++ builtins.concatMap (p: p.dependencies ++ p.dev-dependencies) [
+            buildInputs = dev-tools ++ builtins.concatMap (p: attrDef p "dependencies" ++ attrDef p "dev-dependencies") [
               moat-tunnel-server
               moat-tunnel-clients
               moat-management-server

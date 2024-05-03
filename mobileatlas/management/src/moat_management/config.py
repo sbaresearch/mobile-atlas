@@ -198,10 +198,10 @@ def _load_env_config() -> dict[str, Any]:
 def get_config() -> Config:
     if _CONFIG is None:
         LOGGER.info("Config wasn't explicitly initialized. Initializing config...")
-        if "MOAT-MANAGEMENT-CONFIG" not in os.environ:
+        if "MOAT_MANAGEMENT_CONFIG" not in os.environ:
             raise AssertionError(
-                "Tried to initialize config but MOAT-MANAGEMENT-CONFIG env var was unset."
+                "Tried to initialize config but MOAT_MANAGEMENT_CONFIG env var was unset."
             )
-        return init_config(os.environ["MOAT-MANAGEMENT-CONFIG"])
+        return init_config(os.environ["MOAT_MANAGEMENT_CONFIG"])
 
     return _CONFIG

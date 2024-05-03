@@ -21,6 +21,7 @@ in rec {
 
   dev-dependencies = with python.pkgs; [
     uvicorn
+    gunicorn
   ];
 
   packages = rec {

@@ -251,12 +251,12 @@ def get_config() -> Config:
         LOGGER.info(
             "Configuration was accessed before being explicitly initialized. Initializing..."
         )
-        if "MOAT-SIMTUNNEL-CONFIG" not in os.environ:
+        if "MOAT_SIMTUNNEL_CONFIG" not in os.environ:
             raise ConfigError(
-                "Can't find config file because 'MOAT-SIMTUNNEL-CONFIG' env var is not set."
+                "Can't find config file because 'MOAT_SIMTUNNEL_CONFIG' env var is not set."
             )
         return init_config(
-            os.environ["MOAT-SIMTUNNEL-CONFIG"],
+            os.environ["MOAT_SIMTUNNEL_CONFIG"],
             "ALLOW_THIRD_PARTY_MODULES" in os.environ,
         )
 
