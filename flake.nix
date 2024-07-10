@@ -50,7 +50,7 @@
           moat-tunnel-server = moat-tunnel-server.apps.default;
 
           update-python-requirements = let
-            freeze = deps: pkgs.stdenv.mkDerivation {
+            freeze = lib: deps: pkgs.stdenv.mkDerivation {
               pname = "freeze-py-deps";
               version = "0.0.1";
 
@@ -58,7 +58,11 @@
 
               buildInputs = deps ++ [ python.pkgs.pip ];
 
-              buildPhase = ''
+              buildPhase = let 
+                depsPat = builtins.concatStringsSep "|" (builtins.map (d: d.pname) deps);
+              in if lib then ''
+                pip --no-cache-dir freeze | sed -nE '/^moatt-types/d;/^${depsPat}==/s/^(.*)==(([0-9]+!)?[0-9]+(\.[0-9]+)?).*$/\1~=\2/p' >> "$out"
+              '' else ''
                 pip --no-cache-dir freeze | grep -v '^moatt-types' >> "$out"
               '';
             };
@@ -66,12 +70,12 @@
               set -eu
 
               GIT_DIR="$(git rev-parse --show-toplevel)"
-              cp "${freeze moat-tunnel-server.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_server/requirements.txt"
-              cp "${freeze moat-tunnel-server.dev-dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_server/dev-requirements.txt"
+              cp "${freeze false moat-tunnel-server.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_server/requirements.txt"
+              cp "${freeze false moat-tunnel-server.dev-dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_server/dev-requirements.txt"
 
-              cp "${freeze moat-tunnel-clients.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_clients/requirements.txt"
+              cp "${freeze true moat-tunnel-clients.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_clients/requirements.txt"
 
-              cp "${freeze moat-management-server.dependencies}" "$GIT_DIR/mobileatlas/management/requirements.txt"
+              cp "${freeze false moat-management-server.dependencies}" "$GIT_DIR/mobileatlas/management/requirements.txt"
             '';
           in {
             type = "app";

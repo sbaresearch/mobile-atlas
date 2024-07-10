@@ -13,6 +13,14 @@ install_package() {
 
   set -x
 
+  if [ "${library:-0}" -eq 0 ]; then
+    # Because we generate the requirements files from nixpkgs
+    # we have to ignore dependency requirements as python
+    # packages in nixpkgs can use the pythonRelaxDepsHook
+    # to relax dependency requirements
+    flags="$flags --no-deps"
+  fi
+
   if [ -f "$req" ]; then
     # shellcheck disable=SC2086
     pip install ${flags:-} -r "$req"
@@ -48,12 +56,6 @@ if [ "$#" -lt 2 ]; then
   usage
 fi
 
-# Because we generate the requirements files from nixpkgs
-# we have to ignore dependency requirements as python
-# packages in nixpkgs can use the pythonRelaxDepsHook
-# to relax dependency requirements
-flags="$flags --no-deps"
-
 venv="$1"
 shift 1
 
@@ -62,7 +64,11 @@ shift 1
 
 for p in "$@"; do
   case "$p" in
-    moatt_types|moatt_clients|moatt_server)
+    moatt_types|moatt_clients)
+      library='1'
+      install_package "./tunnel/src/$p"
+      ;;
+    moatt_server)
       install_package "./tunnel/src/$p"
       ;;
     management)
