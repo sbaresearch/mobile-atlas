@@ -1,5 +1,6 @@
 import argparse
 import logging
+import logging.config
 import ssl
 
 import uvloop
@@ -21,7 +22,11 @@ def main():
     parser.add_argument("--allow-auth-plugins", action="store_true")
     args = parser.parse_args()
 
-    config.init_config(args.config, args.allow_auth_plugins)
+    config.init_config(args.config, args.allow_auth_plugins, args)
+
+    log_conf = config.get_config().LOGGING_CONF_FILE
+    if log_conf is not None:
+        logging.config.fileConfig(log_conf)
 
     tls_ctx = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     tls_ctx.load_cert_chain(args.cert, args.cert_key)

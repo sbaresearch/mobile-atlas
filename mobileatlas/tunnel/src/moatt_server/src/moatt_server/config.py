@@ -4,11 +4,14 @@ import logging
 import os
 import re
 import tomllib
+import argparse
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional
+
+from sqlalchemy import URL
 
 from .auth_handler import AuthHandler
 from .auth_handlers import MoatManagementAuth
@@ -17,6 +20,9 @@ LOGGER = logging.getLogger(__name__)
 ISODURATION_RE = re.compile(
     "^(?:P(?:([0-9]+)Y)?(?:([0-9]+)M)?(?:([0-9]+)W)?(?:([0-9]+)D)?)?(?:T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?)?$"
 )
+
+ENV_CONFIG = "MOAT_SIMTUNNEL_CONFIG"
+ENV_THIRDPARTY = "ALLOW_THIRD_PARTY_MODULES"
 
 
 # TODO: find sensible defaults
@@ -42,18 +48,27 @@ class Config:
     DB_PASSWORD: str
     DB_NAME: str
 
-    # TODO allow setting via config (instead of only through cmdline args)
-    # TUNNEL_PORT: int = 6666
-    # TUNNEL_CERT: str = "ssl/server.crt"
-    # TUNNEL_CERT_KEY: str = "ssl/server.key"
+    TUNNEL_HOST: list[str] = field(default_factory=lambda: [ "127.0.0.1" "::1" ])
+    TUNNEL_PORT: int = 6666
+    TUNNEL_CERT: str = "ssl/server.crt"
+    TUNNEL_CERT_KEY: str = "ssl/server.key"
+
+    API_HOST: str = "localhost"
+    API_PORT: int = 8000
+
+    LOGGING_CONF_FILE: Optional[str] = None
 
     AUTH_HANDLER: AuthHandler
 
-    def db_url(self) -> str:
-        return (
-            f"postgresql+psycopg://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        )
+    def db_url(self) -> URL:
+        return URL.create(
+                "postgresql+psycopg",
+                username=self.DB_USER,
+                password=self.DB_PASSWORD,
+                host=self.DB_HOST,
+                port=self.DB_PORT,
+                database=self.DB_NAME,
+            )
 
 
 class ConfigError(Exception):
@@ -69,6 +84,11 @@ def _set(
     if value is not None:
         d[name] = value if mapper is None else mapper(value)
 
+def _opt_str(value: str) -> str | None:
+    if value == "":
+        return None
+
+    return value
 
 def _opt_td(value: str) -> timedelta | None:
     if value == "":
@@ -79,6 +99,12 @@ def _opt_td(value: str) -> timedelta | None:
 
 def _td(value: str) -> timedelta:
     return _parse_iso8601_duration(value.strip())
+
+def _str_list(value: str | list[str]) -> list[str]:
+    if isinstance(value, list):
+        return value
+    else:
+        return [value]
 
 
 def _parse_iso8601_duration(value: str) -> timedelta:
@@ -176,6 +202,15 @@ def _load_toml_config(
             lambda x: _load_handler(x, cfg, module_loading_allowed),
         )
 
+    if isinstance(tunnel := cfg.get("tunnel"), dict):
+        _set(res, "TUNNEL_HOST", tunnel.get("host"), _str_list)
+        _set(res, "TUNNEL_PORT", tunnel.get("port"))
+        _set(res, "TUNNEL_CERT", tunnel.get("certificate"))
+        _set(res, "TUNNEL_CERT_key", tunnel.get("cert_key"))
+
+    if isinstance(logging := cfg.get("logging"), dict):
+        _set(res, "LOGGING_CONF_FILE", logging.get("config_file"), _opt_str)
+
     _check_config(res)
     return res
 
@@ -190,8 +225,12 @@ def _load_env_config(
         if val is not None:
             if f.type == Optional[timedelta]:
                 _set(res, f.name, val, _opt_td)
+            elif f.type == Optional[str]:
+                _set(res, f.name, val, _opt_str)
             elif f.type == timedelta:
                 _set(res, f.name, val, _td)
+            elif f.type == list[str]:
+                _set(res, f.name, val, _str_list)
             elif f.type == Optional[int]:
                 res[f.name] = int(val) if val != "" else None
             elif f.type == AuthHandler:
@@ -213,7 +252,12 @@ def _load_env_config(
 def _check_config(cfg: dict[str, Any]):
     for f in dataclasses.fields(Config):
         val = cfg.get(f.name)
-        if val is not None and not isinstance(val, f.type):
+
+        # isinstance() does not work with parameterized generics
+        # which is why we use this ugly hack
+        t = list if f.type == list[str] else f.type
+
+        if val is not None and not isinstance(val, t):
             LOGGER.error(
                 f"Invalid configuration value for {f.name}: '{val}' expected {f.type}"
             )
@@ -223,11 +267,19 @@ def _check_config(cfg: dict[str, Any]):
 _CONFIG: Config | None = None
 
 
-def init_config(path: str | Path, allow_third_party_modules: bool = False) -> Config:
+def init_config(path: str | Path | None, allow_third_party_modules: bool = False, cmd_args: argparse.Namespace | None = None) -> Config:
     global _CONFIG
 
     if _CONFIG is not None:
         raise ConfigError
+
+    if path is None:
+        if ENV_CONFIG in os.environ:
+            path = os.environ[ENV_CONFIG]
+        else:
+            raise ConfigError(
+                "Can't find config file because 'MOAT_SIMTUNNEL_CONFIG' env var is not set."
+            )
 
     if isinstance(path, str):
         path = Path(path)
@@ -241,6 +293,19 @@ def init_config(path: str | Path, allow_third_party_modules: bool = False) -> Co
         conf = {}
 
     conf.update(_load_env_config(cfg, allow_third_party_modules))
+
+    if cmd_args is not None:
+        if cmd_args.host is not None:
+            conf["TUNNEL_HOST"] = cmd_args.host
+
+        if cmd_args.port is not None:
+            conf["TUNNEL_PORT"] = cmd_args.port
+
+        if cmd_args.cert is not None:
+            conf["TUNNEL_CERT"] = cmd_args.cert
+
+        if cmd_args.cert_key is not None:
+            conf["TUNNEL_CERT_KEY"] = cmd_args.cert_key
 
     try:
         _CONFIG = Config(**conf)
@@ -257,13 +322,9 @@ def get_config() -> Config:
         LOGGER.info(
             "Configuration was accessed before being explicitly initialized. Initializing..."
         )
-        if "MOAT_SIMTUNNEL_CONFIG" not in os.environ:
-            raise ConfigError(
-                "Can't find config file because 'MOAT_SIMTUNNEL_CONFIG' env var is not set."
-            )
         return init_config(
-            os.environ["MOAT_SIMTUNNEL_CONFIG"],
-            "ALLOW_THIRD_PARTY_MODULES" in os.environ,
+            None,
+            ENV_THIRDPARTY in os.environ,
         )
 
     return _CONFIG
