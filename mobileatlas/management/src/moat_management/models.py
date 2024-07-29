@@ -346,9 +346,9 @@ class ProbeSystemInformation(Base):
     def pretty(self):
         return json.dumps(self.information, sort_keys=True, indent=4)
 
-    def network(self) -> list[tuple] | None:
+    def network(self) -> list[tuple]:
         if not isinstance(self.information, dict):
-            return None
+            return []
 
         network = self.information.get("network")
         if isinstance(network, list):
@@ -364,9 +364,9 @@ class ProbeSystemInformation(Base):
                 ]  # type: ignore
             except Exception:
                 LOGGER.exception("Failed to retrieve all network information.")
-                return None
+                return []
         else:
-            return None
+            return []
 
 
 #####################

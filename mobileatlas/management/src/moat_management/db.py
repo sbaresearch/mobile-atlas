@@ -1,6 +1,10 @@
+import logging
+
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from . import config
+
+LOGGER = logging.getLogger(__name__)
 
 _ENGINE: AsyncEngine | None = None
 
@@ -9,7 +13,9 @@ def create_sessionmaker():
     global _ENGINE, _SESSION_MAKER
 
     if _ENGINE is None:
-        _ENGINE = create_async_engine(config.get_config().db_url())
+        url = config.get_config().db_url()
+        LOGGER.info("Connecting to database with: %s", url)
+        _ENGINE = create_async_engine(url)
 
 
 async def dispose_engine():

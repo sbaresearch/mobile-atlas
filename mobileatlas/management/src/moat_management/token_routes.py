@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -203,21 +204,16 @@ async def prune_candidates(session: AsyncSession) -> None:
 async def add_token_candidate(
     session: AsyncSession, token_candidate: str, scope: TokenScope, mac=None
 ) -> MamToken | None:
-    tc = await session.scalar(
-        select(MamToken).where(
-            (MamToken.token_candidate == token_candidate)
-            | (MamToken.token == token_candidate)
-        )
-    )
-
-    if tc is not None:
-        return None
-
     t = MamToken(token_candidate=token_candidate, scope=scope, mac=mac)
     l = MamTokenAccessLog(
         token=t, token_value=token_candidate, scope=scope, action=TokenAction.Registered
     )
     session.add(t)
     session.add(l)
+
+    try:
+        await session.flush()
+    except IntegrityError:
+        return None
 
     return t

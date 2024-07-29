@@ -1,13 +1,10 @@
-import asyncio
-import base64
 import ipaddress
 import logging
-import socket
-import subprocess
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv6Address
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import exc as sqlexc
 from sqlalchemy import select
@@ -81,7 +78,7 @@ async def wireguard_index(
         "wgs": wgs,
         "wgas": wgas,
         "token_reqs": token_reqs,
-        "config": await get_current_wireguard_config(),
+        # "config": await get_current_wireguard_config(),
         "status": await get_current_wireguard_status(),
     }
     return get_templates().TemplateResponse(
@@ -132,7 +129,7 @@ async def wireguard_register(
         else:
             # Update Values
             wg.publickey = publickey
-            await wireguard_configuration(publickey, wg.ip)
+            await wireguard_put_peer(publickey, wg.ip)
             wg.allow_registration = False
             wg.register_time = datetime.now(tz=timezone.utc)
 
@@ -176,70 +173,56 @@ async def log_config_attempt(
     return log
 
 
-async def wireguard_configuration(publickey: str, ip: str) -> None:
+async def wireguard_put_peer(publickey: str, ip: str) -> None:
     """
     Configure Wireguard locally
 
     Check that python user is enabled in /etc/suders.d/wireguard
     > user ALL = (root) NOPASSWD: /usr/bin/wg addconf wg0 /tmp/wireguard
     """
-    try:
-        if not publickey.isascii() or len(base64.b64decode(publickey)) != 32:
-            raise Exception
-        # use inet_ntoa to get rid of abbreviated addresses
-        # e.g. '127.1'
-        ip = socket.inet_ntoa(socket.inet_aton(ip))
-    except:
-        raise Exception("invalid publickey")
+    url = get_config().WIREGUARD_DAEMON
 
-    # Start with writing the config to a temprary file
-    await asyncio.to_thread(_write_wg_conf, publickey, ip)
+    if url is None:
+        return
 
-    subprocess.Popen(f"sudo wg addconf wg0 /tmp/wireguard", shell=True).wait()
-    # TODO somehow log the changed configs to return to something different
+    async with httpx.AsyncClient() as c:
+        r = await c.put(
+            f"{url}/peers", json={"pub_key": publickey, "allowed_ips": [ip]}
+        )
 
-
-def _write_wg_conf(publickey: str, ip: str) -> None:
-    with open("/tmp/wireguard", "w") as tf:
-        tf.write(f"[Peer]\n")
-        tf.write(f"PublicKey = {publickey}\n")
-        tf.write(f"AllowedIPs = {ip}/32\n\n")
+    if not r.is_success:
+        LOGGER.warning(
+            "Wireguard service returned non success status (%d):\n%s",
+            r.status_code,
+            r.content,
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-async def get_current_wireguard_config() -> str | subprocess.CalledProcessError:
+async def get_current_wireguard_status() -> str | None:
     """
     Get the current wireguard config
 
     Check that python user is enabled in /etc/suders.d/wireguard
     > user ALL = (root) NOPASSWD: /usr/bin/wg showconf wg0
     """
-    try:
-        return (
-            await asyncio.to_thread(
-                subprocess.check_output,
-                f"sudo wg showconf wg0 | grep -v PrivateKey",
-                shell=True,
-            )
-        ).decode()
-    except subprocess.CalledProcessError as e:
-        return e
+    url = get_config().WIREGUARD_DAEMON
 
+    if url is None:
+        return None
 
-async def get_current_wireguard_status() -> str | subprocess.CalledProcessError:
-    """
-    Get the current wireguard status
+    async with httpx.AsyncClient() as c:
+        r = await c.get(f"{url}/status")
 
-    Check that python user is enabled in /etc/suders.d/wireguard
-    > user ALL = (root) NOPASSWD: /usr/bin/wg show wg0
-    """
-    try:
-        return (
-            await asyncio.to_thread(
-                subprocess.check_output, f"sudo wg show wg0", shell=True
-            )
-        ).decode()
-    except subprocess.CalledProcessError as e:
-        return e
+    if not r.is_success:
+        LOGGER.warning(
+            "Failed to get current wireguard interface status from wg daemon (%d).\n%s",
+            r.status_code,
+            r.content,
+        )
+        return None
+
+    return r.content.decode(errors="replace")
 
 
 async def after_token_activation(

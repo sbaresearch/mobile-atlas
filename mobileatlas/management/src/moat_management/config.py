@@ -56,15 +56,20 @@ class Config:
     WIREGUARD_PUBLIC_KEY: str
     WIREGUARD_ALLOWED_IPS: str
     WIREGUARD_DNS: str
+    WIREGUARD_DAEMON: str | None = None
 
     ALLOWED_TUNNEL_AUTH_IPS: list[IPv4Network | IPv6Network] = field(
         default_factory=lambda: [IPv4Network("127.0.0.1"), IPv6Network("::1")]
     )
 
-    def db_url(self) -> str:
-        return (
-            f"postgresql+psycopg://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def db_url(self) -> URL:
+        return URL.create(
+            "postgresql+psycopg",
+            username=self.DB_USER,
+            password=self.DB_PASSWORD,
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            database=self.DB_NAME,
         )
 
     def redis_client(self) -> Redis:
@@ -153,6 +158,7 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "WIREGUARD_PUBLIC_KEY", wg.get("public_key"))
         _set(res, "WIREGUARD_ALLOWED_IPS", wg.get("allowed_ips"))
         _set(res, "WIREGUARD_DNS", wg.get("dns"))
+        _set(res, "WIREGUARD_DAEMON", wg.get("daemon_url"))
 
     if isinstance(scrypt := cfg.get("scrypt"), dict):
         _set(res, "SCRYPT_COST", scrypt.get("cost"), int)
