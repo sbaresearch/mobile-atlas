@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import logging
 from typing import Annotated
@@ -18,7 +19,20 @@ LOGGER = logging.getLogger(__name__)
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI):
     db_utils.create_sessionmaker()
+
+    while True:
+        try:
+            async with db_utils._ENGINE.begin() as conn:
+                from .. import models as dbm
+
+                await conn.run_sync(dbm.Base.metadata.create_all)
+            break
+        except Exception as e:
+            LOGGER.exception("Failed to connect to database.\nRetrying in 10s...")
+            await asyncio.sleep(10)
+
     yield
+
     await db_utils.dispose_engine()
 
 

@@ -80,7 +80,7 @@ class Server(Generic[H]):
             await probe_writer.wait_closed()
             close = True
         except Exception as e:
-            LOGGER.warn(f"Exception occurred while handling connection: {e}")
+            LOGGER.exception("Exception occurred while handling connection.")
             close = True
 
         if close:
@@ -97,7 +97,7 @@ class Server(Generic[H]):
             else None
         ):
             auth_req = await read_msg(reader, AuthRequest.decode)
-        LOGGER.debug(f"Received authorisation message: {auth_req}")
+        LOGGER.debug("Received authorisation message: %s", auth_req)
 
         if auth_req is None:
             LOGGER.warn("Received malformed authorisation message. Closing connection.")
@@ -109,7 +109,8 @@ class Server(Generic[H]):
             await self._valid_token(auth_req.auth_type, auth_req.session_token)
         except TokenError as e:
             LOGGER.debug(
-                f"Received an invalid session token. Closing connection. (Reason: {e.etype})"
+                f"Received an invalid session token. Closing connection. (Reason: %s)",
+                e.etype,
             )
             await write_msg(writer, AuthResponse(e.to_auth_status()))
             writer.close()
@@ -147,7 +148,9 @@ class Server(Generic[H]):
         self._probe_handler = ProbeHandler(self._config, self._sessionmaker)
         self._provider_handler = ProviderHandler(self._config, self._sessionmaker)
 
-        LOGGER.debug("Creating asyncio server.")
+        LOGGER.debug(
+            "Creating asyncio server. (Host: %s; Port: %d)", self._host, self._port
+        )
         self._server = await asyncio.start_server(
             self._handle,
             self._host,
@@ -175,10 +178,16 @@ class Server(Generic[H]):
     async def _create_session_factory(self) -> async_sessionmaker[AsyncSession]:
         engine = create_async_engine(self._config.db_url())
 
-        async with engine.begin() as conn:
-            from .. import models as dbm
+        while True:
+            try:
+                async with engine.begin() as conn:
+                    from .. import models as dbm
 
-            await conn.run_sync(dbm.Base.metadata.create_all)
+                    await conn.run_sync(dbm.Base.metadata.create_all)
+                break
+            except Exception as e:
+                LOGGER.exception(f"Failed to connect to database.\nRetrying in 10s...")
+                await asyncio.sleep(10)
 
         return async_sessionmaker(engine, expire_on_commit=False)
 

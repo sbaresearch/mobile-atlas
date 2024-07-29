@@ -26,9 +26,14 @@ async def lifespan(app: FastAPI):
 
     db.create_sessionmaker()
 
-    # TODO remove
-    async with db._ENGINE.begin() as conn:  # type: ignore
-        await conn.run_sync(dbm.Base.metadata.create_all)
+    while True:
+        try:
+            async with db._ENGINE.begin() as conn:  # type: ignore
+                await conn.run_sync(dbm.Base.metadata.create_all)
+            break
+        except Exception as e:
+            LOGGER.exception("Couldn't connect to database. Retrying in 10s...")
+            await asyncio.sleep(10)
 
     session = db.create_session()
     status_task = asyncio.create_task(check_probe_statuses(session))
