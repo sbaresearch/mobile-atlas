@@ -16,7 +16,7 @@ from moatt_types.connect import (
     Token,
 )
 
-from moatt_clients.client import Client, ProtocolError
+from moatt_clients.client import ProtocolError, _Client
 from moatt_clients.errors import SimRequestError
 from moatt_clients.streams import ApduStream, RawStream
 
@@ -45,7 +45,7 @@ def register_sims(
     api_url: str,
     session_token: Token,
     sims: list[SIM],
-) -> Optional[Token]:
+) -> None:
     """Register SIM cards with the tunnel server.
 
     Parameters
@@ -73,12 +73,12 @@ def register_sims(
         r.raise_for_status()
     except requests.HTTPError:
         LOGGER.error(
-            f"Registration failed. Received {r.status_code} status from server."
+            "Registration failed. Received status %s from server.", r.status_code
         )
         raise
 
 
-class ProviderClient(Client):
+class ProviderClient(_Client):
     """
     Client used to provide SIM cards to the MobileAtlas tunnel server.
     """

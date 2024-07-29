@@ -97,6 +97,7 @@ def register_provider(api_url: str, tunnel_token: Token) -> Token:
         LOGGER.exception("Received a malformed session_token")
         raise
 
+
 def deregister_provider(api_url: str, session_token: Token) -> bool:
     """Deregister a provider session token.
 

@@ -10,7 +10,7 @@ from moatt_clients.streams import RawStream
 LOGGER = logging.getLogger(__name__)
 
 
-class Client:
+class _Client:
     """
     Base class for the Provider- and ProbeClient classes.
     Should not be used directly.

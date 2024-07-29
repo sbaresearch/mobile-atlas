@@ -16,14 +16,14 @@ from moatt_types.connect import (
     Token,
 )
 
-from moatt_clients.client import Client, ProtocolError
+from moatt_clients.client import ProtocolError, _Client
 from moatt_clients.errors import SimRequestError
 from moatt_clients.streams import ApduStream, RawStream
 
 logger = logging.getLogger(__name__)
 
 
-class ProbeClient(Client):
+class ProbeClient(_Client):
     """Client able to establish connections with SIM providers."""
 
     def __init__(
