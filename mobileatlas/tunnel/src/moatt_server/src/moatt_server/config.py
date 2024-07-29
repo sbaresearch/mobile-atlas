@@ -15,7 +15,7 @@ from .auth_handlers import MoatManagementAuth
 
 LOGGER = logging.getLogger(__name__)
 ISODURATION_RE = re.compile(
-    "^(?:P(?:([0-9]+)Y)?(?:([0-9]+)M)?(?:([0-9]+)W)?(?:([0-9]+)D)?)(?:T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?)?$"
+    "^(?:P(?:([0-9]+)Y)?(?:([0-9]+)M)?(?:([0-9]+)W)?(?:([0-9]+)D)?)?(?:T(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?)?$"
 )
 
 
@@ -87,12 +87,18 @@ def _parse_iso8601_duration(value: str) -> timedelta:
     if m is None:
         raise ConfigError
 
+    def opt_int(n):
+        if n is None:
+            return 0
+        else:
+            return int(n)
+
     return timedelta(
-        days=int(m.group(4)) + 365 * int(m.group(1)) + 31 * int(m.group(2)),
-        weeks=int(m.group(3)),
-        hours=int(m.group(5)),
-        minutes=int(m.group(6)),
-        seconds=int(m.group(7)),
+        days=opt_int(m.group(4)) + 365 * opt_int(m.group(1)) + 31 * opt_int(m.group(2)),
+        weeks=opt_int(m.group(3)),
+        hours=opt_int(m.group(5)),
+        minutes=opt_int(m.group(6)),
+        seconds=opt_int(m.group(7)),
     )
 
 
