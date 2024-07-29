@@ -13,7 +13,7 @@ from .. import models as dbm
 
 LOGGER = logging.getLogger(__name__)
 
-queues: dict[UUID, "Queue"] = {}
+_QUEUES: dict[UUID, "Queue"] = {}
 
 
 class QueueEntry:
@@ -116,10 +116,12 @@ def queue_gc_coro_factory(timeout: timedelta) -> Callable[[], Awaitable[None]]:
 
         LOGGER.info("Starting removal of old connection requests")
 
-        for id, q in queues.items():
+        # copy items to prevent changing the dict while iterating
+        items = list(_QUEUES.items())
+        for id, q in items:
             last_active = q.last_active()
             if last_active is not None and now - last_active > timeout:
-                del queues[id]
+                del _QUEUES[id]
                 qs_removed += 1
                 conns_closed += q._cleanup()
 
@@ -132,10 +134,10 @@ def queue_gc_coro_factory(timeout: timedelta) -> Callable[[], Awaitable[None]]:
 
 
 def _get_queue(id: UUID) -> Queue:
-    q = queues.get(id)
+    q = _QUEUES.get(id)
     if q is None:
         q = Queue(maxsize=config.get_config().MAX_QUEUE_SIZE)
-        queues[id] = q
+        _QUEUES[id] = q
     return q
 
 
