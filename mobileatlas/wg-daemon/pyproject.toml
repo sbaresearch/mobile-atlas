@@ -1,0 +1,16 @@
+[build-system]
+requires = [ "setuptools" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wg-daemon"
+dynamic = [ "version", "dependencies" ]
+
+[project.scripts]
+wg-daemon = "wg_daemon.cli:main"
+
+[tool.setuptools.dynamic.version]
+attr = "wg_daemon.VERSION"
+
+[tool.setuptools.dynamic.dependencies]
+file = [ "requirements.txt" ]

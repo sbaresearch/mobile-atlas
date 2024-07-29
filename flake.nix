@@ -7,6 +7,7 @@
       let pkgs = nixpkgs.legacyPackages.${system};
           python = pkgs.python3;
           moat-management-server = import ./mobileatlas/management { inherit pkgs python; };
+          wg-daemon = import ./mobileatlas/wg-daemon { inherit pkgs python; };
           moat-tunnel-types = import ./mobileatlas/tunnel/src/moatt_types { inherit pkgs python; };
           moat-tunnel-server = import ./mobileatlas/tunnel/src/moatt_server { inherit pkgs python; moatt-types = moat-tunnel-types.packages.default; };
           moat-tunnel-clients = import ./mobileatlas/tunnel/src/moatt_clients { inherit pkgs python; moatt-types = moat-tunnel-types.packages.default; };
@@ -19,6 +20,7 @@
         packages = {
           moat-management-server = moat-management-server.packages.default;
           moat-management-server-container = moat-management-server.packages.moat-management-image;
+          wg-daemon = wg-daemon.packages.wg-daemon;
           moat-tunnel-types = moat-tunnel-types.packages.default;
           moat-tunnel-server = moat-tunnel-server.packages.default;
           moat-tunnel-server-container = moat-tunnel-server.packages.moatt-server-image;
@@ -37,6 +39,7 @@
               moat-tunnel-server
               moat-tunnel-clients
               moat-management-server
+              wg-daemon
             ];
           };
 
@@ -44,10 +47,12 @@
           moat-tunnel-clients = shellFor moat-tunnel-clients;
           moat-tunnel-types = shellFor moat-tunnel-types;
           moat-management-server = shellFor moat-management-server;
+          wg-daemon = shellFor wg-daemon;
         };
 
         apps = {
           moat-management-server = moat-management-server.apps.default;
+          wg-daemon = wg-daemon.apps.default;
           moat-tunnel-server = moat-tunnel-server.apps.default;
 
           update-python-requirements = let
@@ -77,6 +82,7 @@
               cp "${freeze true moat-tunnel-clients.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_clients/requirements.txt"
 
               cp "${freeze false moat-management-server.dependencies}" "$GIT_DIR/mobileatlas/management/requirements.txt"
+              cp "${freeze false wg-daemon.dependencies}" "$GIT_DIR/mobileatlas/wg-daemon/requirements.txt"
             '';
           in {
             type = "app";
