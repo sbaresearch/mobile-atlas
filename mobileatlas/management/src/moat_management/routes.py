@@ -71,7 +71,7 @@ async def _check_probe_statuses(session: AsyncSession):
     This is to be called by a cronjob - See status_check_cron.py
     :return: JSON of newly offline Probes
     """
-    LOGGER.info("Updating probe statuses.")
+    LOGGER.debug("Updating probe statuses.")
     online_statuses = await session.scalars(
         select(ProbeStatus).where(ProbeStatus.active)
     )

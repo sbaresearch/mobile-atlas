@@ -114,7 +114,7 @@ def queue_gc_coro_factory(timeout: timedelta) -> Callable[[], Awaitable[None]]:
         qs_removed = 0
         now = datetime.now(tz=timezone.utc)
 
-        LOGGER.info("Starting removal of old connection requests")
+        LOGGER.debug("Starting removal of old connection requests")
 
         # copy items to prevent changing the dict while iterating
         items = list(_QUEUES.items())
@@ -125,7 +125,7 @@ def queue_gc_coro_factory(timeout: timedelta) -> Callable[[], Awaitable[None]]:
                 qs_removed += 1
                 conns_closed += q._cleanup()
 
-        LOGGER.info(
+        LOGGER.debug(
             "Finished removal of old connection requests. "
             f"(Removed {qs_removed} queues; closed {conns_closed} connections)"
         )

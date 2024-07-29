@@ -11,11 +11,11 @@ async def gc(coros: list[Callable[[], Awaitable[None]]], interval: timedelta):
     while True:
         await asyncio.sleep(interval.total_seconds())
         try:
-            logger.info("Starting GC tasks")
+            logger.debug("Starting GC tasks")
             res = await asyncio.gather(
                 *map(lambda x: x(), coros), return_exceptions=True
             )
-            logger.info("GC tasks finished")
+            logger.debug("GC tasks finished")
             for e in filter(lambda r: isinstance(r, Exception), res):
                 logger.warn(f"GC task failed with: {e}")
                 traceback.print_exception(e)
