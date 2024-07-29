@@ -1,2 +1,2 @@
-pydantic~=2.6
-requests~=2.31
+pydantic~=2.7
+requests~=2.32

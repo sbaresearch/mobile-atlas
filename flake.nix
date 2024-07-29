@@ -13,7 +13,7 @@
           dev-tools = with pkgs.python3.pkgs; [
             isort
             black
-            pkgs.nodePackages.pyright
+            pkgs.pyright
           ];
       in {
         packages = {
@@ -22,6 +22,7 @@
           moat-tunnel-types = moat-tunnel-types.packages.default;
           moat-tunnel-server = moat-tunnel-server.packages.default;
           moat-tunnel-server-container = moat-tunnel-server.packages.moatt-server-image;
+          moat-tunnel-restapi-container = moat-tunnel-server.packages.moatt-restapi-image;
           moat-tunnel-clients = moat-tunnel-clients.packages.default;
         };
 

@@ -9,15 +9,13 @@ let pyproject = builtins.fromTOML (builtins.readFile ./pyproject.toml);
         (builtins.readFile ./src/moatt_server/__init__.py))
       1;
 in rec {
-  dependencies = with python.pkgs; [
-    moatt-types
-
+  dependencies = (with python.pkgs; [
     fastapi
     httpx
     psycopg
     sqlalchemy
     uvloop
-  ];
+  ]) ++ [ moatt-types ];
 
   dev-dependencies = with python.pkgs; [
     uvicorn
@@ -39,35 +37,51 @@ in rec {
       propagatedBuildInputs = dependencies;
     };
 
-    moatt-server-image = pkgs.dockerTools.streamLayeredImage {
-      name = "mobile-atlas-sim-tunnel";
+    moatt-restapi-image = pkgs.dockerTools.streamLayeredImage {
+      name = "mobile-atlas-sim-tunnel-api";
       tag = "latest";
       contents = let
-        pypkgs = python.withPackages (p: with p; [
-          uvicorn
-          gunicorn
+        pypkgs = python.withPackages (p: [
+          p.uvicorn
+          p.gunicorn
           moatt-server
         ]);
-        start = pkgs.writeTextFile {
-          name = "simtunnel-start";
-          executable = true;
-          destination = "/app/start.sh";
-
-          text = builtins.readFile ./start.sh;
-        };
       in [
         pypkgs
         pkgs.dockerTools.binSh
-        start
         pkgs.coreutils
       ];
 
       config = {
         WorkingDir = "/app";
-        Entrypoint = [ "./start.sh" ];
+        Entrypoint = [ "gunicorn" "-k" "uvicorn.workers.UvicornWorker" "-b" "[::]:8000" "moatt_server.rest.main:app" ];
+        Env = [ "PYTHONUNBUFFERED=" ];
+        ExposedPorts = {
+          "8000" = {};
+        };
+      };
+    };
+
+    moatt-server-image = pkgs.dockerTools.streamLayeredImage {
+      name = "mobile-atlas-sim-tunnel";
+      tag = "latest";
+      contents = let
+        pypkgs = python.withPackages (p: [
+          moatt-server
+        ]);
+      in [
+        pypkgs
+        pkgs.dockerTools.binSh
+        pkgs.coreutils
+      ];
+
+      config = {
+        WorkingDir = "/app";
+        Entrypoint = [ "moat-tunnel-server" "--host" "::" "0.0.0.0" "--port" "6666" ];
+        Cmd = [ "--config" "/app/config/tunnel.toml" "--cert" "/app/tls/server.crt" "--cert-key" "/app/tls/server.key" ];
+        Env = [ "PYTHONUNBUFFERED=" ];
         ExposedPorts = {
           "6666" = {};
-          "8000" = {};
         };
       };
     };

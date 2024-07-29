@@ -2,7 +2,8 @@
 host = "localhost" # Host to listen on
 port = 8080 # Port to listen on
 user = "admin" # Web UI HTTP Basic auth username
-password = "password" # Web UI HTTP Basic auth password
+pw_hash = "<password hash>" # Base64 encoded password hash (see also scrypt config opts)
+pw_salt = "<password salt>" # Base64 encoded password salt
 behind_proxy = false # Whether the server receives X-Forwarded-For HTTP headers.
 
 [db] # Database connection settings
@@ -10,7 +11,7 @@ host = "localhost" # Hostname of Postgres instance (default: "localhost")
 port = 5432 # Port that Postgres is listening on (default: 5432)
 name = "postgres" # Database name
 user = "postgres" # Postgres user
-password = "supersecret-pw" # Postgres user password
+password = "hunter2" # Postgres user password
 
 
 [redis]

@@ -53,7 +53,8 @@ in rec {
 
       config = {
         WorkingDir = "/app";
-        Entrypoint = [ "gunicorn" "-k" "uvicorn.workers.UvicornWorker" "-b" "0.0.0.0:8000" "moat_management.main:app" ];
+        Entrypoint = [ "gunicorn" "-k" "uvicorn.workers.UvicornWorker" "-b" "[::]:8000" "moat_management.main:app" ];
+        Env = [ "PYTHONUNBUFFERED=1" ];
         ExposedPorts = {
           "8000" = {};
         };
