@@ -1,5 +1,7 @@
 import base64
 import binascii
+import hashlib
+import logging
 import secrets
 from collections.abc import Callable, Coroutine
 from typing import Annotated
@@ -20,20 +22,32 @@ from .db import get_db
 
 _basic_auth = HTTPBasic()
 
+LOGGER = logging.getLogger(__name__)
+
 
 async def get_basic_auth(
     creds: Annotated[HTTPBasicCredentials, Depends(_basic_auth)]
 ) -> str:
+    cfg = get_config()
+
     correct_username = secrets.compare_digest(
-        creds.username.encode("utf-8"), get_config().BASIC_AUTH_USER.encode("utf-8")
+        creds.username.encode("utf-8"), cfg.BASIC_AUTH_USER.encode("utf-8")
+    )
+    hashed_pw = hashlib.scrypt(
+        creds.password.encode("utf-8"),
+        salt=base64.b64decode(cfg.BASIC_AUTH_PW_SALT),
+        n=cfg.SCRYPT_COST,
+        r=cfg.SCRYPT_BLOCK_SIZE,
+        p=cfg.SCRYPT_PARALLELIZATION,
     )
     correct_password = secrets.compare_digest(
-        creds.password.encode("utf-8"), get_config().BASIC_AUTH_PASSWORD.encode("utf-8")
+        hashed_pw, base64.b64decode(cfg.BASIC_AUTH_PW_HASH)
     )
 
     if correct_username and correct_password:
         return creds.username
 
+    LOGGER.warning(f"Authentication failed for user: {creds.username}.")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Incorrect username or password.",

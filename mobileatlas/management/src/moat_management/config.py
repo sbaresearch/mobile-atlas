@@ -44,7 +44,12 @@ class Config:
     BEHIND_PROXY: bool = False
 
     BASIC_AUTH_USER: str
-    BASIC_AUTH_PASSWORD: str
+    BASIC_AUTH_PW_HASH: str
+    BASIC_AUTH_PW_SALT: str
+
+    SCRYPT_COST: int = 16384
+    SCRYPT_BLOCK_SIZE: int = 8
+    SCRYPT_PARALLELIZATION: int = 1
 
     WIREGUARD_ENDPOINT: str
     WIREGUARD_PUBLIC_KEY: str
@@ -110,7 +115,8 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "SERVER_HOST", server.get("host"))
         _set(res, "SERVER_PORT", server.get("port"), int)
         _set(res, "BASIC_AUTH_USER", server.get("user"))
-        _set(res, "BASIC_AUTH_PASSWORD", server.get("password"))
+        _set(res, "BASIC_AUTH_PW_HASH", server.get("pw_hash"))
+        _set(res, "BASIC_AUTH_PW_SALT", server.get("pw_salt"))
         _set(res, "BEHIND_PROXY", server.get("behind_proxy"), bool)
 
     if isinstance(db := cfg.get("db"), dict):
@@ -146,6 +152,11 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "WIREGUARD_PUBLIC_KEY", wg.get("public_key"))
         _set(res, "WIREGUARD_ALLOWED_IPS", wg.get("allowed_ips"))
         _set(res, "WIREGUARD_DNS", wg.get("dns"))
+
+    if isinstance(scrypt := cfg.get("scrypt"), dict):
+        _set(res, "SCRYPT_COST", scrypt.get("cost"), int)
+        _set(res, "SCRYPT_BLOCK_SIZE", scrypt.get("block_size"), int)
+        _set(res, "SCRYPT_PARALLELIZATION", scrypt.get("parallelization"), int)
 
     return res
 
