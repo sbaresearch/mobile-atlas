@@ -1,10 +1,10 @@
+import argparse
 import dataclasses
 import importlib
 import logging
 import os
 import re
 import tomllib
-import argparse
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -48,7 +48,7 @@ class Config:
     DB_PASSWORD: str
     DB_NAME: str
 
-    TUNNEL_HOST: list[str] = field(default_factory=lambda: [ "127.0.0.1" "::1" ])
+    TUNNEL_HOST: list[str] = field(default_factory=lambda: ["127.0.0.1" "::1"])
     TUNNEL_PORT: int = 6666
     TUNNEL_CERT: str = "ssl/server.crt"
     TUNNEL_CERT_KEY: str = "ssl/server.key"
@@ -62,13 +62,13 @@ class Config:
 
     def db_url(self) -> URL:
         return URL.create(
-                "postgresql+psycopg",
-                username=self.DB_USER,
-                password=self.DB_PASSWORD,
-                host=self.DB_HOST,
-                port=self.DB_PORT,
-                database=self.DB_NAME,
-            )
+            "postgresql+psycopg",
+            username=self.DB_USER,
+            password=self.DB_PASSWORD,
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            database=self.DB_NAME,
+        )
 
 
 class ConfigError(Exception):
@@ -84,11 +84,13 @@ def _set(
     if value is not None:
         d[name] = value if mapper is None else mapper(value)
 
+
 def _opt_str(value: str) -> str | None:
     if value == "":
         return None
 
     return value
+
 
 def _opt_td(value: str) -> timedelta | None:
     if value == "":
@@ -99,6 +101,7 @@ def _opt_td(value: str) -> timedelta | None:
 
 def _td(value: str) -> timedelta:
     return _parse_iso8601_duration(value.strip())
+
 
 def _str_list(value: str | list[str]) -> list[str]:
     if isinstance(value, list):
@@ -267,7 +270,11 @@ def _check_config(cfg: dict[str, Any]):
 _CONFIG: Config | None = None
 
 
-def init_config(path: str | Path | None, allow_third_party_modules: bool = False, cmd_args: argparse.Namespace | None = None) -> Config:
+def init_config(
+    path: str | Path | None,
+    allow_third_party_modules: bool = False,
+    cmd_args: argparse.Namespace | None = None,
+) -> Config:
     global _CONFIG
 
     if _CONFIG is not None:

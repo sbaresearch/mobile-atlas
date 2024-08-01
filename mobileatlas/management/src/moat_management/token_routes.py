@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from . import probe_routes
 from . import pydantic_models as pyd
 from . import wireguard_routes
-from .auth import bearer_token_any, get_basic_auth
+from .auth import bearer_token_any, get_basic_auth_admin
 from .db import get_db
 from .models import MamToken, MamTokenAccessLog, TokenAction, TokenScope
 from .resources import get_templates
@@ -90,7 +90,7 @@ async def revoke(
 
 @router.post("/activate")
 async def token_activate(
-    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    basic_auth: Annotated[str, Depends(get_basic_auth_admin)],
     session: Annotated[AsyncSession, Depends(get_db)],
     args: pyd.ActivateToken,
     response: Response,
@@ -150,7 +150,7 @@ async def token_activate(
 
 @router.post("/deactivate")
 async def token_deactivate(
-    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    basic_auth: Annotated[str, Depends(get_basic_auth_admin)],
     session: Annotated[AsyncSession, Depends(get_db)],
     token: pyd.Token,
 ) -> None:

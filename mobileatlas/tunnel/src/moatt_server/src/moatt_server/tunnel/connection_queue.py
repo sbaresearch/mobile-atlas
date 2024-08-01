@@ -101,7 +101,9 @@ class Queue(asyncio.Queue):
             if len(self._queue) != 0:
                 LOGGER.debug("Queue GC starting.")
                 size = len(self._queue)
-                self._queue = collections.deque(filter(lambda qe: not qe.writer.is_closing(), self._queue))
+                self._queue = collections.deque(
+                    filter(lambda qe: not qe.writer.is_closing(), self._queue)
+                )
                 if len(self._queue) < size:
                     LOGGER.info(
                         f"Removed {size - len(self._queue)} closed probe connection(s)."

@@ -4,11 +4,20 @@ from typing import Any
 from uuid import UUID
 
 import httpx
-from moatt_types.connect import Iccid, Imsi, Token
+from moatt_types.connect import Token
+from pydantic import BaseModel
+from pydantic.networks import AnyUrl
 
 from ..auth_handler import AuthHandler, AuthResult, SimIdent
 
 LOGGER = logging.getLogger(__name__)
+
+
+class Settings(BaseModel):
+    base_url: AnyUrl
+    timeout: float = 10  # seconds
+    username: str
+    password: str
 
 
 class MoatManagementAuth(AuthHandler):
@@ -16,24 +25,19 @@ class MoatManagementAuth(AuthHandler):
         cfg = config.get("moat-management-auth")
 
         if not isinstance(cfg, dict):
-            raise ValueError
+            raise ValueError("moat-management-auth config is not a table.")
 
-        base_url = cfg.get("base_url")
+        self._settings = Settings(**cfg)
 
-        if not isinstance(base_url, str):
-            raise ValueError
-
-        timeout = cfg.get("timeout")
-
-        if timeout is not None and not isinstance(timeout, int | float):
-            raise ValueError
-
-        self._timeout = timeout if timeout else 10
-        self._client = httpx.AsyncClient(base_url=base_url, timeout=self._timeout)
+        self._client = httpx.AsyncClient(
+            auth=httpx.BasicAuth(self._settings.username, self._settings.password),
+            base_url=self._settings.base_url.unicode_string(),
+            timeout=self._settings.timeout,
+        )
         self._id_cache: dict[Token, UUID] = {}
 
         LOGGER.debug(
-            f"Finished initialization with the following settings: timeout: {self._timeout}; url: {base_url}"
+            "Finished initialization with the following settings: %s", self._settings
         )
 
     @staticmethod
@@ -59,10 +63,11 @@ class MoatManagementAuth(AuthHandler):
                 return AuthResult.NotFound
             case _ if not res.is_success:
                 LOGGER.warning(
-                    f"MobileAtlas management server responded with HTTP error code: {res.status_code}"
+                    "MobileAtlas management server responded with HTTP error code: %s",
+                    res.status_code,
                 )
                 raise AssertionError(
-                    f"MobileAtlas management server responded with unexpected HTTP error code."
+                    "MobileAtlas management server responded with unexpected HTTP error code."
                 )
 
         return res.json()

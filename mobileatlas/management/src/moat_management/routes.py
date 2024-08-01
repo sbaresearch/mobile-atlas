@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from . import pydantic_models as pyd
-from .auth import get_basic_auth
+from .auth import get_basic_auth_admin
 from .config import get_config
 from .db import get_db
 from .models import MamToken, Probe, ProbeStatus, ProbeStatusType
@@ -21,7 +21,7 @@ from .resources import get_templates
 
 LOGGER = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(get_basic_auth)])
+router = APIRouter(dependencies=[Depends(get_basic_auth_admin)])
 
 Session = Annotated[AsyncSession, Depends(get_db)]
 

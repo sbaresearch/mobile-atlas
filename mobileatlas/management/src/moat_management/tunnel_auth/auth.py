@@ -1,12 +1,11 @@
 import base64
 import binascii
-import ipaddress
 import logging
 import secrets
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from .. import config
 from .. import models as dbm
+from ..auth import get_basic_auth
 from ..db import get_db
 from . import models as pyd
 
@@ -23,23 +23,11 @@ token = HTTPBearer()
 
 Session = Annotated[AsyncSession, Depends(get_db)]
 
-
-def only_local_reqs(req: Request) -> None:
-    if req.client is None:
-        LOGGER.warning(
-            "Unknown client is trying to request a resource that should only be available to local clients. Returning 404."
-        )
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    addr = ipaddress.ip_address(req.client.host)
-
-    if any(map(lambda n: addr in n, config.get_config().ALLOWED_TUNNEL_AUTH_IPS)):
-        return
-
-    LOGGER.warning(
-        f"External client ({addr}) is trying to request a resource that should only be available to local clients. Returning 404."
-    )
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+get_tunnel_basic_auth = get_basic_auth(
+    config.get_config().TUNNEL_USER,
+    base64.b64decode(config.get_config().TUNNEL_PW_SALT),
+    base64.b64decode(config.get_config().TUNNEL_PW_HASH),
+)
 
 
 async def get_valid_token(

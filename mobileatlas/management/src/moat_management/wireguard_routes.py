@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from . import pydantic_models as pyd
-from .auth import bearer_token_wg, get_basic_auth
+from .auth import bearer_token_wg, get_basic_auth_admin
 from .config import get_config
 from .db import get_db
 from .models import MamToken, WireguardConfig, WireguardConfigLogs
@@ -47,7 +47,7 @@ async def get_client_ip(
 
 @router.get("")
 async def wireguard_index(
-    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    basic_auth: Annotated[str, Depends(get_basic_auth_admin)],
     request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
 ):

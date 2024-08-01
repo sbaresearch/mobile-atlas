@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .. import models as dbm
-from ..auth import bearer_token_probe, get_basic_auth
+from ..auth import bearer_token_probe, get_basic_auth_admin
 from ..db import get_db
 from ..resources import get_templates
 from . import models as pyd
@@ -103,7 +103,7 @@ async def tunnel_index(session: Session, request: Request):
 
 @router.post("/token")
 async def create_token(
-    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    basic_auth: Annotated[str, Depends(get_basic_auth_admin)],
     session: Session,
     req: pyd.TokenCreation,
 ):
@@ -113,7 +113,7 @@ async def create_token(
 
 @router.post("/token/{token_id}/sim")
 async def add_sim(
-    basic_auth: Annotated[str, Depends(get_basic_auth)],
+    basic_auth: Annotated[str, Depends(get_basic_auth_admin)],
     session: Session,
     token_id: int,
     req: pyd.AllowSim,

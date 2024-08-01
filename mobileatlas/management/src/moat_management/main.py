@@ -4,12 +4,12 @@ import logging
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 
-from .config import get_config
 from . import db, resources
+from .config import get_config
 from .probe_routes import router as probe_router
 from .routes import check_probe_statuses
 from .routes import router as idx_router

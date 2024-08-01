@@ -10,16 +10,18 @@ from .. import models as dbm
 from ..db import get_db
 from . import models as pyd
 from .auth import (
+    get_tunnel_basic_auth,
     get_valid_probe_token,
     get_valid_provider_token,
     get_valid_sess_token,
-    only_local_reqs,
 )
 
 LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/tunnel-auth", tags=["tunnel-auth"], dependencies=[Depends(only_local_reqs)]
+    prefix="/tunnel-auth",
+    tags=["tunnel-auth"],
+    dependencies=[Depends(get_tunnel_basic_auth)],
 )
 
 Session = Annotated[AsyncSession, Depends(get_db)]

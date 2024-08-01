@@ -25,34 +25,40 @@ _basic_auth = HTTPBasic()
 LOGGER = logging.getLogger(__name__)
 
 
-async def get_basic_auth(
-    creds: Annotated[HTTPBasicCredentials, Depends(_basic_auth)]
-) -> str:
-    cfg = get_config()
+def get_basic_auth(username: str, pw_salt: bytes, pw_hash: bytes):
+    async def f(creds: Annotated[HTTPBasicCredentials, Depends(_basic_auth)]) -> str:
+        cfg = get_config()
 
-    correct_username = secrets.compare_digest(
-        creds.username.encode("utf-8"), cfg.BASIC_AUTH_USER.encode("utf-8")
-    )
-    hashed_pw = hashlib.scrypt(
-        creds.password.encode("utf-8"),
-        salt=base64.b64decode(cfg.BASIC_AUTH_PW_SALT),
-        n=cfg.SCRYPT_COST,
-        r=cfg.SCRYPT_BLOCK_SIZE,
-        p=cfg.SCRYPT_PARALLELIZATION,
-    )
-    correct_password = secrets.compare_digest(
-        hashed_pw, base64.b64decode(cfg.BASIC_AUTH_PW_HASH)
-    )
+        correct_username = secrets.compare_digest(
+            creds.username.encode("utf-8"), username.encode("utf-8")
+        )
+        hashed_pw = hashlib.scrypt(
+            creds.password.encode("utf-8"),
+            salt=pw_salt,
+            n=cfg.SCRYPT_COST,
+            r=cfg.SCRYPT_BLOCK_SIZE,
+            p=cfg.SCRYPT_PARALLELIZATION,
+        )
+        correct_password = secrets.compare_digest(hashed_pw, pw_hash)
 
-    if correct_username and correct_password:
-        return creds.username
+        if correct_username and correct_password:
+            return creds.username
 
-    LOGGER.warning(f"Authentication failed for user: {creds.username}.")
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Incorrect username or password.",
-        headers={"WWW-Authenticate": "Basic"},
-    )
+        LOGGER.warning(f"Authentication failed for user: {creds.username}.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    return f
+
+
+get_basic_auth_admin = get_basic_auth(
+    get_config().BASIC_AUTH_USER,
+    base64.b64decode(get_config().BASIC_AUTH_PW_SALT),
+    base64.b64decode(get_config().BASIC_AUTH_PW_HASH),
+)
 
 
 _bearer_creds = HTTPBearer()

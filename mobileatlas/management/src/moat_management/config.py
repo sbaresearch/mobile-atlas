@@ -5,9 +5,8 @@ import os
 import re
 import tomllib
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
-from ipaddress import IPv4Network, IPv6Network
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -56,9 +55,9 @@ class Config:
     WIREGUARD_DNS: str
     WIREGUARD_DAEMON: str | None = None
 
-    ALLOWED_TUNNEL_AUTH_IPS: list[IPv4Network | IPv6Network] = field(
-        default_factory=lambda: [IPv4Network("127.0.0.1"), IPv6Network("::1")]
-    )
+    TUNNEL_USER: str
+    TUNNEL_PW_HASH: str
+    TUNNEL_PW_SALT: str
 
     def db_url(self) -> URL:
         return URL.create(
@@ -134,17 +133,9 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "REDIS_PORT", redis.get("port"), int)
 
     if isinstance(tunnel := cfg.get("tunnel"), dict):
-        if not isinstance(tunnel.get("allowed_ips"), list):
-            raise ConfigError(
-                'Configuration value "tunnel.allowed_ips" should be a list.'
-            )
-
-        _set(
-            res,
-            "ALLOWED_TUNNEL_AUTH_IPS",
-            tunnel.get("allowed_ips"),
-            lambda l: list(map(ipaddress.ip_network, l)),
-        )
+        _set(res, "TUNNEL_USER", tunnel.get("user"))
+        _set(res, "TUNNEL_PW_HASH", tunnel.get("pw_hash"))
+        _set(res, "TUNNEL_PW_SALT", tunnel.get("pw_salt"))
 
     if isinstance(probe := cfg.get("probes"), dict):
         _set(res, "LONG_POLLING_INTERVAL", probe.get("polling_interval"), _td)
