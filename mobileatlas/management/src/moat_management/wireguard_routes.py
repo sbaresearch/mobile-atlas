@@ -5,7 +5,7 @@ from ipaddress import IPv4Address, IPv6Address
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import exc as sqlexc
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,14 +25,8 @@ router = APIRouter(prefix="/wireguard", tags=["wireguard"])
 
 async def get_client_ip(
     req: Request,
-    http_x_forwarded_for: Annotated[
-        str | None, Header(convert_underscores=False)
-    ] = None,
 ) -> IPv4Address | IPv6Address:
-    if get_config().BEHIND_PROXY:
-        ip = http_x_forwarded_for
-    else:
-        ip = req.client.host if req.client is not None else None
+    ip = req.client.host if req.client is not None else None
 
     if ip is None:
         raise HTTPException(

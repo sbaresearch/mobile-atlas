@@ -42,8 +42,6 @@ class Config:
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
-    BEHIND_PROXY: bool = False
-
     BASIC_AUTH_USER: str
     BASIC_AUTH_PW_HASH: str
     BASIC_AUTH_PW_SALT: str
@@ -123,7 +121,6 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "BASIC_AUTH_USER", server.get("user"))
         _set(res, "BASIC_AUTH_PW_HASH", server.get("pw_hash"))
         _set(res, "BASIC_AUTH_PW_SALT", server.get("pw_salt"))
-        _set(res, "BEHIND_PROXY", server.get("behind_proxy"), bool)
 
     if isinstance(db := cfg.get("db"), dict):
         _set(res, "DB_HOST", db.get("host"))

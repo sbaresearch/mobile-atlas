@@ -6,7 +6,9 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
+from .config import get_config
 from . import db, resources
 from .probe_routes import router as probe_router
 from .routes import check_probe_statuses
@@ -31,7 +33,7 @@ async def lifespan(app: FastAPI):
             async with db._ENGINE.begin() as conn:  # type: ignore
                 await conn.run_sync(dbm.Base.metadata.create_all)
             break
-        except Exception as e:
+        except Exception:
             LOGGER.exception("Couldn't connect to database. Retrying in 10s...")
             await asyncio.sleep(10)
 
