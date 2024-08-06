@@ -1,2 +1,2 @@
-include src/moat_management/static/*
-include src/moat_management/templates/*
+recursive-include src/moat_management/static *
+recursive-include src/moat_management/templates *

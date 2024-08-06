@@ -68,3 +68,32 @@ input:invalid {
   border-color: red;
   border-style: solid;
 }
+
+/* License: fonts/Jost/OFL.txt */
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  src: url(fonts/Jost/Jost-VariableFont_wght.ttf) format('truetype');
+}
+
+/* License: fonts/Jost/OFL.txt */
+@font-face {
+@font-face {
+  font-family: 'Jost';
+  font-style: italic;
+  src: url(fonts/Jost/Jost-Italic-VariableFont_wght.ttf) format('truetype');
+}
+
+/* License: fonts/Open_Sans/OFL.txt */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  src: url(fonts/Open_Sans/OpenSans-VariableFont_wdth,wght.ttf) format('truetype');
+}
+
+/* License: fonts/Open_Sans/OFL.txt */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: italic;
+  src: url(fonts/Open_Sans/OpenSans-Italic-VariableFont_wdth,wght.ttf) format('truetype');
+}
