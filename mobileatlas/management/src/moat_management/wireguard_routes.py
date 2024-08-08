@@ -45,10 +45,10 @@ async def get_wg_daemon_client() -> AsyncGenerator[httpx.AsyncClient | None, Non
 
 async def get_client_ip(
     req: Request,
-    http_x_real_ip: Annotated[str | None, Header()] = None,
+    x_real_ip: Annotated[str | None, Header()] = None,
 ) -> IPv4Address | IPv6Address:
     if get_config().SERVER_BEHIND_PROXY:
-        ip = http_x_real_ip
+        ip = x_real_ip
     else:
         ip = req.client.host if req.client is not None else None
 
