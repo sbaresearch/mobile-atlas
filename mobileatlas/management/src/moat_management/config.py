@@ -28,6 +28,7 @@ class ConfigError(Exception):
 class Config:
     SERVER_HOST: str = "localhost"
     SERVER_PORT: int = 8080
+    SERVER_BEHIND_PROXY: bool = False
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
@@ -120,6 +121,7 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "BASIC_AUTH_USER", server.get("user"))
         _set(res, "BASIC_AUTH_PW_HASH", server.get("pw_hash"))
         _set(res, "BASIC_AUTH_PW_SALT", server.get("pw_salt"))
+        _set(res, "SERVER_BEHIND_PROXY", server.get("behind_proxy"))
 
     if isinstance(db := cfg.get("db"), dict):
         _set(res, "DB_HOST", db.get("host"))
