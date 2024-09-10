@@ -16,7 +16,7 @@
             black
             pkgs.pyright
           ];
-      in {
+      in rec {
         packages = {
           moat-management-server = moat-management-server.packages.default;
           moat-management-server-container = moat-management-server.packages.moat-management-image;
@@ -54,6 +54,18 @@
           moat-management-server = moat-management-server.apps.default;
           wg-daemon = wg-daemon.apps.default;
           moat-tunnel-server = moat-tunnel-server.apps.default;
+          moat-management-server-container = {
+            type = "app";
+            program = "${packages.moat-management-server-container}";
+          };
+          moat-tunnel-server-container = {
+            type = "app";
+            program = "${packages.moat-tunnel-server-container}";
+          };
+          moat-tunnel-restapi-container = {
+            type = "app";
+            program = "${packages.moat-tunnel-restapi-container}";
+          };
 
           update-python-requirements = let
             freeze = lib: deps: pkgs.stdenv.mkDerivation {
