@@ -27,6 +27,7 @@ from .util import read_msg, write_msg
 
 LOGGER = logging.getLogger(__name__)
 
+
 class Server:
     def __init__(
         self,

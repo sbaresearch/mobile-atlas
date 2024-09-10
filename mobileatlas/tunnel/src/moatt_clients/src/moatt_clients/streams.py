@@ -5,9 +5,8 @@ import struct
 from collections.abc import Callable
 from typing import Optional, TypeVar
 
-from moatt_types.connect import ApduOp, ApduPacket, PartialInput
-
 from moatt_clients.errors import ProtocolError
+from moatt_types.connect import ApduOp, ApduPacket, PartialInput
 
 LOGGER = logging.getLogger(__name__)
 

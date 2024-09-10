@@ -2,10 +2,9 @@ import logging
 import ssl
 from typing import Optional
 
-from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, AuthType, Token
-
 from moatt_clients.errors import AuthError, ProtocolError
 from moatt_clients.streams import RawStream
+from moatt_types.connect import AuthRequest, AuthResponse, AuthStatus, AuthType, Token
 
 LOGGER = logging.getLogger(__name__)
 
