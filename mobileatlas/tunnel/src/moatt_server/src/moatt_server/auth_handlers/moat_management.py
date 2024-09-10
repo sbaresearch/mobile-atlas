@@ -1,12 +1,13 @@
 import dataclasses
 import logging
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 from uuid import UUID
 
 import httpx
 from moatt_types.connect import Token
 from pydantic import BaseModel
-from pydantic.networks import AnyUrl
+from pydantic.networks import HttpUrl
 
 from ..auth_handler import AuthHandler, AuthResult, SimIdent
 
@@ -14,8 +15,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Settings(BaseModel):
-    base_url: AnyUrl
+    base_url: Optional[HttpUrl] = None
+    uds: Optional[Path] = None
     timeout: float = 10  # seconds
+    retries: int = 1
     username: str
     password: str
 
@@ -28,11 +31,19 @@ class MoatManagementAuth(AuthHandler):
             raise ValueError("moat-management-auth config is not a table.")
 
         self._settings = Settings(**cfg)
-
+        transport = httpx.AsyncHTTPTransport(
+            retries=self._settings.retries,
+            uds=str(self._settings.uds) if self._settings.uds is not None else None,
+        )
         self._client = httpx.AsyncClient(
             auth=httpx.BasicAuth(self._settings.username, self._settings.password),
-            base_url=self._settings.base_url.unicode_string(),
+            base_url=(
+                self._settings.base_url.unicode_string()
+                if self._settings.base_url is not None
+                else ""
+            ),
             timeout=self._settings.timeout,
+            transport=transport,
         )
         self._id_cache: dict[Token, UUID] = {}
 
