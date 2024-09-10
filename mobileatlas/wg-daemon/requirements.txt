@@ -1,12 +1,9 @@
 annotated-types==0.7.0
 anyio==4.3.0
-certifi==2024.2.2
 click==8.1.7
 fastapi==0.111.0
 fastapi-cli==0.0.4
 h11==0.14.0
-httpcore==1.0.5
-httpx==0.27.0
 idna==3.7
 pydantic==2.7.4
 pydantic-settings==2.3.2

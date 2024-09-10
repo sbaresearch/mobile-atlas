@@ -10,7 +10,6 @@ let pyproject = builtins.fromTOML (builtins.readFile ./pyproject.toml);
 in rec {
   dependencies = with python.pkgs; [
     fastapi
-    httpx
     pydantic-settings
     systemd
     uvicorn
