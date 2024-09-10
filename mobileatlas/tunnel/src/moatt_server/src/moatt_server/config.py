@@ -246,7 +246,7 @@ def _load_env_config(
                     ),
                 )
             else:
-                res[f.name] = f.type(val)
+                res[f.name] = f.type(val)  # type: ignore
 
     _check_config(res)
     return res
@@ -260,7 +260,7 @@ def _check_config(cfg: dict[str, Any]):
         # which is why we use this ugly hack
         t = list if f.type == list[str] else f.type
 
-        if val is not None and not isinstance(val, t):
+        if val is not None and not isinstance(val, t):  # type: ignore
             LOGGER.error(
                 f"Invalid configuration value for {f.name}: '{val}' expected {f.type}"
             )

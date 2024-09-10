@@ -59,7 +59,7 @@ class TokenScope(int, enum.Flag):
 
     def pretty(self, compact=False):
         joiner = " | " if not compact else "|"
-        return joiner.join([s.name for s in self]) or "none"
+        return joiner.join([s.name for s in self if s.name is not None]) or "none"
 
 
 class TokenScopeType(TypeDecorator):
@@ -358,7 +358,7 @@ class ProbeSystemInformation(Base):
                         dev["ifname"],  # type: ignore
                         dev["addr_info"][0]["local"],  # type: ignore
                         dev["stats64"]["rx"]["bytes"] / 1000000,  # type: ignore
-                        dev["stats64"]["tx"]["bytes"] / 1000000,
+                        dev["stats64"]["tx"]["bytes"] / 1000000,  # type: ignore
                     )
                     for dev in network
                 ]  # type: ignore

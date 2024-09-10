@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from pydantic import IPvAnyNetwork
 from systemd.daemon import notify
 
 from . import config
@@ -75,7 +76,7 @@ async def add_peer(peer: Peer, settings: Settings) -> None:
         "peer",
         base64.b64encode(peer.pub_key),
         "allowed-ips",
-        ",".join(map(lambda n: n.compressed, peer.allowed_ips)),
+        ",".join(map(lambda n: n.compressed, peer.allowed_ips)),  # type: ignore
         stderr=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.DEVNULL,
         stdin=asyncio.subprocess.DEVNULL,
