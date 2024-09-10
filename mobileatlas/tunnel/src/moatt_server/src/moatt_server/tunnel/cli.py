@@ -29,6 +29,7 @@ def main():
         logging.config.fileConfig(log_conf)
 
     tls_ctx = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+    tls_ctx.verify_mode = ssl.CERT_REQUIRED
     tls_ctx.load_cert_chain(args.cert, args.cert_key)
 
     server = Server(config.get_config(), args.host, args.port, tls_ctx)

@@ -4,7 +4,6 @@ import socket
 import ssl
 from collections.abc import Sequence
 from datetime import timedelta
-from typing import Generic, TypeVar
 
 from moatt_types.connect import (
     AuthRequest,
@@ -19,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from .. import auth
 from ..auth import TokenError
-from ..auth_handler import AuthHandler
 from ..config import Config
 from ..gc import gc
 from .connection_queue import queue_gc_coro_factory
@@ -29,10 +27,7 @@ from .util import read_msg, write_msg
 
 LOGGER = logging.getLogger(__name__)
 
-H = TypeVar("H", bound=AuthHandler)
-
-
-class Server(Generic[H]):
+class Server:
     def __init__(
         self,
         config: Config,
@@ -185,7 +180,7 @@ class Server(Generic[H]):
 
                     await conn.run_sync(dbm.Base.metadata.create_all)
                 break
-            except Exception as e:
+            except Exception:
                 LOGGER.exception(f"Failed to connect to database.\nRetrying in 10s...")
                 await asyncio.sleep(10)
 
