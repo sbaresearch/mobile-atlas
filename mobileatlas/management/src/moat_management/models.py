@@ -116,7 +116,6 @@ class MamToken(Base):
     def activate(self, session):
         if self.token_candidate is not None:
             self.token = self.token_candidate
-            self.token_candidate = None
 
         l = MamTokenAccessLog(
             token_id=self.id,

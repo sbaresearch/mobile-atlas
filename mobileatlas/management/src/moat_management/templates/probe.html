@@ -32,7 +32,7 @@
         {% endfor %}
 
         <tr><td colspan="2" style="border:none;"></td></tr>
-        <tr><th>Token</th><td class="center">{{p.token.token[:4]}}...{{p.token.token[-4:]}}</td></tr>
+        <tr><th>Token</th><td class="center">{%if p.token.token %}{{p.token.token[:4]}}...{{p.token.token[-4:]}}{%else%}n/a{%endif%}</td></tr>
         {# <tr><th>Token Expiration</th><td class="center">{{p.token_expiration.strftime("%Y-%m-%d") if p.token_expiration}}</td></tr>
         <tr><th>Token Candidate</th><td class="center">{%if p.token.token_candidate%}{{p.token.token_candidate[:4]}}...{{p.token.token_candidate[-4:]}}{%endif%}</td></tr> #}
         <tr><th>Token Activated</th><td class="center">{{'✅' if p.is_activated() else  '❌'}}</td></tr>
