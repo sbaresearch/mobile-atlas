@@ -1,0 +1,14 @@
+[Unit]
+Description=Daemon for configuring the wg interface
+Requires=wg-quick@wg0.service
+After=wg-quick@wg0.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+Environment=PATH=/home/mobileatlas/wg-daemon/venv/bin
+ExecStart=/home/mobileatlas/wg-daemon/venv/bin/wg-daemon
+User=mobileatlas
+
+[Install]
+WantedBy=default.target

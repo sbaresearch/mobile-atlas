@@ -1,0 +1,9 @@
+[Unit]
+Requires=wg-quick@wg0.service
+After=wg-quick@wg0.service
+
+[Socket]
+ListenStream=%t/wg-daemon/wg-daemon.sock
+
+[Install]
+WantedBy=sockets.target

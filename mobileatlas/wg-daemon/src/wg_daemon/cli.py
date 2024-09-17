@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 
@@ -11,7 +12,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 def main():
-    settings = Settings.get()
+    # initialize Settings
+    Settings.get()
 
     fds = listen_fds()
 
@@ -24,7 +26,32 @@ def main():
         )
         sys.exit(1)
 
-    uvicorn.run(app, fd=fds[0])
+    config = uvicorn.Config(app, fd=fds[0])
+    server = uvicorn.Server(config)
+
+    asyncio.run(run_server(server))
+
+
+async def run_server(server: uvicorn.Server):
+    server_task = asyncio.create_task(server.serve())
+    should_exit = False
+
+    while True:
+        requests = server.server_state.total_requests
+
+        done, _ = await asyncio.wait([server_task], timeout=10 * 60)
+
+        if server_task in done:
+            break
+        elif should_exit:
+            LOGGER.error("Server did not stop after 10mins. Canceling task...")
+            server_task.cancel()
+            break
+
+        if requests == server.server_state.total_requests:
+            LOGGER.info("Server has been idling for more than 10mins. Shutting down...")
+            should_exit = True
+            server.should_exit = True
 
 
 if __name__ == "__main__":
