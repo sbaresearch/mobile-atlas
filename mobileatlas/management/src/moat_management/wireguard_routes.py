@@ -1,11 +1,9 @@
 import ipaddress
 import logging
-from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv6Address
 from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import exc as sqlexc
 from sqlalchemy import select
@@ -18,29 +16,11 @@ from .config import get_config
 from .db import get_db
 from .models import MamToken, WireguardConfig, WireguardConfigLogs
 from .resources import get_templates
+from .wg_config import get_wg_config
 
 LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/wireguard", tags=["wireguard"])
-
-
-async def get_wg_daemon_client() -> AsyncGenerator[httpx.AsyncClient | None, None]:
-    url = get_config().WIREGUARD_DAEMON
-
-    if url is None:
-        yield None
-        return
-
-    if url.startswith("unix:"):
-        transport = httpx.AsyncHTTPTransport(uds=url.removeprefix("unix:"))
-
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://wg-daemon"
-        ) as c:
-            yield c
-    else:
-        async with httpx.AsyncClient(base_url=url) as c:
-            yield c
 
 
 async def get_client_ip(
@@ -74,8 +54,9 @@ async def wireguard_index(
     basic_auth: Annotated[str, Depends(get_basic_auth_admin)],
     request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
-    wgd_client: Annotated[httpx.AsyncClient, Depends(get_wg_daemon_client)],
 ):
+    wg_config = get_wg_config()
+
     await session.begin()
     wgs = (
         await session.scalars(
@@ -93,11 +74,17 @@ async def wireguard_index(
     token_reqs = (
         await session.scalars(select(MamToken).where(MamToken.token == None))
     ).all()
+
+    try:
+        wg_status = await wg_config.status()
+    except Exception:
+        wg_status = "n/a"
+
     ctx = {
         "wgs": wgs,
         "wgas": wgas,
         "token_reqs": token_reqs,
-        "status": await get_current_wireguard_status(wgd_client),
+        "status": wg_status,
     }
     return get_templates().TemplateResponse(
         request=request, name="wireguard.html", context=ctx
@@ -109,13 +96,14 @@ async def wireguard_register(
     token: Annotated[MamToken, Depends(bearer_token_wg)],
     session: Annotated[AsyncSession, Depends(get_db)],
     client_ip: Annotated[IPv4Address | IPv6Address, Depends(get_client_ip)],
-    wgd_client: Annotated[httpx.AsyncClient, Depends(get_wg_daemon_client)],
     reg: pyd.RegisterReq,
 ) -> pyd.WgConfig:
     """
     Register the public key of a Probe for Wireguard
     Expects arguments "mac" and "publickey"
     """
+    wg_config = get_wg_config()
+
     async with session.begin():
         session.add(token)
         await session.refresh(token)
@@ -148,7 +136,7 @@ async def wireguard_register(
         else:
             # Update Values
             wg.publickey = publickey
-            await wireguard_put_peer(publickey, wg.ip, wgd_client)
+            await wg_config.add_peer(publickey, wg.ip)
             wg.allow_registration = False
             wg.register_time = datetime.now(tz=timezone.utc)
 
@@ -192,52 +180,6 @@ async def log_config_attempt(
     return log
 
 
-async def wireguard_put_peer(
-    publickey: str, ip: str, client: httpx.AsyncClient
-) -> None:
-    """
-    Configure Wireguard locally
-
-    Check that python user is enabled in /etc/suders.d/wireguard
-    > user ALL = (root) NOPASSWD: /usr/bin/wg addconf wg0 /tmp/wireguard
-    """
-    r = await client.put("/peers", json={"pub_key": publickey, "allowed_ips": [ip]})
-
-    if not r.is_success:
-        LOGGER.warning(
-            "Wireguard service returned non success status (%d):\n%s",
-            r.status_code,
-            r.content,
-        )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-async def get_current_wireguard_status(client: httpx.AsyncClient) -> str | None:
-    """
-    Get the current wireguard config
-
-    Check that python user is enabled in /etc/suders.d/wireguard
-    > user ALL = (root) NOPASSWD: /usr/bin/wg showconf wg0
-    """
-    r = await client.get("/status")
-
-    if not r.is_success:
-        LOGGER.warning(
-            "Failed to get current wireguard interface status from wg daemon (%d).\n%s",
-            r.status_code,
-            r.content,
-        )
-        return None
-
-    json = r.json()
-
-    if not isinstance(json, str):
-        LOGGER.warning("wg-daemon did not return a JSON string.")
-        return None
-
-    return json
-
-
 async def after_token_activation(
     session: AsyncSession, token: MamToken, ip: IPv4Address | IPv6Address
 ):
@@ -252,6 +194,15 @@ async def after_token_activation(
         )
         session.add(wgc)
     session.add(token)
+
+
+async def before_token_deletion(session: AsyncSession, token: MamToken):
+    wg_config = get_wg_config()
+
+    stored_config: WireguardConfig | None = await token.awaitable_attrs.config
+
+    if stored_config is not None and stored_config.publickey is not None:
+        await wg_config.remove_peer(stored_config.publickey)
 
 
 async def handle_activation_error(

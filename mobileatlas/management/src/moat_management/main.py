@@ -4,7 +4,6 @@ import logging
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -17,6 +16,7 @@ from .token_routes import router as token_router
 from .tunnel_auth.models import AuthError, AuthException
 from .tunnel_auth.routes import router as tunnel_auth_router
 from .tunnel_auth.tunnel_interface_routes import router as tunnel_server_auth_router
+from .wg_config import wg_config
 from .wireguard_routes import router as wireguard_router
 
 LOGGER = logging.getLogger(__name__)
@@ -41,9 +41,10 @@ async def lifespan(app: FastAPI):
     status_task = asyncio.create_task(check_probe_statuses(session))
 
     with resources.templates(), resources.static() as static_dir:
-        LOGGER.info(f"Serving static files from: {static_dir}")
-        app.mount("/static", StaticFiles(directory=static_dir))
-        yield
+        async with wg_config(get_config().WIREGUARD_DAEMON):
+            LOGGER.info(f"Serving static files from: {static_dir}")
+            app.mount("/static", StaticFiles(directory=static_dir))
+            yield
 
     status_task.cancel()
     await session.close()

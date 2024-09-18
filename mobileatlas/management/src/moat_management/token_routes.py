@@ -125,7 +125,7 @@ async def token_activate(
         await wireguard_routes.after_token_activation(session, token, args.root.ip)  # type: ignore
 
     if isinstance(args.root, pyd.ActivateProbeToken | pyd.ActivateTokenAll):
-        probe_routes.after_token_activation(session, token, args.root.name)
+        await probe_routes.after_token_activation(session, token, args.root.name)
 
     try:
         await session.commit()
@@ -154,7 +154,6 @@ async def token_deactivate(
     session: Annotated[AsyncSession, Depends(get_db)],
     token: pyd.Token,
 ) -> None:
-
     async with session.begin():
         await delete_token(session, token.token)
 
@@ -179,6 +178,11 @@ async def delete_token(session: AsyncSession, token: str) -> None:
     )
 
     for t in tokens:
+        if TokenScope.Wireguard in t.scope:
+            await wireguard_routes.before_token_deletion(session, t)
+        if TokenScope.Probe in t.scope:
+            await probe_routes.before_token_deletion(session, t)
+
         session.add(
             MamTokenAccessLog(
                 token_value=t.token_value(),

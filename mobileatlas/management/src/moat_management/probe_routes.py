@@ -147,13 +147,19 @@ async def probe_system_information(
     await session.commit()
 
 
-def after_token_activation(session: AsyncSession, token: MamToken, name: str) -> None:
+async def after_token_activation(
+    session: AsyncSession, token: MamToken, name: str
+) -> None:
     session.add(
         Probe(
             name=name,
             token=token,
         )
     )
+
+
+async def before_token_deletion(session: AsyncSession, token: MamToken) -> None:
+    pass
 
 
 async def handle_activation_error(

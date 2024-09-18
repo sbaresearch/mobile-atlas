@@ -54,7 +54,7 @@ class Config:
     WIREGUARD_PUBLIC_KEY: str
     WIREGUARD_ALLOWED_IPS: str
     WIREGUARD_DNS: str
-    WIREGUARD_DAEMON: str | None = None
+    WIREGUARD_DAEMON: str
 
     TUNNEL_USER: str
     TUNNEL_PW_HASH: str
