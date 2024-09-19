@@ -87,14 +87,18 @@
             updateAll = pkgs.writeShellScriptBin "freeze-all-deps.sh" ''
               set -eu
 
-              GIT_DIR="$(git rev-parse --show-toplevel)"
-              cp "${freeze false moat-tunnel-server.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_server/requirements.txt"
-              cp "${freeze false moat-tunnel-server.dev-dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_server/dev-requirements.txt"
+              if ! diff -q ${./flake.nix} ./flake.nix &>/dev/null; then
+                echo "ERROR: Please run this script from the project's root directory."
+                exit 1
+              fi
 
-              cp "${freeze true moat-tunnel-clients.dependencies}" "$GIT_DIR/mobileatlas/tunnel/src/moatt_clients/requirements.txt"
+              cp "${freeze false moat-tunnel-server.dependencies}" "./mobileatlas/tunnel/src/moatt_server/requirements.txt"
+              cp "${freeze false moat-tunnel-server.dev-dependencies}" "./mobileatlas/tunnel/src/moatt_server/dev-requirements.txt"
 
-              cp "${freeze false moat-management-server.dependencies}" "$GIT_DIR/mobileatlas/management/requirements.txt"
-              cp "${freeze false wg-daemon.dependencies}" "$GIT_DIR/mobileatlas/wg-daemon/requirements.txt"
+              cp "${freeze true moat-tunnel-clients.dependencies}" "./mobileatlas/tunnel/src/moatt_clients/requirements.txt"
+
+              cp "${freeze false moat-management-server.dependencies}" "./mobileatlas/management/requirements.txt"
+              cp "${freeze false wg-daemon.dependencies}" "./mobileatlas/wg-daemon/requirements.txt"
             '';
           in {
             type = "app";
