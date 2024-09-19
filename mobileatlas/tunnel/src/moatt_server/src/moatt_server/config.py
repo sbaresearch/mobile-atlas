@@ -55,6 +55,7 @@ class Config:
 
     API_HOST: str = "localhost"
     API_PORT: int = 8000
+    API_DOCUMENTATION: bool = False
 
     LOGGING_CONF_FILE: Optional[str] = None
 
@@ -69,6 +70,12 @@ class Config:
             port=self.DB_PORT,
             database=self.DB_NAME,
         )
+
+    def api_doc_settings(self) -> dict[str, Any]:
+        if self.API_DOCUMENTATION:
+            return {}
+        else:
+            return {"docs_url": None, "redoc_url": None}
 
 
 class ConfigError(Exception):

@@ -1,6 +1,6 @@
 import functools
 import os
-from typing import Self
+from typing import Any, Self
 
 from pydantic_settings import BaseSettings, SettingsConfigDict, TomlConfigSettingsSource
 
@@ -14,6 +14,13 @@ class Settings(BaseSettings):
 
     interface: str = "wg0"
     wg_config: str = "/etc/wireguard/wg0.conf"
+    documentation: bool = False
+
+    def fastapi_doc_settings(self) -> dict[str, Any]:
+        if self.documentation:
+            return {}
+        else:
+            return {"docs_url": None, "redoc_url": None}
 
     @classmethod
     def settings_customise_sources(

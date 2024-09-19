@@ -9,6 +9,7 @@ from moatt_types.connect import Token
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import auth, db
+from ..config import get_config
 from . import auth as rest_auth
 from . import db as db_utils
 from . import models as pydantic_models
@@ -27,7 +28,7 @@ async def lifespan(_: FastAPI):
 
                 await conn.run_sync(dbm.Base.metadata.create_all)
             break
-        except Exception as e:
+        except Exception:
             LOGGER.exception("Failed to connect to database.\nRetrying in 10s...")
             await asyncio.sleep(10)
 
@@ -36,7 +37,7 @@ async def lifespan(_: FastAPI):
     await db_utils.dispose_engine()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, **get_config().api_doc_settings())
 
 
 @app.put("/provider/sims", status_code=204)

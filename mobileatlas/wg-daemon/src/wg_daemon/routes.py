@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     notify("STOPPING=1\n")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, **config.Settings.get().fastapi_doc_settings())
 
 Settings = Annotated[config.Settings, Depends(config.Settings.get)]
 

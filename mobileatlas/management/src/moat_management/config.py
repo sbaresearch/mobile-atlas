@@ -29,6 +29,7 @@ class Config:
     SERVER_HOST: str = "localhost"
     SERVER_PORT: int = 8080
     SERVER_BEHIND_PROXY: bool = False
+    SERVER_DOCUMENTATION: bool = False
 
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
@@ -78,6 +79,12 @@ class Config:
         object.__setattr__(self, "_redis_client", client)
         return client
 
+    def doc_settings(self) -> dict[str, Any]:
+        if self.SERVER_DOCUMENTATION:
+            return {}
+        else:
+            return {"docs_url": None, "redoc_url": None}
+
 
 _CONFIG: Config | None = None
 
@@ -122,6 +129,7 @@ def _load_config_file(path: Path | str) -> dict[str, Any]:
         _set(res, "BASIC_AUTH_PW_HASH", server.get("pw_hash"))
         _set(res, "BASIC_AUTH_PW_SALT", server.get("pw_salt"))
         _set(res, "SERVER_BEHIND_PROXY", server.get("behind_proxy"))
+        _set(res, "SERVER_DOCUMENTATION", server.get("documentation"))
 
     if isinstance(db := cfg.get("db"), dict):
         _set(res, "DB_HOST", db.get("host"))
@@ -197,6 +205,8 @@ def _load_env_config() -> dict[str, Any]:
             _set(res, f.name, val)
         elif t == int:
             _set(res, f.name, val, int)
+        elif t == bool:
+            _set(res, f.name, val, bool)
         elif t == timedelta:
             _set(res, f.name, val, _td)
         elif t == list and f.name == "ALLOWED_TUNNEL_AUTH_IPS":

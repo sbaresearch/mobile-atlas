@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     await db.dispose_engine()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, **get_config().doc_settings())
 
 app.include_router(token_router)
 app.include_router(probe_router)
