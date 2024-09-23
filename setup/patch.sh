@@ -2,65 +2,102 @@
 
 set -eu
 
-if [[ "${DEBUG:-0}" -ne 0 ]]; then
-  set -x
-fi
-
-boot_mount='boot'
-rootfs_mount='rootfs'
-
-umount_dev() {
-  trap 0
-
-  set +e
-
-  sudo umount "$boot_mount"
-  sudo umount "$rootfs_mount"
-  rmdir "$boot_mount"
-  rmdir "$rootfs_mount"
-  rmdir "$tmp_dir"
-
-  set -e
+sudo() {
+  echo -n "Trying to run: sudo" 1>&2
+  printf " %q" "$@" 1>&2
+  echo 1>&2
+  read -rp "Is that ok? [yn]: " yn 1>&2 </dev/tty
+  case "$yn" in
+    [Yy]*)
+      command sudo "$@"
+      ;;
+    *)
+      echo "Ok. Exiting..." 1>&2
+      exit 1
+      ;;
+  esac
 }
 
-mount_dev() {
-  tmp_dir="$(mktemp -d)"
-  boot_mount="$tmp_dir/$boot_mount"
-  rootfs_mount="$tmp_dir/$rootfs_mount"
+cleanup() {
+  set -x +e
 
-  trap 'umount_dev' 0
+  if [[ -n "${IMAGE_BOOT_MNT:-}" ]]; then
+    command sudo umount "$IMAGE_BOOT_MNT"
+  fi
 
-  mkdir "$boot_mount"
-  mkdir "$rootfs_mount"
+  if [[ -n "${IMAGE_ROOT_MNT:-}" ]]; then
+    command sudo umount "$IMAGE_ROOT_MNT"
+  fi
 
-  sudo mount -o noexec,nodev,nosuid "$1" "$boot_mount"
-  sudo mount -o noexec,nodev,nosuid "$2" "$rootfs_mount"
+  if [[ -n "${LOOP_DEV:-}" ]]; then
+    command sudo losetup -d "$LOOP_DEV"
+  fi
+
+  if [[ -n "${DEV_AUTO_BOOT_MOUNT:-}" ]]; then
+    command sudo umount "$DEV_AUTO_BOOT_MOUNT"
+  fi
+
+  if [[ -n "${DEV_BOOT_MOUNT:-}" ]]; then
+    command sudo umount "$DEV_BOOT_MOUNT"
+  fi
+
+  if [[ -n "${DEV_ROOT_MOUNT:-}" ]]; then
+    command sudo umount "$DEV_ROOT_MOUNT"
+  fi
+
+  if [[ -n "${TMP_DIR:-}" ]]; then
+    rm --one-file-system -rf "$TMP_DIR"
+  fi
 }
 
 usage() {
-  exec 1>&2
-
-  printf 'Usage: %s: [-r size] [-p password] (-m <path to boot mount> <path to rootfs mount> | <boot part dev> <rootfs part dev>)\n' "$0"
-  printf '\t-m Use already mounted filesystems instead of mounting them first.\n'
-  printf '\t-p Use the specified password instead of generating one. (When "-" read from standard input.)\n'
-  printf '\t-r Resize target in GiB.\n'
-
+  cat 1>&2 <<END
+Usage: $0 [-p password] <image> <dev>
+  -p Use specified password instead of generating a random one. ("-" to read from stdin)
+END
   exit 1
 }
 
-patch_firstboot_script() {
-  path_resize_script="$rootfs_mount/usr/lib/raspberrypi-sys-mods/firstboot"
-
-  if ! sha256sum --status -c - <<<"7a28d81fd01abe04d1a610e071d35d232140c2efe216b0125a715822d5e024b0 $path_resize_script"; then
-    echo "Failed to patch unknown version of '/usr/lib/raspberrypi-sys-mods/firstboot' file." 1>&2
+patch_firstboot_resize_script() {
+  if [[ "$#" -ne 1 ]]; then
+    echo "patch_firstboot_resize_script expected one argument: <resize_script>"
     exit 1
   fi
 
-  # fix partition size to "$resize GiB" (overwrite target of partition in line 75)
-  sudo patch -s "$path_resize_script" <<END
-60a61
->   TARGET_END=\$((ROOT_PART_START + $(((resize * 2**30) / 512))))
+  if ! sha256sum --status -c - <<<"0a86e750ad810b87a323c8e42ef76174110cb0338faf378c80d9fc6b6f87093b $1"; then
+    echo "Failed to patch unknown version of '$1' file." 1>&2
+    exit 1
+  fi
+
+  sudo patch -s "$1" <<END
+34,38d33
+<   if ! parted -m "\$ROOT_DEV" u s resizepart "\$ROOT_PART_NUM" "\$TARGET_END"; then
+<     FAIL_REASON="Partition table resize of the root partition (\$DEV) failed\\n\$FAIL_REASON"
+<     return 1
+<   fi
+< 
 END
+}
+
+unpack_initramfs() {
+  if [[ "$#" -ne 2 ]]; then
+    echo "unpack_initramfs expects 2 arguments: <src> <unpack_dir>"
+    exit 1
+  fi
+
+  unzstd --stdout "$1" | cpio -D "$2" -idmv --no-absolute-filenames 2>/dev/null
+}
+
+repack_initramfs() {
+  if [[ "$#" -ne 2 ]]; then
+    echo "repack_initramfs expects 2 arguments: <unpack_dir> <target>"
+    exit 1
+  fi
+
+  local tmp_target
+  tmp_target="$tmp_unpack/$(basename "$2").cpio"
+  { cd "$1" && find .; } | cpio -D "$1" -ocR root:root 2>/dev/null | zstd -9 -o "$tmp_target"
+  sudo mv -i "$tmp_target" "$2"
 }
 
 configure_user() {
@@ -69,17 +106,134 @@ configure_user() {
     echo "Generated password: $password"
   fi
 
+  local pw_hash
   pw_hash="$(openssl passwd -6 "$password")"
 
-  echo "pi:$pw_hash" | sudo tee "$boot_mount/userconf.txt" >/dev/null
+  echo "pi:$pw_hash" | sudo tee "$DEV_BOOT_MOUNT/userconf.txt" >/dev/null
 }
 
 enable_sshd() {
-  sudo touch "$boot_mount/ssh"
+  sudo touch "$DEV_BOOT_MOUNT/ssh"
 }
 
-mount=1
-while getopts p:mr: arg; do
+create_tmp_dir() {
+  TMP_DIR="$(mktemp -d)"
+}
+
+mount_image() {
+  LOOP_DEV="$(sudo losetup -PLrf --show "$1")"
+  IMAGE_BOOT_MNT="$TMP_DIR/image_boot"
+  IMAGE_ROOT_MNT="$TMP_DIR/image_root"
+  mkdir "$IMAGE_BOOT_MNT"
+  mkdir "$IMAGE_ROOT_MNT"
+
+  sudo mount -o nodev,noexec,nosuid,ro "${LOOP_DEV}p1" "$IMAGE_BOOT_MNT"
+  sudo mount -o nodev,noexec,nosuid,ro "${LOOP_DEV}p2" "$IMAGE_ROOT_MNT"
+}
+
+mount_dev() {
+  DEV_AUTO_BOOT_MOUNT="$TMP_DIR/dev_autoboot"
+  DEV_BOOT_MOUNT="$TMP_DIR/dev_boot"
+  DEV_ROOT_MOUNT="$TMP_DIR/dev_root"
+
+  mkdir "$DEV_AUTO_BOOT_MOUNT"
+  mkdir "$DEV_BOOT_MOUNT"
+  mkdir "$DEV_ROOT_MOUNT"
+
+  #sudo mount -o nodev,nosuid,noexec "$(lsblk -po KNAME -n "$1" | grep -v "^$1$" | sedd)" "$DEV_AUTO_BOOT_MOUNT"
+  get_partition "$1" 1
+  sudo mount -o nodev,nosuid,noexec "$PART" "$DEV_AUTO_BOOT_MOUNT"
+  get_partition "$1" 2
+  sudo mount -o nodev,nosuid,noexec "$PART" "$DEV_BOOT_MOUNT"
+  get_partition "$1" 5
+  sudo mount -o nodev,nosuid,noexec "$PART" "$DEV_ROOT_MOUNT"
+}
+
+get_partition() {
+  PART="$(lsblk -po KNAME -n "$1" | grep -v "^$1$" | sed -n "$2p")"
+}
+
+get_ptuuid() {
+  PTUUID="$(lsblk -o PTUUID -n "$1" | head -1)"
+}
+
+format_dev() {
+  total_size=$(lsblk -snbo size "$1")
+  size=$(((total_size - 3 * 512 * 2**20 - 2 * 2048) / 2 / 1024))
+  sudo sfdisk "$1" <<END
+label: dos
+unit: sectors
+
+-, 512MiB, 0x0c, -
+-, 512MiB, 0x0c, -
+-, 512MiB, 0x0c, -
+-, -, 0x05, -
+-, ${size}KiB, 0x83, -
+-, -, 0x83, -
+END
+
+  # Required because for e.g. loop devices
+  # sfdisk's ioctl to reread partitions fails.
+  sudo partprobe "$1"
+
+  get_partition "$1" 1
+  sudo mkfs.vfat -F 32 -n bootfs "$PART"
+}
+
+copy_to_dev() {
+  get_partition "$1" 2
+  sudo dd if="${LOOP_DEV}p1" of="$PART" bs=4M conv=fsync oflag=direct status=progress
+  get_partition "$1" 5
+  sudo dd if="${LOOP_DEV}p2" of="$PART" bs=4M conv=fsync oflag=direct status=progress
+}
+
+update_config() {
+  sudo tee "$DEV_AUTO_BOOT_MOUNT/autoboot.txt" >/dev/null <<END
+[all]
+tryboot_a_b=1
+boot_partition=2
+[tryboot]
+boot_partition=3
+END
+
+  get_ptuuid "$1"
+  sudo sed -i -E "s/root=PARTUUID=[-[:alnum:]]+/root=PARTUUID=${PTUUID}-05/" "$DEV_BOOT_MOUNT/cmdline.txt"
+  sudo gawk -i inplace -f - -F ' ' "$DEV_ROOT_MOUNT/etc/fstab" <<END
+!/^ *#/ && (\$2 == "/" || \$2 == "/boot/firmware") {
+  if (\$2 == "/")
+    r=gsub(/PARTUUID=[-[:alnum:]]+/, "PARTUUID=${PTUUID}-05", \$1)
+  if (\$2 == "/boot/firmware")
+    r=gsub(/PARTUUID=[-[:alnum:]]+/, "PARTUUID=${PTUUID}-02", \$1)
+  if (r != 1) {
+    print "Failed to replace partition UUID in line: " \$0 >/dev/stderr
+    exit 1
+  }
+}
+
+{ print }
+END
+}
+
+update_initramfs() {
+  tmp_unpack="$TMP_DIR/initramfs_unpack"
+  mkdir "$tmp_unpack"
+
+  for f in "$DEV_BOOT_MOUNT"/initramfs*; do
+    echo "Patching: $f"
+    unpack_dir="$tmp_unpack/$(basename "$f")"
+    mkdir "$unpack_dir"
+    unpack_initramfs "$f" "$unpack_dir"
+    patch_firstboot_resize_script "$unpack_dir/scripts/local-premount/firstboot"
+    repack_initramfs "$unpack_dir" "$f"
+  done
+  patch_firstboot_resize_script "$DEV_ROOT_MOUNT/usr/share/initramfs-tools/scripts/local-premount/firstboot"
+}
+
+if [[ "${DEBUG:-0}" -ne 0 ]]; then
+  set -x
+fi
+
+while getopts "p:" arg; do
   case "$arg" in
     p)
       if [[ "$OPTARG" = "-" ]]; then
@@ -87,16 +241,6 @@ while getopts p:mr: arg; do
       else
         password="$OPTARG"
       fi
-      ;;
-    m)
-      mount=0
-      ;;
-    r)
-      # checks whether $OPTARG is an integer
-      if ! [ "$OPTARG" -eq "$OPTARG" ]; then
-        usage
-      fi
-      resize="$OPTARG"
       ;;
     ?)
       usage
@@ -110,18 +254,15 @@ if [[ "$#" -ne 2 ]]; then
   usage
 fi
 
-if [[ "$mount" -eq 0 ]]; then
-  boot_mount="$1"
-  rootfs_mount="$2"
-else
-  echo "Mounting devices '$1' and '$2'..." 1>&2
-  mount_dev "$1" "$2"
-fi
-
-if [[ -n "${resize:-}" ]]; then
-  echo "Patching '/usr/lib/raspberrypi-sys-mods/firstboot' ..." 1>&2
-  patch_firstboot_script
-fi
+unset TMP_DIR
+trap 'cleanup' EXIT
+create_tmp_dir
+mount_image "$1"
+format_dev "$2"
+copy_to_dev "$2"
+mount_dev "$2"
+update_config "$2"
+update_initramfs
 
 echo "Creating userconf.txt ..." 1>&2
 configure_user
