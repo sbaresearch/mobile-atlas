@@ -8,23 +8,6 @@
       key: '{{ item.pubkey }}'
     with_items: '{{ ssh_keys }}'
 
-  - name: Add unstable repository and pin it with lower priority
-    copy:
-      src: '{{ item.src }}'
-      dest: '{{ item.dest }}'
-      owner: root
-      group: root
-      mode: '0644'
-    with_items: '{{ files_debian_unstable }}'
-    become: yes
-
-  - name: Add an apt key by id from a keyserver
-    apt_key:
-      keyserver: '{{ item.server }}'
-      id: '{{ item.id }}'
-    with_items: '{{ apt_keys }}'
-    become: yes
-
   - name: Update and upgrade apt packages
     apt:
       upgrade: safe
@@ -84,6 +67,7 @@
         dtoverlay=disable-wifi
 
         # mini-uart used for backup AT commandos at modem adapter
+        # TODO reevaluate if needed
         enable_uart=1
 
         # used for sim eumlation 
@@ -99,20 +83,12 @@
   - name: Install modemmanager from testing repository
     apt:
       name: modemmanager
-      default_release: unstable
       state: latest
     become: yes
 
   - name: Stop and disable modemmanager service
     service:
       name: ModemManager
-      enabled: no
-      state: stopped
-    become: yes
-
-  - name: Stop and disable NetworkManager service
-    service:
-      name: NetworkManager
       enabled: no
       state: stopped
     become: yes
@@ -125,6 +101,12 @@
       value: interface-name:veth0;interface-name:veth1
     become: yes
 
+  - name: Reload network-manager service
+    service:
+      name: NetworkManager
+      state: reloaded
+    become: yes
+
   - name: Add debugging option to pppd
     lineinfile:
       path: /etc/ppp/options
@@ -132,13 +114,12 @@
     become: yes
 
   - name: Create kernelmodule blacklist file
-    lineinfile:
+    file:
       path: /etc/modprobe.d/blacklist-mobileatlas.conf
-      line: blacklist
       owner: root
       group: root
       mode: '0644'
-      create: yes
+      state: touch
     become: yes
 
   - name: set git user
@@ -161,17 +142,11 @@
       dest: /home/pi/mobile-atlas
     become_user: pi
 
-  - name: Install virtualenv for all users
-    pip:
-      executable: pip3
-      name: virtualenv
-      umask: '0022'
-    become: yes
-
   - name: Setup virtualenv for mobile-atlas
     pip:
       requirements: /home/pi/mobile-atlas/mobileatlas/probe/requirements.txt
       virtualenv: /home/pi/mobile-atlas/mobileatlas/probe/venv
+      virtualenv_command: /usr/bin/python3 -m venv
     become_user: pi
 
   - name: Create directory for systemd scripts (wireguard-registration and mobile-atlas)
