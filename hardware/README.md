@@ -83,7 +83,7 @@ For expensive commands or long-lasting round-trip times, we can repeatedly signa
 | Single-Board Computer | [Raspberry Pi 4 Model B, 8GB RAM](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) | 100€ |
 | Power Supply | [Official Raspberry Pi Power Supply](https://www.raspberrypi.com/products/type-c-power-supply/) | 10€ |
 | SD Card | Samsung EVO Plus 512GB (MB-MC512GA/EU) | 80€ |
-| Modem | [Quectel RM500Q (M.2)](https://www.quectel.com/wp-content/uploads/2021/03/Quectel_RM500Q-AE_5G_Specification_V1.1.pdf) | 500€ |
+| Modem | [Quectel RM500Q (M.2)](https://web.archive.org/web/20240518024502/https://www.quectel.com/wp-content/uploads/2021/03/Quectel_RM500Q-AE_5G_Specification_V1.1.pdf) | 500€ |
 | Modem Adapter | [Sixfab Raspberry Pi 5G Development Kit (including Case, Antennas)](https://sixfab.com/product/raspberry-pi-5g-development-kit-5g-hat/) | 210€ |
 | SIM Adapter | [Selfmade SIM PCB](sim-adapter/) | 2€ |
 | Misc | Network Cable, Wires, etc. | 3€ |
