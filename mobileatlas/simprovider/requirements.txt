@@ -23,7 +23,7 @@ pyscard==2.0.7
 pyserial @ git+https://github.com/GGegenhuber/pyserial.git@f251884cbcfd5c34ace7d31138d755b67c3db1a3
 pytlv==0.71
 PyYAML==6.0.1
-requests==2.31.0
+requests==2.32.3
 six==1.16.0
 urllib3==2.0.4
 wcwidth==0.2.6
