@@ -81,7 +81,7 @@ def main():
 
     res = probe_util.register_token(token, mac=mac)
 
-    if res.status_code != 200:
+    if not res.ok:
         print("Error", res.status_code, res.text)
         return
 
@@ -94,7 +94,7 @@ def main():
             headers={"Authorization": f"Bearer {token}"},
             )
 
-    if res.status_code != 200:
+    if not res.ok:
         print("Error", res.status_code, res.text)
         return
 

@@ -149,7 +149,7 @@ def is_token_active(token, url=TOKEN_ACTIVE_URL):
     headers = {"Authorization": f"Bearer {token}"}
     res = requests.get(url, headers=headers)
 
-    if res.status_code == 200:
+    if res.ok:
         return True
     else:
         return False

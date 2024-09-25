@@ -20,7 +20,7 @@ GIT_DIR = "/home/pi/mobile-atlas/"
 # Todo improve test/prod config
 
 # Seconds to wait for after Exception
-RETRY_INTERVAL = 10
+RETRY_INTERVAL = 60
 # Seconds in between System Information Updates
 SYSTEM_INFO_UPDATE_INTERVAL = 3600
 # Timeout for Requests, according to LongPollingValue
@@ -110,7 +110,7 @@ def main():
         # TODO better exception handling
         #   timeout, 403 cause unauthenticated, ...
 
-        if r.status_code == 200 and r.content and r.json():
+        if r.ok and r.content and r.json():
             print(f"Received {r.json()}")
             handle_command(r.json()['command'])
 
