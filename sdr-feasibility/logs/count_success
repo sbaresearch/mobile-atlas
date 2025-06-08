@@ -1,0 +1,3 @@
+#!/bin/bash
+#for dir in srsue_logs*/; do echo "📁 ${dir%/}"; (cd "$dir" && for file in *; do [[ -f "$file" ]] && echo "$file"; done | sed 's/^\([^_]*_[^_]*\)_.*/\1/' | sort | uniq -c | while read count prefix; do successful=$(grep -l "Network attach successful" ${prefix}_* 2>/dev/null | wc -l); echo "├── $prefix $successful/$count"; done); echo ""; done
+for dir in srsue_logs*/; do echo "📁 ${dir%/}"; (cd "$dir" && for file in *; do [[ -f "$file" ]] && echo "$file"; done | sed 's/^\([^_]*\)_.*/\1/' | sort | uniq -c | while read count prefix; do successful=$(grep -l "Network attach successful" ${prefix}_* 2>/dev/null | wc -l); percentage=$((successful * 100 / count)); echo "├── $prefix $successful/$count ($percentage%)"; done); echo ""; done
