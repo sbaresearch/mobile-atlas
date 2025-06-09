@@ -33,7 +33,7 @@ For both devices, there are [recommendations](https://github.com/srsran/srsRAN_P
 | **CPU**         | Intel Core i7-7700K | AMD Ryze 5 5500U | Intel Core i5-6260U   | ARM Cortex-A76 |
 | **Clock Speed** | 4.2 - 4.5 GHz       | 2.1 - 4 GHz      | 1.8 - 2.9 GHz         | 2.4 GHz        |
 | **Cores**       | 4                   | 6                | 2                     | 4              |
-| **RAM**         | 16 GB               | 16 GB            |                       | 8 GB           |
+| **RAM**         | 16 GB               | 16 GB            | 16 GB                 | 8 GB           |
 
 When running srsUE with these SDR devices, the host computer's CPU performance becomes a primary bottleneck for real-time LTE baseband processing. 
 This may result in the RF frontend getting out of sync with the mobile network, resulting in poor performance.
