@@ -34,7 +34,7 @@ class PayloadPublicIp(PayloadNetworkBase):
 
     def make_request(self, url):
         # https://stackoverflow.com/questions/22492484/how-do-i-get-the-ip-address-from-a-http-request-using-the-requests-library
-        resp = requests.get(url, stream=True, allow_redirects=False)
+        resp = requests.get(url, stream=True, allow_redirects=False, timeout=15)
         self.endpoint_ip, self.endpoint_port = resp.raw._connection.sock.getsockname()
         logger.debug(f"resolved url {url} to {self.endpoint_ip}:{self.endpoint_port}")
         data = resp.json()
